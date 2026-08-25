@@ -522,7 +522,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
     <section class="screen" id="screen-vision">
       <div class="topbar"><h1>Компьютерное зрение</h1></div>
       <div class="section" style="padding-top:0; padding-bottom:10px">
-        <div class="section-head" style="margin-bottom:2px"><h2 style="font-size:14px; color:var(--ink-soft); font-weight:500">Наведите камеру на продукт — распознаем и добавим в холодильник или морозилку.</h2></div>
+        <div class="section-head" style="margin-bottom:2px; display:block"><h2 style="font-size:14px; color:var(--ink-soft); font-weight:500">Наведите камеру на продукт — распознаем и добавим в холодильник или морозилку.</h2><p style="font-size:11.5px; color:var(--muted); margin-top:4px; line-height:1.4">Модель работает прямо на устройстве и лучше всего узнаёт: банан, лимон, апельсин, ананас, гранат, клубника, инжир, капуста, брокколи, кабачок, огурец, перец, гриб, яблоко. Для остальных продуктов (помидор, картофель, лук и т.п.) — впишите название сами или отсканируйте штрихкод.</p></div>
       </div>
 
       <div class="vision-stage" id="vision-stage">
@@ -812,6 +812,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
 <script>
 /* ===================== SUPABASE ===================== */
 const SUPABASE_URL = '__SUPABASE_URL__';
@@ -921,7 +923,29 @@ const productCatalog = [
   {name:'Картофель', emoji:'🥔', unit:'шт', defaultQty:10, shelfDays:30, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Potato/Floury-Potato/Floury-Potato_Iconic.jpg'},
   {name:'Свёкла', emoji:'🥔', unit:'шт', defaultQty:3, shelfDays:21, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Red-Beet/Red-Beet_Iconic.jpg'},
   {name:'Кабачок', emoji:'🥒', unit:'шт', defaultQty:2, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Zucchini/Zucchini_Iconic.jpg'},
+  {name:'Клубника', emoji:'🍓', unit:'г', defaultQty:300, shelfDays:3, compartment:'fridge'},
+  {name:'Инжир', emoji:'🟤', unit:'шт', defaultQty:4, shelfDays:5, compartment:'fridge'},
 ];
+
+// ImageNet-класс (MobileNet) -> название в нашем каталоге; используется для реального
+// распознавания фото с камеры on-device. ImageNet-1k не включает многие сырые овощи
+// (помидор, картофель, морковь, лук, чеснок) — для них модель не распознает точно.
+const IMAGENET_TO_CATALOG = {
+  'banana': 'Бананы',
+  'lemon': 'Лимон',
+  'orange': 'Апельсины',
+  'pineapple, ananas': 'Ананас',
+  'pomegranate': 'Гранат',
+  'strawberry': 'Клубника',
+  'fig': 'Инжир',
+  'head cabbage': 'Капуста',
+  'broccoli': 'Брокколи',
+  'zucchini, courgette': 'Кабачок',
+  'cucumber, cucmber': 'Огурцы',
+  'bell pepper': 'Болгарский перец',
+  'mushroom': 'Грибы',
+  'Granny Smith': 'Яблоки',
+};
 function findCatalog(name){
   const q = (name||'').trim().toLowerCase();
   return productCatalog.find(c => c.name.toLowerCase() === q);
@@ -1076,7 +1100,7 @@ function showScreen(name, push=true){
   fab.dataset.mode = name === 'home' ? 'meal' : 'product';
   document.querySelector('.main-col').scrollTop = 0;
   if(push) history.push(name);
-  if(name === 'vision'){ /* nothing auto */ }
+  if(name === 'vision'){ ensureModel(); }
 }
 
 const topLevelScreens = new Set(['home','fridge','vision','diet','recipes','cart','profile']);
@@ -1438,6 +1462,7 @@ async function requestCamera(){
   try{
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     setVisionState('live');
+    ensureModel();
   }catch(err){
     if(err.name === 'NotFoundError' || err.name === 'OverconstrainedError'){
       setVisionState('nocamera');
@@ -1452,6 +1477,16 @@ document.getElementById('stop-camera-btn').addEventListener('click', ()=>{
   if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
   setVisionState('idle');
 });
+
+/* ---- on-device распознавание: MobileNet (TensorFlow.js), без бэкенда и без ключей ---- */
+let mobilenetModel = null;
+let mobilenetLoading = null;
+function ensureModel(){
+  if(mobilenetModel) return Promise.resolve(mobilenetModel);
+  if(mobilenetLoading) return mobilenetLoading;
+  mobilenetLoading = mobilenet.load().then(m => { mobilenetModel = m; return m; }).catch(err => { console.error('MobileNet load failed', err); mobilenetLoading = null; return null; });
+  return mobilenetLoading;
+}
 
 const demoRecognitions = [
   {name:'Брокколи', emoji:'🥦', conf:94},
@@ -1509,19 +1544,44 @@ document.getElementById('vr-name-input').addEventListener('blur', ()=> setTimeou
 document.getElementById('vr-qty-inc').addEventListener('click', ()=> adjustQtyField('vr-qty-num','vr-qty-unit',1));
 document.getElementById('vr-qty-dec').addEventListener('click', ()=> adjustQtyField('vr-qty-num','vr-qty-unit',-1));
 
-function runRecognition(){
-  setVisionState('scanning');
-  setTimeout(()=>{
-    const r = demoRecognitions[Math.floor(Math.random()*demoRecognitions.length)];
-    document.getElementById('vr-name-input').value = r.name;
-    document.getElementById('vr-conf').textContent = `Распознано с точностью ${r.conf}%`;
-    const entry = findCatalog(r.name);
-    if(entry){ applyCatalogEntry(entry); } else { document.getElementById('vr-thumb').textContent = r.emoji; document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY,5)); }
-    if(stream){ setVisionState('live'); } else { stage.innerHTML = `<div class="vision-state"><div class="ic">${r.emoji}</div><h3>${r.name}</h3></div>`; }
-    visionResult.classList.add('show');
-  }, 1100);
+function showRecognitionResult(name, emoji, confText, matched){
+  document.getElementById('vr-name-input').value = name;
+  document.getElementById('vr-conf').textContent = confText;
+  if(matched){ applyCatalogEntry(matched); }
+  else { document.getElementById('vr-thumb').textContent = emoji; document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY,5)); }
+  if(stream){ setVisionState('live'); } else { stage.innerHTML = `<div class="vision-state"><div class="ic">${emoji}</div><h3>${name}</h3></div>`; }
+  visionResult.classList.add('show');
 }
-document.getElementById('capture-btn').addEventListener('click', runRecognition);
+function randomFallbackRecognition(){
+  const r = demoRecognitions[Math.floor(Math.random()*demoRecognitions.length)];
+  showRecognitionResult(r.name, r.emoji, `Модель недоступна — показан случайный вариант, уточните вручную`, findCatalog(r.name));
+}
+async function runRecognition(imgEl){
+  setVisionState('scanning');
+  const model = await ensureModel();
+  const target = imgEl || document.getElementById('vision-video');
+  if(!model || !target){ randomFallbackRecognition(); return; }
+  try{
+    const preds = await model.classify(target, 5);
+    let mapped = null, top = preds[0];
+    for(const p of preds){
+      const name = IMAGENET_TO_CATALOG[p.className];
+      if(name){ mapped = {name, pred:p}; break; }
+    }
+    if(mapped){
+      const entry = findCatalog(mapped.name);
+      showRecognitionResult(entry.name, entry.emoji, `Распознано моделью с точностью ${Math.round(mapped.pred.probability*100)}%`, entry);
+    } else if(top){
+      showRecognitionResult(top.className, '📷', `Похоже на «${top.className}» (${Math.round(top.probability*100)}%) — это не из нашего каталога, уточните название`, null);
+    } else {
+      randomFallbackRecognition();
+    }
+  }catch(err){
+    console.error('classify failed', err);
+    randomFallbackRecognition();
+  }
+}
+document.getElementById('capture-btn').addEventListener('click', ()=> runRecognition());
 document.getElementById('retake-btn').addEventListener('click', ()=>{
   visionResult.classList.remove('show');
   if(stream) setVisionState('live'); else setVisionState('idle');
@@ -1530,7 +1590,13 @@ document.getElementById('retake-btn').addEventListener('click', ()=>{
 document.getElementById('gallery-btn-live').addEventListener('click', ()=> document.getElementById('gallery-input').click());
 document.getElementById('upload-gallery-btn').addEventListener('click', ()=> document.getElementById('gallery-input').click());
 document.getElementById('gallery-input').addEventListener('change', (e)=>{
-  if(e.target.files && e.target.files[0]) runRecognition();
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  ensureModel();
+  const img = new Image();
+  img.onload = ()=>{ runRecognition(img); URL.revokeObjectURL(img.src); };
+  img.onerror = ()=> randomFallbackRecognition();
+  img.src = URL.createObjectURL(file);
 });
 
 /* ===================== BARCODE SCAN (ZXing + Open Food Facts) ===================== */
