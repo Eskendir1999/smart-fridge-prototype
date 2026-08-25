@@ -402,7 +402,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
           <div class="greeting">Доброе утро</div>
           <h1>Хозяин</h1>
         </div>
-        <div class="avatar" data-nav="profile" style="cursor:pointer">Х</div>
+        <div class="avatar" id="home-avatar" data-nav="profile" style="cursor:pointer">Х</div>
       </div>
 
       <div class="section" id="summary-section">
@@ -745,8 +745,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
       <div class="topbar"><h1>Профиль</h1></div>
       <div class="section" style="padding-top:0">
         <div class="summary-card" style="margin-bottom:18px">
-          <div class="avatar" style="width:52px;height:52px;font-size:19px">Х</div>
-          <div><div style="font-weight:600; font-size:16px">Хозяин</div><div style="font-size:12.5px; color:var(--ink-soft)">Программа питания · 2-й месяц</div></div>
+          <div class="avatar" id="profile-avatar" style="width:52px;height:52px;font-size:19px">Х</div>
+          <div><div id="profile-name" style="font-weight:600; font-size:16px">Хозяин</div><div style="font-size:12.5px; color:var(--ink-soft)">Программа питания · 2-й месяц</div></div>
         </div>
         <button class="secondary-btn" data-nav="diet" style="margin-top:0">🥗 Мои данные и диета</button>
         <button class="secondary-btn" data-nav="cart">🛒 Корзина</button>
@@ -2062,31 +2062,33 @@ async function dbSaveMeasurement(entry){
   );
 }
 
-async function seedInitialData(userId){
-  const rows = [
-    ...fridgeData.map(p => ({...toDbRow(p), compartment:'fridge', user_id:userId})),
-    ...freezerData.map(p => ({...toDbRow(p), compartment:'freezer', user_id:userId})),
-  ];
-  const { data } = await sb.from('fridge_items').insert(rows).select();
-  if(data){
-    let i=0;
-    fridgeData.forEach(p => p._id = data[i++].id);
-    freezerData.forEach(p => p._id = data[i++].id);
-  }
-  const cartRows = cartData.map(p => ({name:p.name, emoji:p.emoji, qty_num:p.qtyNum, unit:p.unit, note:p.note||null, user_id:userId}));
-  const { data: cdata } = await sb.from('cart_items').insert(cartRows).select();
-  if(cdata) cartData.forEach((p,i)=> p._id = cdata[i].id);
-
-  const measureRows = measurementHistory.map(m => ({user_id:userId, log_date:m.date, weight:m.weight, neck:m.neck, chest:m.chest, belly:m.belly, hips:m.hips}));
-  await sb.from('measurement_logs').insert(measureRows);
-
+async function initEmptyAccount(userId){
+  fridgeData.length = 0;
+  freezerData.length = 0;
+  cartData.length = 0;
+  measurementHistory = [];
+  usedCount = 0; usedWeightKg = 0; wastedCount = 0;
   await sb.from('food_stats').upsert({user_id:userId, used_count:0, used_weight_kg:0, wasted_count:0});
+}
+
+function displayNameFromEmail(email){
+  const local = (email||'').split('@')[0];
+  return local ? local.charAt(0).toUpperCase() + local.slice(1) : 'Хозяин';
+}
+function updateGreetingName(email){
+  const name = displayNameFromEmail(email);
+  const letter = name.charAt(0).toUpperCase();
+  document.querySelector('#screen-home h1').textContent = name;
+  document.getElementById('profile-name').textContent = name;
+  document.getElementById('home-avatar').textContent = letter;
+  document.getElementById('profile-avatar').textContent = letter;
 }
 
 async function loadUserData(){
   const { data: { user } } = await sb.auth.getUser();
   if(!user) return;
   currentUserId = user.id;
+  updateGreetingName(user.email);
 
   const [fridgeRes, cartRes, measureRes, statsRes] = await Promise.all([
     sb.from('fridge_items').select('*').eq('user_id', user.id).order('created_at'),
@@ -2113,8 +2115,8 @@ async function loadUserData(){
       usedCount = statsRes.data.used_count; usedWeightKg = Number(statsRes.data.used_weight_kg); wastedCount = statsRes.data.wasted_count;
     }
   } else if(!fridgeRes.error) {
-    // первый вход этого аккаунта — переносим стартовые демо-данные в Supabase
-    await seedInitialData(user.id);
+    // первый вход этого аккаунта — начинаем с пустого холодильника, без демо-данных
+    await initEmptyAccount(user.id);
   }
 
   renderFridgeList(currentCompartment);
