@@ -751,6 +751,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
         <button class="secondary-btn" data-nav="diet" style="margin-top:0">🥗 Мои данные и диета</button>
         <button class="secondary-btn" data-nav="cart">🛒 Корзина</button>
         <button class="secondary-btn" data-nav="vision">📷 Распознать продукт</button>
+        <button class="secondary-btn" id="logout-btn" style="color:var(--danger); border-color:#F0D3D3">↪ Выйти</button>
       </div>
     </section>
 
@@ -2163,6 +2164,13 @@ async function loadUserData(){
     }
     submitBtn.disabled = false; submitBtn.textContent = 'Войти';
     await enterApp();
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', async ()=>{
+    if(barcodeStream){ stopBarcodeScan(); }
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); }
+    await sb.auth.signOut();
+    location.reload();
   });
 })();
 </script>
