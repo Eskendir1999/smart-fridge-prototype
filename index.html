@@ -286,6 +286,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
 .autocomplete-list{ position:absolute; left:0; right:0; top:100%; margin-top:4px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); box-shadow:var(--shadow); z-index:10; max-height:180px; overflow-y:auto; display:none; }
 .autocomplete-list.show{ display:block; }
 .autocomplete-item{ display:flex; align-items:center; gap:8px; padding:10px 12px; font-size:13.5px; font-weight:600; cursor:pointer; }
+.autocomplete-item .thumb-img, .ingredient-check .thumb-img{ width:22px; height:22px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+.thumb-img-lg{ width:100%; height:100%; object-fit:cover; border-radius:inherit; }
 .autocomplete-item:hover{ background:var(--fresh-soft); }
 
 /* ===== Recipes ===== */
@@ -583,6 +585,21 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
       </div>
     </section>
 
+    <!-- ===== BARCODE SCAN ===== -->
+    <section class="screen" id="screen-barcode">
+      <div class="back-row"><button class="back-btn" id="barcode-cancel-btn">← Отмена</button></div>
+      <div class="vision-stage" id="barcode-stage">
+        <div class="vision-state" id="barcode-idle">
+          <div class="ic">▣</div>
+          <h3>Наведите камеру на штрихкод</h3>
+          <p>Ищем товар в открытой базе Open Food Facts.</p>
+        </div>
+      </div>
+      <div class="vision-controls">
+        <button class="ghost-btn" id="barcode-stop-btn">✕ Стоп</button>
+      </div>
+    </section>
+
     <!-- ===== DIET / NUTRITIONIST ===== -->
     <section class="screen" id="screen-diet">
       <div class="topbar"><h1>Диета</h1></div>
@@ -756,7 +773,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
   <div class="sheet-handle"></div>
   <h3>Добавить продукт</h3>
   <button class="sheet-option" id="sheet-photo-opt"><span class="ic">📷</span>Сфотографировать</button>
-  <button class="sheet-option" data-toast="Открываю сканер штрихкода…"><span class="ic">▣</span>Сканировать штрихкод</button>
+  <button class="sheet-option" id="sheet-barcode-opt"><span class="ic">▣</span>Сканировать штрихкод</button>
   <button class="sheet-option" id="sheet-manual-opt"><span class="ic">✎</span>Добавить вручную</button>
   <button class="sheet-cancel" id="sheet-cancel">Отмена</button>
 </div>
@@ -794,6 +811,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ===================== SUPABASE ===================== */
 const SUPABASE_URL = '__SUPABASE_URL__';
@@ -844,6 +862,9 @@ const freezerData = [
 ];
 
 // Единая база продуктов — используется для автоподсказок в Vision/ручном добавлении, авто-срока годности и выбора холодильник/морозилка
+// Иконки-фото для россыпных продуктов — Grocery Store Dataset (marcusklasson, MIT), хотлинк на raw GitHub
+const GSD_BASE = 'https://raw.githubusercontent.com/marcusklasson/GroceryStoreDataset/master/dataset/iconic-images-and-descriptions';
+
 const productCatalog = [
   {name:'Молоко 3%', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:5, compartment:'fridge'},
   {name:'Молоко', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:5, compartment:'fridge'},
@@ -859,11 +880,11 @@ const productCatalog = [
   {name:'Треска (филе)', emoji:'🐟', unit:'г', defaultQty:400, shelfDays:180, compartment:'freezer'},
   {name:'Брокколи', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:6, compartment:'fridge'},
   {name:'Овощи свежие', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:7, compartment:'fridge'},
-  {name:'Помидоры', emoji:'🍅', unit:'шт', defaultQty:6, shelfDays:6, compartment:'fridge'},
-  {name:'Огурцы', emoji:'🥒', unit:'шт', defaultQty:6, shelfDays:7, compartment:'fridge'},
+  {name:'Помидоры', emoji:'🍅', unit:'шт', defaultQty:6, shelfDays:6, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Tomato/Regular-Tomato/Regular-Tomato_Iconic.jpg'},
+  {name:'Огурцы', emoji:'🥒', unit:'шт', defaultQty:6, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Cucumber/Cucumber_Iconic.jpg'},
   {name:'Зелень', emoji:'🌿', unit:'шт', defaultQty:1, shelfDays:4, compartment:'fridge'},
-  {name:'Авокадо', emoji:'🥑', unit:'шт', defaultQty:3, shelfDays:5, compartment:'fridge'},
-  {name:'Яблоки', emoji:'🍎', unit:'шт', defaultQty:5, shelfDays:14, compartment:'fridge'},
+  {name:'Авокадо', emoji:'🥑', unit:'шт', defaultQty:3, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Avocado/Avocado_Iconic.jpg'},
+  {name:'Яблоки', emoji:'🍎', unit:'шт', defaultQty:5, shelfDays:14, compartment:'fridge', photo:GSD_BASE+'/Fruit/Apple/Royal-Gala/Royal-Gala_Iconic.jpg'},
   {name:'Орехи (грецкий/миндаль)', emoji:'🥜', unit:'г', defaultQty:150, shelfDays:90, compartment:'fridge'},
   {name:'Мёд', emoji:'🍯', unit:'г', defaultQty:350, shelfDays:365, compartment:'fridge'},
   {name:'Красная икра', emoji:'🐠', unit:'г', defaultQty:100, shelfDays:14, compartment:'fridge'},
@@ -873,6 +894,33 @@ const productCatalog = [
   {name:'Замороженные ягоды', emoji:'🫐', unit:'г', defaultQty:250, shelfDays:180, compartment:'freezer'},
   {name:'Овощная смесь', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:180, compartment:'freezer'},
   {name:'Говяжий язык отварной', emoji:'🥩', unit:'г', defaultQty:300, shelfDays:90, compartment:'freezer'},
+  // Расширенный словарь россыпных фруктов/овощей — Grocery Store Dataset
+  {name:'Бананы', emoji:'🍌', unit:'шт', defaultQty:6, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Banana/Banana_Iconic.jpg'},
+  {name:'Киви', emoji:'🥝', unit:'шт', defaultQty:4, shelfDays:14, compartment:'fridge', photo:GSD_BASE+'/Fruit/Kiwi/Kiwi_Iconic.jpg'},
+  {name:'Лимон', emoji:'🍋', unit:'шт', defaultQty:3, shelfDays:21, compartment:'fridge', photo:GSD_BASE+'/Fruit/Lemon/Lemon_Iconic.jpg'},
+  {name:'Лайм', emoji:'🍋', unit:'шт', defaultQty:3, shelfDays:14, compartment:'fridge', photo:GSD_BASE+'/Fruit/Lime/Lime_Iconic.jpg'},
+  {name:'Манго', emoji:'🥭', unit:'шт', defaultQty:2, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Mango/Mango_Iconic.jpg'},
+  {name:'Арбуз', emoji:'🍉', unit:'шт', defaultQty:1, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Fruit/Melon/Watermelon/Watermelon_Iconic.jpg'},
+  {name:'Дыня', emoji:'🍈', unit:'шт', defaultQty:1, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Fruit/Melon/Honeydew-Melon/Honeydew-Melon_Iconic.jpg'},
+  {name:'Нектарин', emoji:'🍑', unit:'шт', defaultQty:5, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Nectarine/Nectarine_Iconic.jpg'},
+  {name:'Апельсины', emoji:'🍊', unit:'шт', defaultQty:5, shelfDays:14, compartment:'fridge', photo:GSD_BASE+'/Fruit/Orange/Orange_Iconic.jpg'},
+  {name:'Персики', emoji:'🍑', unit:'шт', defaultQty:5, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Peach/Peach_Iconic.jpg'},
+  {name:'Груши', emoji:'🍐', unit:'шт', defaultQty:5, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Fruit/Pear/Conference/Conference_Iconic.jpg'},
+  {name:'Ананас', emoji:'🍍', unit:'шт', defaultQty:1, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Pineapple/Pineapple_Iconic.jpg'},
+  {name:'Слива', emoji:'🍑', unit:'шт', defaultQty:6, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Plum/Plum_Iconic.jpg'},
+  {name:'Гранат', emoji:'🍎', unit:'шт', defaultQty:2, shelfDays:21, compartment:'fridge', photo:GSD_BASE+'/Fruit/Pomegranate/Pomegranate_Iconic.jpg'},
+  {name:'Грейпфрут', emoji:'🍊', unit:'шт', defaultQty:3, shelfDays:14, compartment:'fridge', photo:GSD_BASE+'/Fruit/Red-Grapefruit/Red-Grapefruit_Iconic.jpg'},
+  {name:'Баклажан', emoji:'🍆', unit:'шт', defaultQty:2, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Aubergine/Aubergine_Iconic.jpg'},
+  {name:'Капуста', emoji:'🥬', unit:'шт', defaultQty:1, shelfDays:21, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Cabbage/Cabbage_Iconic.jpg'},
+  {name:'Морковь', emoji:'🥕', unit:'шт', defaultQty:6, shelfDays:21, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Carrots/Carrots_Iconic.jpg'},
+  {name:'Чеснок', emoji:'🧄', unit:'шт', defaultQty:1, shelfDays:60, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Garlic/Garlic_Iconic.jpg'},
+  {name:'Имбирь', emoji:'🫚', unit:'г', defaultQty:100, shelfDays:21, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Ginger/Ginger_Iconic.jpg'},
+  {name:'Грибы', emoji:'🍄', unit:'г', defaultQty:300, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Mushroom/Brown-Cap-Mushroom/Brown-Cap-Mushroom_Iconic.jpg'},
+  {name:'Лук репчатый', emoji:'🧅', unit:'шт', defaultQty:3, shelfDays:30, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Onion/Yellow-Onion/Yellow-Onion_Iconic.jpg'},
+  {name:'Болгарский перец', emoji:'🫑', unit:'шт', defaultQty:4, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Pepper/Red-Bell-Pepper/Red-Bell-Pepper_Iconic.jpg'},
+  {name:'Картофель', emoji:'🥔', unit:'шт', defaultQty:10, shelfDays:30, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Potato/Floury-Potato/Floury-Potato_Iconic.jpg'},
+  {name:'Свёкла', emoji:'🥔', unit:'шт', defaultQty:3, shelfDays:21, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Red-Beet/Red-Beet_Iconic.jpg'},
+  {name:'Кабачок', emoji:'🥒', unit:'шт', defaultQty:2, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Zucchini/Zucchini_Iconic.jpg'},
 ];
 function findCatalog(name){
   const q = (name||'').trim().toLowerCase();
@@ -1417,8 +1465,22 @@ function setDest(compartment){
   document.getElementById('dest-fridge').classList.toggle('active', compartment !== 'freezer');
   document.getElementById('dest-freezer').classList.toggle('active', compartment === 'freezer');
 }
+function thumbHtml(entry, size){
+  return entry.photo
+    ? `<img class="thumb-img" src="${entry.photo}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${entry.emoji}'))">`
+    : entry.emoji;
+}
 function applyCatalogEntry(entry){
-  document.getElementById('vr-thumb').textContent = entry.emoji;
+  const thumb = document.getElementById('vr-thumb');
+  thumb.innerHTML = '';
+  if(entry.photo){
+    const img = document.createElement('img');
+    img.className = 'thumb-img-lg'; img.src = entry.photo; img.alt = '';
+    img.onerror = ()=>{ thumb.textContent = entry.emoji; };
+    thumb.appendChild(img);
+  } else {
+    thumb.textContent = entry.emoji;
+  }
   document.getElementById('vr-qty-num').value = entry.defaultQty;
   document.getElementById('vr-qty-unit').value = entry.unit;
   document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, entry.shelfDays));
@@ -1430,7 +1492,7 @@ function renderSuggestions(query){
   if(!q){ box.classList.remove('show'); box.innerHTML=''; return; }
   const matches = productCatalog.filter(c => c.name.toLowerCase().includes(q)).slice(0,6);
   if(!matches.length){ box.classList.remove('show'); box.innerHTML=''; return; }
-  box.innerHTML = matches.map(m => `<div class="autocomplete-item" data-name="${m.name}">${m.emoji} ${m.name}</div>`).join('');
+  box.innerHTML = matches.map(m => `<div class="autocomplete-item" data-name="${m.name}">${thumbHtml(m)} ${m.name}</div>`).join('');
   box.classList.add('show');
   box.querySelectorAll('.autocomplete-item').forEach(el=>{
     el.addEventListener('mousedown', (ev)=>{
@@ -1471,12 +1533,97 @@ document.getElementById('gallery-input').addEventListener('change', (e)=>{
   if(e.target.files && e.target.files[0]) runRecognition();
 });
 
+/* ===================== BARCODE SCAN (ZXing + Open Food Facts) ===================== */
+let barcodeReader = null;
+let barcodeStream = null;
+
+async function startBarcodeScan(){
+  history.push('barcode');
+  showScreen('barcode', false);
+  const stage = document.getElementById('barcode-stage');
+  stage.innerHTML = `<video id="barcode-video" autoplay playsinline muted></video><div class="scan-frame"></div><div class="scan-line"></div>`;
+  const video = document.getElementById('barcode-video');
+  try{
+    barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = barcodeStream;
+    barcodeReader = new ZXing.BrowserMultiFormatReader();
+    barcodeReader.decodeFromVideoElement(video, (result, err)=>{
+      if(result) onBarcodeDetected(result.getText());
+    });
+  }catch(err){
+    stage.innerHTML = `<div class="vision-state"><div class="ic">🚫</div><h3>Нет доступа к камере</h3><p>Разрешите доступ к камере в настройках браузера.</p></div>`;
+  }
+}
+function stopBarcodeScan(){
+  if(barcodeReader){ barcodeReader.reset(); barcodeReader = null; }
+  if(barcodeStream){ barcodeStream.getTracks().forEach(t=>t.stop()); barcodeStream = null; }
+}
+document.getElementById('sheet-barcode-opt').addEventListener('click', ()=>{
+  closeSheet();
+  startBarcodeScan();
+});
+document.getElementById('barcode-stop-btn').addEventListener('click', ()=>{
+  stopBarcodeScan();
+  history.pop();
+  showScreen(history[history.length-1] || 'vision', false);
+});
+document.getElementById('barcode-cancel-btn').addEventListener('click', ()=>{
+  stopBarcodeScan();
+  history.pop();
+  showScreen(history[history.length-1] || 'vision', false);
+});
+
+async function onBarcodeDetected(code){
+  stopBarcodeScan();
+  document.getElementById('barcode-stage').innerHTML = `<div class="vision-state"><div class="ic">🔎</div><h3>Ищем товар…</h3><p>Штрихкод: ${code}</p></div>`;
+  try{
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,product_name_ru,brands,image_front_url,image_url,quantity`);
+    const data = await res.json();
+    history.pop();
+    showScreen('vision', false);
+    visionResult.classList.add('show');
+    if(data.status === 1 && data.product){
+      const p = data.product;
+      const name = p.product_name_ru || p.product_name || `Товар ${code}`;
+      const photo = p.image_front_url || p.image_url || null;
+      document.getElementById('vr-name-input').value = name;
+      document.getElementById('vr-conf').textContent = `Найдено в Open Food Facts${p.brands ? ' · '+p.brands : ''}`;
+      const thumb = document.getElementById('vr-thumb');
+      if(photo){
+        thumb.innerHTML = '';
+        const img = document.createElement('img');
+        img.className = 'thumb-img-lg'; img.src = photo; img.alt = '';
+        img.onerror = ()=>{ thumb.textContent = '📦'; };
+        thumb.appendChild(img);
+      } else {
+        thumb.textContent = '📦';
+      }
+      const entry = findCatalog(name);
+      document.getElementById('vr-qty-num').value = entry ? entry.defaultQty : 1;
+      document.getElementById('vr-qty-unit').value = entry ? entry.unit : 'шт';
+      document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, entry ? entry.shelfDays : 5));
+      setDest(entry ? entry.compartment : 'fridge');
+    } else {
+      document.getElementById('vr-name-input').value = '';
+      document.getElementById('vr-conf').textContent = `Товар со штрихкодом ${code} не найден в базе — впишите название сами`;
+      document.getElementById('vr-thumb').textContent = '📦';
+      document.getElementById('vr-qty-num').value = 1;
+      document.getElementById('vr-qty-unit').value = 'шт';
+      document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, 5));
+    }
+  }catch(err){
+    history.pop();
+    showScreen('vision', false);
+    showToast('Не удалось получить данные о товаре', true);
+  }
+}
+
 /* ---- manual add via checklist (no typing needed) ---- */
 function populateManualChecklist(){
   document.getElementById('manual-checklist').innerHTML = productCatalog.map((p, idx) => `
     <label class="ingredient-check">
       <input type="checkbox" data-manual-idx="${idx}">
-      <span class="thumb">${p.emoji}</span>
+      <span class="thumb">${thumbHtml(p)}</span>
       <span class="label">${p.name}</span>
     </label>`).join('');
 }
