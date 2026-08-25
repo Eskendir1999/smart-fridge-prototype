@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smart Fridge — умный холодильник</title>
+<meta name="description" content="Умный холодильник: отслеживание продуктов и сроков годности, распознавание через камеру, план питания и список покупок.">
+<meta property="og:title" content="Smart Fridge — умный холодильник">
+<meta property="og:description" content="Отслеживание продуктов и сроков годности, распознавание через камеру, план питания и список покупок.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Smart Fridge — умный холодильник">
+<meta name="twitter:description" content="Отслеживание продуктов и сроков годности, распознавание через камеру, план питания и список покупок.">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Smart Fridge">
+<meta name="theme-color" content="#FBF7F2">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" href="/icons/icon-192.png" type="image/png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#FBF7F2;
+  --surface:#FFFFFF;
+  --ink:#1F2A24;
+  --ink-soft:#5B655D;
+  --muted:#8A8F87;
+  --line:#EAE3D8;
+  --fresh:#3E8E5A;
+  --fresh-soft:#E7F2EB;
+  --warn:#D97B4F;
+  --warn-soft:#FBEBE1;
+  --danger:#C24E4E;
+  --frost:#3E6E9E;
+  --frost-soft:#E7EEF6;
+  --shadow: 0 8px 24px rgba(31,42,36,0.08);
+  --radius-lg:22px;
+  --radius-md:16px;
+  --radius-sm:12px;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --nav-h: 64px;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{ height:100%; }
+body{ font-family:'Inter', sans-serif; background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; overscroll-behavior-y:none; }
+h1,h2,h3,.display{ font-family:'Fraunces', serif; }
+
+#app{ min-height:100dvh; display:flex; flex-direction:column; max-width:1400px; margin:0 auto; position:relative; background:var(--bg); }
+
+.topbar{ padding: calc(18px + var(--safe-t)) 20px 14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.topbar .greeting{ font-size:13px; color:var(--muted); font-weight:500; }
+.topbar h1{ font-size:26px; font-weight:600; letter-spacing:-0.01em; }
+.avatar{ width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,var(--fresh),#2E6E45); display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-weight:600; font-size:16px; flex-shrink:0; }
+.back-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding: calc(14px + var(--safe-t)) 16px 8px 16px; }
+.back-btn{ display:flex; align-items:center; gap:6px; min-height:44px; padding:0 10px; background:none; border:none; color:var(--ink); font-size:15px; font-weight:600; font-family:'Inter',sans-serif; border-radius:var(--radius-sm); }
+.back-btn:active{ background:var(--line); }
+
+.screen{ flex:1; overflow-y:auto; padding-bottom: calc(var(--nav-h) + 28px + var(--safe-b)); display:none; }
+.screen.active{ display:block; animation:fadein .18s ease; }
+@keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+.section{ padding: 6px 20px 22px 20px; }
+.section-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+.section-head h2{ font-size:19px; font-weight:600; }
+.section-head .link{ font-size:13px; color:var(--fresh); font-weight:600; background:none; border:none; font-family:'Inter',sans-serif; }
+
+.summary-card{ background:linear-gradient(135deg,#EFF7F1,#F7F2E8); border-radius:var(--radius-lg); padding:20px; display:flex; gap:16px; align-items:center; box-shadow:var(--shadow); }
+.summary-card .num{ font-family:'Fraunces',serif; font-size:34px; font-weight:600; color:var(--fresh); line-height:1; }
+.summary-card .label{ font-size:13px; color:var(--ink-soft); margin-top:4px; }
+.summary-divider{ width:1px; align-self:stretch; background:var(--line); }
+
+.hscroll{ display:flex; gap:12px; overflow-x:auto; padding:2px 20px 6px 20px; margin:0 -20px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; }
+.hscroll::-webkit-scrollbar{ display:none; }
+.hscroll > *{ scroll-snap-align:start; flex-shrink:0; }
+
+.expire-card{ width:132px; background:var(--surface); border-radius:var(--radius-md); padding:12px; box-shadow:var(--shadow); cursor:pointer; }
+.ring-wrap{ position:relative; width:56px; height:56px; margin:0 auto 8px auto; }
+.ring-wrap svg{ transform:rotate(-90deg); }
+.ring-track{ fill:none; stroke:var(--line); stroke-width:5; }
+.ring-fill{ fill:none; stroke-width:5; stroke-linecap:round; transition:stroke-dashoffset .6s ease; }
+.ring-emoji{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; }
+.expire-card .p-name{ font-size:13px; font-weight:600; text-align:center; }
+.expire-card .p-days{ font-size:11px; text-align:center; margin-top:2px; font-weight:600; }
+
+.recipe-card{ width:200px; border-radius:var(--radius-md); overflow:hidden; background:var(--surface); box-shadow:var(--shadow); flex-shrink:0; }
+.recipe-img{ width:100%; aspect-ratio:16/9; background:linear-gradient(135deg,#D9C9A8,#B8CDB0); display:flex; align-items:center; justify-content:center; font-size:28px; }
+.recipe-body{ padding:10px 12px 12px 12px; }
+.recipe-body .t{ font-size:13.5px; font-weight:600; margin-bottom:2px; }
+.recipe-body .s{ font-size:11.5px; color:var(--muted); }
+
+.chip-row{ display:flex; flex-wrap:wrap; gap:8px; padding:0 20px; }
+.chip{ display:flex; align-items:center; gap:6px; min-height:44px; padding:0 14px; background:var(--surface); border:1px solid var(--line); border-radius:999px; font-size:13.5px; font-weight:600; }
+.chip .dot{ width:6px; height:6px; border-radius:50%; background:var(--warn); }
+
+.save-banner{ margin:0 20px; background:var(--fresh-soft); border-radius:var(--radius-lg); padding:16px 18px; display:flex; align-items:center; gap:14px; }
+.save-banner .ic{ font-size:26px; }
+.save-banner .t{ font-size:14px; font-weight:600; }
+.save-banner .s{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+
+/* ===== Fridge ===== */
+.segmented{ display:flex; margin:4px 20px 16px 20px; background:var(--line); border-radius:999px; padding:4px; }
+.segmented button{ flex:1; min-height:40px; border:none; background:none; border-radius:999px; font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; color:var(--ink-soft); }
+.segmented button.active{ background:var(--surface); color:var(--ink); box-shadow:0 2px 6px rgba(0,0,0,0.06); }
+
+.suggest-row{ display:flex; gap:12px; overflow-x:auto; padding:2px 20px 6px 20px; margin:0 -20px 6px -20px; -webkit-overflow-scrolling:touch; }
+.suggest-row::-webkit-scrollbar{ display:none; }
+.suggest-card{ flex-shrink:0; width:210px; background:var(--surface); border-radius:var(--radius-md); padding:12px; box-shadow:var(--shadow); }
+.suggest-card .ic{ font-size:22px; margin-bottom:6px; }
+.suggest-card .t{ font-size:13.5px; font-weight:600; margin-bottom:3px; }
+.suggest-card .s{ font-size:11.5px; color:var(--muted); line-height:1.4; }
+.suggest-card .tag{ display:inline-block; margin-top:8px; font-size:10.5px; font-weight:700; color:var(--fresh); background:var(--fresh-soft); padding:3px 8px; border-radius:999px; }
+
+.fridge-list{ padding:4px 20px 100px 20px; display:flex; flex-direction:column; gap:10px; }
+.product-row{ display:flex; align-items:center; gap:12px; background:var(--surface); border-radius:var(--radius-md); padding:10px 12px; box-shadow:var(--shadow); min-height:44px; cursor:pointer; }
+.product-thumb{ width:48px; height:48px; border-radius:12px; flex-shrink:0; background:linear-gradient(135deg,#F0E6D2,#DCE8DD); display:flex; align-items:center; justify-content:center; font-size:20px; }
+.product-info{ flex:1; min-width:0; }
+.product-info .n{ font-size:14.5px; font-weight:600; }
+.product-info .q{ font-size:12.5px; color:var(--muted); margin-top:1px; }
+.status-pill{ font-size:11px; font-weight:700; padding:4px 9px; border-radius:999px; flex-shrink:0; }
+.status-fresh{ background:var(--fresh-soft); color:var(--fresh); }
+.status-warn{ background:var(--warn-soft); color:var(--warn); }
+.status-bad{ background:#FBEAEA; color:var(--danger); }
+.status-frost{ background:var(--frost-soft); color:var(--frost); }
+
+.fab{ position:fixed; right: calc(20px + var(--safe-r)); bottom: calc(var(--nav-h) + 22px + var(--safe-b)); width:58px; height:58px; border-radius:50%; background:var(--ink); color:#fff; border:none; font-size:26px; box-shadow:0 10px 24px rgba(31,42,36,0.28); display:flex; align-items:center; justify-content:center; z-index:40; }
+.fab:active{ transform:scale(0.94); }
+
+.sheet-overlay{ position:fixed; inset:0; background:rgba(20,24,20,0.4); opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:90; }
+.sheet-overlay.open{ opacity:1; pointer-events:auto; }
+.sheet{ position:fixed; left:0; right:0; bottom:0; background:var(--surface); border-radius:24px 24px 0 0; padding: 10px 20px calc(20px + var(--safe-b)) 20px; transform:translateY(105%); transition:transform .28s cubic-bezier(.32,.72,0,1); z-index:95; max-width:560px; margin:0 auto; box-shadow: 0 -8px 30px rgba(0,0,0,0.15); pointer-events:none; }
+.sheet.open{ transform:translateY(0); pointer-events:auto; }
+.sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:2px; margin:6px auto 14px auto; }
+.sheet h3{ font-size:17px; font-weight:600; margin-bottom:14px; }
+.sheet-option{ display:flex; align-items:center; gap:14px; min-height:56px; width:100%; background:none; border:none; border-top:1px solid var(--line); text-align:left; font-size:15px; font-weight:600; color:var(--ink); font-family:'Inter',sans-serif; }
+.sheet-option:first-of-type{ border-top:none; }
+.sheet-option .ic{ font-size:20px; width:26px; text-align:center; }
+.sheet-cancel{ margin-top:14px; width:100%; min-height:48px; border-radius:var(--radius-sm); background:var(--bg); border:1px solid var(--line); font-weight:600; font-size:14.5px; font-family:'Inter',sans-serif; color:var(--ink-soft); }
+.ingredient-check{ display:flex; align-items:center; gap:10px; min-height:44px; padding:0 10px; border-radius:var(--radius-sm); background:var(--bg); border:1px solid var(--line); }
+.ingredient-check input[type=checkbox]{ width:20px; height:20px; accent-color:var(--fresh); flex-shrink:0; }
+.ingredient-check .thumb{ font-size:18px; }
+.ingredient-check .label{ font-size:13.5px; font-weight:600; flex:1; }
+.ingredient-check .qty{ font-size:11.5px; color:var(--muted); }
+
+.hero-photo{ width:100%; aspect-ratio:1/1; max-height:280px; background:linear-gradient(135deg,#F0E6D2,#DCE8DD); border-radius:0 0 28px 28px; display:flex; align-items:center; justify-content:center; font-size:64px; }
+.detail-block{ padding:18px 20px; }
+.detail-block h2{ font-size:22px; font-weight:600; margin-bottom:4px; }
+.detail-block .sub{ font-size:13.5px; color:var(--muted); margin-bottom:16px; }
+.info-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
+.info-tile{ background:var(--surface); border-radius:var(--radius-sm); padding:12px; box-shadow:var(--shadow); }
+.info-tile .l{ font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+.info-tile .v{ font-size:16px; font-weight:600; margin-top:3px; }
+.primary-btn{ width:100%; min-height:50px; border-radius:var(--radius-sm); background:var(--ink); color:#fff; border:none; font-size:15px; font-weight:600; font-family:'Inter',sans-serif; }
+.secondary-btn{ width:100%; min-height:50px; border-radius:var(--radius-sm); background:var(--surface); color:var(--ink); border:1px solid var(--line); font-size:15px; font-weight:600; font-family:'Inter',sans-serif; margin-top:10px; }
+
+.form-field{ margin-bottom:16px; }
+.form-field label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; }
+.form-field input, .form-field select{ width:100%; min-height:48px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); padding:0 14px; font-size:16px; font-family:'Inter',sans-serif; color:var(--ink); }
+.form-field input:focus, .form-field select:focus{ outline:2px solid var(--fresh); outline-offset:1px; }
+.sticky-save{ position:sticky; bottom:0; background:linear-gradient(to top, var(--bg) 60%, transparent); padding:16px 20px calc(16px + var(--safe-b)) 20px; margin: 8px -20px -20px -20px; }
+
+.skeleton{ background:linear-gradient(90deg,#EFEAE0 25%,#F6F2EA 37%,#EFEAE0 63%); background-size:400% 100%; animation:shimmer 1.4s infinite; border-radius:var(--radius-md); }
+@keyframes shimmer{ 0%{background-position:100% 0;} 100%{background-position:-100% 0;} }
+.sk-card{ width:132px; height:110px; flex-shrink:0; }
+.sk-row{ height:70px; }
+
+.placeholder{ padding:60px 30px; text-align:center; color:var(--ink-soft); }
+.placeholder .ic{ font-size:40px; margin-bottom:14px; }
+.placeholder h2{ font-size:19px; color:var(--ink); margin-bottom:6px; }
+.placeholder p{ font-size:13.5px; line-height:1.5; }
+
+/* ===== Vision tab ===== */
+.vision-stage{ margin:6px 20px 16px 20px; border-radius:var(--radius-lg); overflow:hidden; background:#111; aspect-ratio:3/4; max-height:60vh; position:relative; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); }
+.vision-stage video{ width:100%; height:100%; object-fit:cover; display:block; }
+.vision-stage canvas{ display:none; }
+.vision-state{ padding:26px; text-align:center; color:#fff; }
+.vision-state .ic{ font-size:36px; margin-bottom:10px; }
+.vision-state h3{ font-size:16px; margin-bottom:6px; }
+.vision-state p{ font-size:12.5px; color:#C9CFC9; line-height:1.5; }
+.scan-frame{ position:absolute; inset:14%; border:2px solid rgba(255,255,255,0.55); border-radius:18px; pointer-events:none; }
+.scan-line{ position:absolute; left:14%; right:14%; top:14%; height:2px; background:var(--fresh); box-shadow:0 0 8px var(--fresh); animation:scan 1.8s ease-in-out infinite; }
+@keyframes scan{ 0%{top:14%;} 50%{top:82%;} 100%{top:14%;} }
+.vision-controls{ display:flex; gap:12px; padding:0 20px; }
+.vision-controls button{ flex:1; }
+.ghost-btn{ min-height:50px; border-radius:var(--radius-sm); background:var(--surface); border:1px solid var(--line); color:var(--ink); font-weight:600; font-size:14.5px; font-family:'Inter',sans-serif; }
+.capture-btn{ width:66px; height:66px; border-radius:50%; background:#fff; border:4px solid var(--line); flex:none; margin:0 auto; display:block; }
+.capture-btn:active{ transform:scale(0.95); }
+.vision-result{ margin:16px 20px 0 20px; background:var(--surface); border-radius:var(--radius-lg); padding:16px; box-shadow:var(--shadow); display:none; }
+.vision-result.show{ display:block; }
+.vision-result .row{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.vision-result .thumb{ width:52px; height:52px; border-radius:12px; background:var(--fresh-soft); display:flex; align-items:center; justify-content:center; font-size:24px; }
+.vision-result .name{ font-size:15.5px; font-weight:600; }
+.vision-result .conf{ font-size:12px; color:var(--fresh); font-weight:600; }
+.dest-row{ display:flex; gap:10px; margin-bottom:12px; }
+.dest-btn{ flex:1; min-height:44px; border-radius:var(--radius-sm); border:1.5px solid var(--line); background:var(--bg); font-family:'Inter',sans-serif; font-size:13px; font-weight:600; color:var(--ink-soft); }
+.dest-btn.active{ border-color:var(--fresh); color:var(--fresh); background:var(--fresh-soft); }
+
+/* ===== Diet tab ===== */
+.diet-hero{ margin:6px 20px 18px 20px; background:linear-gradient(135deg,#1F2A24,#2E3E33); border-radius:var(--radius-lg); padding:20px; color:#fff; box-shadow:var(--shadow); }
+.diet-hero .k{ font-size:12px; color:#A9C2AE; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+.diet-hero .big{ font-family:'Fraunces',serif; font-size:30px; font-weight:600; margin:4px 0 10px 0; }
+.diet-hero .row{ display:flex; gap:18px; }
+.diet-hero .row .item .n{ font-size:15px; font-weight:600; }
+.diet-hero .row .item .l{ font-size:11px; color:#A9C2AE; }
+
+.reminder-card{ margin:0 20px 18px 20px; background:var(--warn-soft); border-radius:var(--radius-lg); padding:15px 16px; display:flex; align-items:center; gap:12px; }
+.reminder-card .ic{ font-size:22px; }
+.reminder-card .t{ font-size:13.5px; font-weight:600; }
+.reminder-card .s{ font-size:12px; color:var(--ink-soft); margin-top:1px; }
+.reminder-card button{ margin-left:auto; min-height:36px; padding:0 12px; border-radius:999px; background:var(--warn); color:#fff; border:none; font-size:12px; font-weight:700; font-family:'Inter',sans-serif; flex-shrink:0; }
+
+.slider-block{ padding:0 20px 6px 20px; }
+.slider-row{ margin-bottom:18px; }
+.slider-row .top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+.slider-row label{ font-size:13.5px; font-weight:600; }
+.slider-row .val{ font-size:14px; font-weight:700; color:var(--fresh); font-family:'Fraunces',serif; }
+.slider-row input[type=range]{ width:100%; -webkit-appearance:none; height:6px; border-radius:3px; background:var(--line); }
+.slider-row input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:var(--fresh); border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.25); margin-top:-9px; }
+.slider-row input[type=range]::-webkit-slider-runnable-track{ height:6px; border-radius:3px; }
+
+.portion-card{ margin:6px 20px 20px 20px; background:var(--surface); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow); }
+.portion-card h3{ font-size:15.5px; font-weight:600; margin-bottom:12px; }
+.portion-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.portion-tile{ text-align:center; background:var(--bg); border-radius:var(--radius-sm); padding:12px 6px; }
+.portion-tile .ic{ font-size:18px; }
+.portion-tile .v{ font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin-top:4px; }
+.portion-tile .l{ font-size:10.5px; color:var(--muted); margin-top:1px; }
+
+.day-pills{ display:flex; gap:8px; overflow-x:auto; padding:2px 20px 14px 20px; margin:0 -20px; -webkit-overflow-scrolling:touch; }
+.day-pills::-webkit-scrollbar{ display:none; }
+.day-pill{ flex-shrink:0; min-height:40px; padding:0 16px; border-radius:999px; border:1px solid var(--line); background:var(--surface); font-family:'Inter',sans-serif; font-size:13px; font-weight:600; color:var(--ink-soft); }
+.day-pill.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+.meal-card{ margin:0 20px 12px 20px; background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow); overflow:hidden; }
+.meal-card-head{ padding:16px; display:flex; gap:14px; width:100%; background:none; border:none; text-align:left; font-family:'Inter',sans-serif; cursor:pointer; min-height:44px; }
+.meal-card .ic{ font-size:26px; flex-shrink:0; width:36px; text-align:center; }
+.meal-card .body{ flex:1; min-width:0; }
+.meal-card .eyebrow{ font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+.meal-card .t{ font-size:14.5px; font-weight:600; margin:3px 0 4px 0; }
+.meal-card .s{ font-size:12.5px; color:var(--ink-soft); line-height:1.5; }
+.meal-card .portion{ display:inline-block; margin-top:8px; font-size:11.5px; font-weight:700; color:var(--fresh); background:var(--fresh-soft); padding:3px 9px; border-radius:999px; }
+.meal-card .chevron{ align-self:center; font-size:13px; color:var(--muted); flex-shrink:0; transition:transform .2s ease; }
+.meal-card.open .chevron{ transform:rotate(180deg); }
+.meal-ingredients{ max-height:0; overflow:hidden; transition:max-height .25s ease; border-top:1px solid var(--line); }
+.meal-card.open .meal-ingredients{ max-height:300px; }
+.meal-ingredients ul{ list-style:none; padding:12px 16px 16px 16px; display:flex; flex-direction:column; gap:8px; }
+.meal-ingredients li{ display:flex; justify-content:space-between; font-size:13px; }
+.meal-ingredients li .iname{ color:var(--ink); }
+.meal-ingredients li .iqty{ color:var(--ink-soft); font-weight:600; flex-shrink:0; margin-left:10px; }
+
+.alert-card{ margin:0 20px 18px 20px; background:#FBEAEA; border-radius:var(--radius-lg); padding:16px 18px; }
+.alert-head{ display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+.alert-head .ic{ font-size:22px; }
+.alert-head .t{ font-size:14px; font-weight:700; color:var(--danger); }
+.alert-head .s{ font-size:12px; color:var(--ink-soft); margin-top:1px; }
+.missing-list{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.missing-item{ display:flex; justify-content:space-between; align-items:center; background:#fff; border-radius:var(--radius-sm); padding:10px 12px; gap:10px; }
+.missing-item .n{ font-size:12.5px; font-weight:600; }
+.missing-item .f{ font-size:10.5px; color:var(--muted); margin-top:1px; }
+.missing-item button{ flex-shrink:0; min-height:32px; padding:0 10px; border-radius:999px; background:var(--danger); color:#fff; border:none; font-size:11px; font-weight:700; font-family:'Inter',sans-serif; }
+.missing-ok{ font-size:12.5px; color:var(--fresh); font-weight:600; padding:6px 0 2px 0; }
+
+.tip-card{ margin:4px 20px 18px 20px; background:var(--frost-soft); border-radius:var(--radius-lg); padding:16px 18px; display:flex; gap:12px; align-items:flex-start; }
+.tip-card .ic{ font-size:22px; flex-shrink:0; }
+.tip-card .t{ font-size:13px; line-height:1.55; color:var(--ink); }
+.tip-card .who{ font-size:11px; color:var(--frost); font-weight:700; margin-top:6px; }
+
+/* ===== Quantity stepper ===== */
+.qty-stepper{ display:flex; align-items:center; gap:8px; }
+.qty-btn{ width:44px; height:48px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); font-size:20px; font-weight:600; color:var(--ink); flex-shrink:0; font-family:'Inter',sans-serif; }
+.qty-btn:active{ background:var(--line); }
+.qty-stepper input[type=number]{ flex:1; min-width:0; width:0; text-align:center; -moz-appearance:textfield; min-height:48px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); font-size:16px; font-family:'Inter',sans-serif; color:var(--ink); padding:0 6px; }
+.qty-stepper input[type=number]::-webkit-outer-spin-button, .qty-stepper input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+.qty-stepper select{ width:76px; flex-shrink:0; min-height:48px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); font-size:14px; font-family:'Inter',sans-serif; color:var(--ink); }
+
+/* ===== Vision autocomplete ===== */
+.vr-name-input{ width:100%; border:none; border-bottom:2px solid var(--line); font-size:15.5px; font-weight:600; font-family:'Inter',sans-serif; padding:4px 2px 6px 2px; background:none; color:var(--ink); }
+.vr-name-input:focus{ outline:none; border-color:var(--fresh); }
+.autocomplete-list{ position:absolute; left:0; right:0; top:100%; margin-top:4px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); box-shadow:var(--shadow); z-index:10; max-height:180px; overflow-y:auto; display:none; }
+.autocomplete-list.show{ display:block; }
+.autocomplete-item{ display:flex; align-items:center; gap:8px; padding:10px 12px; font-size:13.5px; font-weight:600; cursor:pointer; }
+.autocomplete-item:hover{ background:var(--fresh-soft); }
+
+/* ===== Recipes ===== */
+.recipe-ingredients{ list-style:none; display:flex; flex-direction:column; gap:8px; margin:0 0 4px 0; padding:0; }
+.recipe-ingredients li{ display:flex; justify-content:space-between; font-size:13.5px; background:var(--surface); border-radius:var(--radius-sm); padding:9px 12px; box-shadow:var(--shadow); }
+.recipe-ingredients li .iqty{ color:var(--ink-soft); font-weight:600; margin-left:10px; flex-shrink:0; }
+.recipe-steps{ list-style:none; display:flex; flex-direction:column; gap:12px; padding:0; margin:0 0 8px 0; }
+.recipe-steps li{ display:flex; gap:12px; font-size:13.5px; line-height:1.55; }
+.step-num{ flex-shrink:0; width:24px; height:24px; border-radius:50%; background:var(--fresh-soft); color:var(--fresh); font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; }
+
+/* ===== Measurement history ===== */
+.history-row{ background:var(--surface); border-radius:var(--radius-md); padding:12px 14px; box-shadow:var(--shadow); }
+.history-row .d{ font-size:12px; font-weight:700; color:var(--muted); margin-bottom:8px; }
+.history-row .grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:4px; text-align:center; }
+.history-row .grid .v{ font-size:13.5px; font-weight:700; font-family:'Fraunces',serif; }
+.history-row .grid .l{ font-size:9.5px; color:var(--muted); margin-top:2px; }
+
+/* ===== Bottom nav ===== */
+.bottom-nav{ position:fixed; left:0; right:0; bottom:0; background:rgba(251,247,242,0.92); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; padding: 10px calc(6px + var(--safe-l)) calc(10px + var(--safe-b)) calc(6px + var(--safe-r)); z-index:50; max-width:1400px; margin:0 auto; }
+.nav-item{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; min-height:44px; background:none; border:none; color:var(--muted); font-family:'Inter',sans-serif; font-size:10px; font-weight:600; }
+.nav-item .ic{ font-size:20px; }
+.nav-item.active{ color:var(--fresh); }
+.cart-badge{ position:absolute; top:-6px; right:-9px; background:var(--danger); color:#fff; font-size:9px; font-weight:700; min-width:15px; height:15px; border-radius:999px; display:flex; align-items:center; justify-content:center; padding:0 3px; }
+
+.toast{ position:fixed; left:50%; transform:translateX(-50%) translateY(20px); bottom: calc(var(--nav-h) + 24px + var(--safe-b)); background:var(--ink); color:#fff; font-size:13.5px; font-weight:600; padding:12px 18px; border-radius:999px; opacity:0; pointer-events:none; transition:all .25s ease; z-index:120; display:flex; align-items:center; gap:8px; white-space:nowrap; max-width:90%; }
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.toast .retry{ color:var(--fresh); font-weight:700; margin-left:4px; }
+
+.sidebar{ display:none; }
+.mobile-brand{ text-align:center; font-family:'Fraunces',serif; font-weight:600; font-size:16px; letter-spacing:-0.01em; padding: calc(16px + var(--safe-t)) 20px 0 20px; }
+
+@media (min-width:768px){
+  #app{ flex-direction:row; }
+  .bottom-nav{ display:none; }
+  .mobile-brand{ display:none !important; }
+  .sidebar{ display:flex; flex-direction:column; width:230px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--line); padding: calc(24px + var(--safe-t)) 16px 20px 16px; gap:2px; }
+  .sidebar .brand{ font-family:'Fraunces',serif; font-size:19px; font-weight:600; padding:0 10px 22px 10px; }
+  .sidebar .side-item{ display:flex; align-items:center; gap:12px; min-height:44px; padding:0 10px; border-radius:var(--radius-sm); background:none; border:none; color:var(--ink-soft); font-family:'Inter',sans-serif; font-size:14px; font-weight:600; text-align:left; }
+  .sidebar .side-item.active{ background:var(--fresh-soft); color:var(--fresh); }
+  .sidebar .divider{ height:1px; background:var(--line); margin:10px 4px; }
+  .main-col{ flex:1; min-width:0; display:flex; flex-direction:column; height:100dvh; overflow:hidden; }
+  .screen{ padding-bottom:32px; }
+  .fab{ bottom: calc(24px + var(--safe-b)); }
+  .toast{ bottom: calc(24px + var(--safe-b)); }
+  .hscroll, .suggest-row, .day-pills{ padding-left:32px; }
+  .section, .slider-block{ padding-left:32px; padding-right:32px; }
+  .fridge-list{ padding-left:32px; padding-right:32px; }
+  .segmented, .reminder-card, .diet-hero, .portion-card, .meal-card, .tip-card, .vision-stage, .vision-result, .save-banner{ margin-left:32px; margin-right:32px; }
+  .vision-controls{ padding-left:32px; padding-right:32px; }
+  .sheet{ left:50%; right:auto; top:50%; bottom:auto; transform:translate(-50%,-40%); width:400px; border-radius:20px; opacity:0; transition:opacity .2s ease, transform .2s ease; }
+  .sheet.open{ transform:translate(-50%,-50%); opacity:1; }
+}
+@media (min-width:1024px){
+  .topbar{ padding-left:32px; padding-right:32px; }
+  .back-row{ padding-left:32px; }
+}
+
+/* ===== Login gate ===== */
+.login-screen{ position:fixed; inset:0; z-index:300; background:linear-gradient(160deg,#1F2A24,#2E3E33); display:flex; align-items:center; justify-content:center; padding: calc(20px + var(--safe-t)) 20px calc(20px + var(--safe-b)) 20px; }
+.login-card{ width:100%; max-width:360px; background:var(--surface); border-radius:var(--radius-lg); padding:32px 26px; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
+.login-logo{ font-size:34px; text-align:center; margin-bottom:6px; }
+.login-card h1{ font-size:21px; font-weight:600; text-align:center; margin-bottom:4px; }
+.login-card .sub{ font-size:13px; color:var(--muted); text-align:center; margin-bottom:22px; }
+.login-error{ font-size:12.5px; color:var(--danger); background:#FBEAEA; border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:14px; display:none; text-align:center; }
+.login-error.show{ display:block; }
+.login-submit{ margin-top:6px; }
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🧊</div>
+    <h1>Smart Fridge</h1>
+    <div class="sub">Вход в приложение</div>
+    <div class="login-error" id="login-error">Неверный логин или пароль</div>
+    <form id="login-form">
+      <div class="form-field">
+        <label>Логин</label>
+        <input type="text" id="login-username" autocomplete="username" required>
+      </div>
+      <div class="form-field" style="margin-bottom:6px">
+        <label>Пароль</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="primary-btn login-submit">Войти</button>
+    </form>
+  </div>
+</div>
+
+<div id="app">
+
+  <nav class="sidebar">
+    <div class="brand">🧊 Smart Fridge</div>
+    <button class="side-item active" data-nav="home"><span>🏠</span>Home</button>
+    <button class="side-item" data-nav="fridge"><span>🥬</span>Fridge</button>
+    <button class="side-item" data-nav="vision"><span>📷</span>Vision</button>
+    <button class="side-item" data-nav="diet"><span>🥗</span>Диета</button>
+    <button class="side-item" data-nav="recipes"><span>📖</span>Рецепты</button>
+    <button class="side-item" data-nav="cart"><span>🛒</span>Корзина</button>
+    <div class="divider"></div>
+    <button class="side-item" data-nav="profile"><span>👤</span>Профиль</button>
+  </nav>
+
+  <div class="main-col">
+
+    <!-- ===== HOME ===== -->
+    <section class="screen active" id="screen-home">
+      <div class="mobile-brand">🧊 Smart Fridge</div>
+      <div class="topbar">
+        <div>
+          <div class="greeting">Доброе утро</div>
+          <h1>Хозяин</h1>
+        </div>
+        <div class="avatar" data-nav="profile" style="cursor:pointer">Х</div>
+      </div>
+
+      <div class="section" id="summary-section">
+        <div class="summary-card" id="summary-loaded" style="display:none">
+          <div><div class="num" id="sum-total">21</div><div class="label">продуктов</div></div>
+          <div class="summary-divider"></div>
+          <div><div class="num" id="sum-expiring">3</div><div class="label">истекают</div></div>
+          <div class="summary-divider"></div>
+          <div><div class="num" id="sum-saved-pct">92%</div><div class="label">сохранено</div></div>
+        </div>
+        <div class="skeleton" style="height:78px" id="summary-skel"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Скоро истекает</h2><button class="link" data-nav="fridge">Все →</button></div>
+        <div class="hscroll" id="expiring-row">
+          <div class="skeleton sk-card"></div>
+          <div class="skeleton sk-card"></div>
+          <div class="skeleton sk-card"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Заканчивается</h2></div>
+        <div class="chip-row">
+          <div class="chip"><span class="dot"></span>Молоко</div>
+          <div class="chip"><span class="dot"></span>Яйца</div>
+          <div class="chip"><span class="dot"></span>Хлеб отрубной</div>
+          <div class="chip"><span class="dot"></span>Творог</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Приём пищи по программе</h2><button class="link" data-nav="diet">Диета →</button></div>
+        <div class="hscroll" id="home-meals-row"></div>
+      </div>
+
+      <div class="section" style="padding-bottom:8px">
+        <div class="save-banner">
+          <div class="ic">🌱</div>
+          <div>
+            <div class="t" id="saved-banner-text">За месяц спасено 0 кг еды</div>
+            <div class="s" id="saved-banner-sub">Отмечайте продукты «Использовано», а не «Выброшено» — так считается экономия</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FRIDGE ===== -->
+    <section class="screen" id="screen-fridge">
+      <div class="topbar"><h1>Холодильник</h1></div>
+
+      <div class="section" style="padding-bottom:0">
+        <div class="section-head"><h2>Можно приготовить</h2></div>
+      </div>
+      <div class="suggest-row" id="suggest-row"></div>
+
+      <div class="segmented">
+        <button class="seg-btn active" data-compartment="fridge">❄️ Холодильник</button>
+        <button class="seg-btn" data-compartment="freezer">🧊 Морозилка</button>
+      </div>
+
+      <div class="fridge-list" id="fridge-list">
+        <div class="skeleton sk-row"></div>
+        <div class="skeleton sk-row"></div>
+        <div class="skeleton sk-row"></div>
+      </div>
+    </section>
+
+    <!-- ===== PRODUCT DETAIL (stack) ===== -->
+    <section class="screen" id="screen-product">
+      <div class="back-row"><button class="back-btn" data-back="fridge">← Назад</button></div>
+      <div class="hero-photo" id="product-hero">🥑</div>
+      <div class="detail-block">
+        <h2 id="product-name">Авокадо</h2>
+        <div class="sub" id="product-sub">Овощи и фрукты · Средняя полка</div>
+        <div class="info-grid">
+          <div class="info-tile"><div class="l">Количество</div><div class="v" id="product-qty">3 шт</div></div>
+          <div class="info-tile"><div class="l">Годен до</div><div class="v" id="product-exp">через 2 дня</div></div>
+        </div>
+        <button class="primary-btn" id="edit-open-btn">Изменить</button>
+        <button class="secondary-btn" id="use-product-btn">✓ Использовать</button>
+        <button class="secondary-btn" id="toss-product-btn" style="color:var(--danger); border-color:#F0D3D3">🗑 Выбросить</button>
+      </div>
+    </section>
+
+    <!-- ===== EDIT PRODUCT ===== -->
+    <section class="screen" id="screen-edit">
+      <div class="back-row"><button class="back-btn" data-back="product">← Назад</button></div>
+      <div class="detail-block" style="padding-top:6px">
+        <h2 style="margin-bottom:16px">Изменить продукт</h2>
+        <div class="form-field"><label>Название</label><input type="text" id="edit-name"></div>
+        <div class="form-field">
+          <label>Количество</label>
+          <div class="qty-stepper">
+            <button type="button" class="qty-btn" id="edit-qty-dec">−</button>
+            <input type="number" id="edit-qty-num" inputmode="decimal" min="0">
+            <button type="button" class="qty-btn" id="edit-qty-inc">+</button>
+            <select id="edit-qty-unit">
+              <option value="шт">шт</option>
+              <option value="г">г</option>
+              <option value="кг">кг</option>
+              <option value="мл">мл</option>
+              <option value="л">л</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field"><label>Место хранения</label>
+          <select id="edit-location"><option>Средняя полка</option><option>Верхняя полка</option><option>Дверца</option><option>Морозилка</option></select>
+        </div>
+        <div class="form-field"><label>Годен до</label><input type="date" id="edit-exp"></div>
+      </div>
+      <div class="sticky-save"><button class="primary-btn" id="save-edit-btn">Сохранить</button></div>
+    </section>
+
+    <!-- ===== VISION ===== -->
+    <section class="screen" id="screen-vision">
+      <div class="topbar"><h1>Компьютерное зрение</h1></div>
+      <div class="section" style="padding-top:0; padding-bottom:10px">
+        <div class="section-head" style="margin-bottom:2px"><h2 style="font-size:14px; color:var(--ink-soft); font-weight:500">Наведите камеру на продукт — распознаем и добавим в холодильник или морозилку.</h2></div>
+      </div>
+
+      <div class="vision-stage" id="vision-stage">
+        <div class="vision-state" id="vision-idle">
+          <div class="ic">📷</div>
+          <h3>Доступ к камере</h3>
+          <p>Разрешите доступ к камере, чтобы распознавать продукты автоматически.</p>
+        </div>
+      </div>
+
+      <div class="vision-controls" id="vision-controls-idle">
+        <button class="primary-btn" id="request-camera-btn">Включить камеру</button>
+      </div>
+      <div class="vision-controls" id="vision-controls-live" style="display:none">
+        <button class="ghost-btn" id="gallery-btn-live">🖼️ Галерея</button>
+        <button class="capture-btn" id="capture-btn"></button>
+        <button class="ghost-btn" id="stop-camera-btn">✕ Стоп</button>
+      </div>
+      <div class="vision-controls" id="vision-controls-denied" style="display:none">
+        <button class="ghost-btn" id="upload-gallery-btn">🖼️ Загрузить из галереи</button>
+        <button class="primary-btn" id="retry-camera-btn">Повторить</button>
+      </div>
+      <input type="file" accept="image/*" capture="environment" id="gallery-input" style="display:none">
+
+      <div class="section" style="padding-top:14px; padding-bottom:0">
+        <button id="manual-add-open-btn" style="min-height:44px; font-size:13.5px; font-weight:600; color:var(--fresh); background:none; border:none; font-family:'Inter',sans-serif;">✎ Добавить вручную (без камеры)</button>
+      </div>
+
+      <div class="vision-result" id="vision-result">
+        <div class="row">
+          <div class="thumb" id="vr-thumb">🥦</div>
+          <div style="flex:1; min-width:0; position:relative;">
+            <input type="text" id="vr-name-input" class="vr-name-input" placeholder="Название товара" autocomplete="off">
+            <div class="autocomplete-list" id="vr-suggest-list"></div>
+          </div>
+        </div>
+        <div class="conf" id="vr-conf" style="margin:-6px 0 14px 2px">Распознано с точностью 94%</div>
+        <div class="form-field" style="margin-bottom:12px">
+          <label>Количество</label>
+          <div class="qty-stepper">
+            <button type="button" class="qty-btn" id="vr-qty-dec">−</button>
+            <input type="number" id="vr-qty-num" inputmode="decimal" min="0">
+            <button type="button" class="qty-btn" id="vr-qty-inc">+</button>
+            <select id="vr-qty-unit">
+              <option value="шт">шт</option>
+              <option value="г">г</option>
+              <option value="кг">кг</option>
+              <option value="мл">мл</option>
+              <option value="л">л</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:14px"><label>Годен до <span style="font-weight:400; color:var(--muted)">(рассчитано автоматически, можно изменить)</span></label><input type="date" id="vr-exp-date"></div>
+        <div class="dest-row">
+          <button class="dest-btn active" id="dest-fridge">❄️ Холодильник</button>
+          <button class="dest-btn" id="dest-freezer">🧊 Морозилка</button>
+        </div>
+        <button class="primary-btn" id="confirm-add-btn">Добавить продукт</button>
+        <button class="secondary-btn" id="retake-btn">Переснять</button>
+      </div>
+    </section>
+
+    <!-- ===== DIET / NUTRITIONIST ===== -->
+    <section class="screen" id="screen-diet">
+      <div class="topbar"><h1>Диета</h1></div>
+
+      <div class="diet-hero">
+        <div class="k">Программа снижения веса · 2-й месяц</div>
+        <div class="big">117,5 кг → 74 кг</div>
+        <div class="row">
+          <div class="item"><div class="n">39,3</div><div class="l">ИМТ</div></div>
+          <div class="item"><div class="n">2130</div><div class="l">ккал/день</div></div>
+          <div class="item"><div class="n">−8,5 кг</div><div class="l">за месяц</div></div>
+        </div>
+      </div>
+
+      <div class="reminder-card">
+        <div class="ic">📏</div>
+        <div>
+          <div class="t" id="reminder-title">Замер объёмов через 5 дней</div>
+          <div class="s">Шея · Грудь · Живот · Бёдра · Вес</div>
+        </div>
+        <button id="mark-measured-btn">Готово</button>
+      </div>
+
+      <div class="section" style="padding-bottom:0">
+        <div class="section-head"><h2>Ваши данные</h2><button class="link" id="open-history-btn">История →</button></div>
+      </div>
+      <div class="slider-block">
+        <div class="slider-row">
+          <div class="top"><label>Вес</label><span class="val" id="val-weight">117.5 кг</span></div>
+          <input type="range" min="40" max="200" step="0.5" value="117.5" id="slider-weight">
+        </div>
+        <button type="button" id="toggle-measurements-btn" style="min-height:40px; font-size:13px; font-weight:600; color:var(--fresh); background:none; border:none; font-family:'Inter',sans-serif; padding:2px 0 12px 0; text-align:left;">+ Добавить замеры за сегодня (шея, грудь, живот, бёдра)</button>
+        <div id="extra-measurements" style="display:none">
+          <div class="slider-row">
+            <div class="top"><label>Шея</label><span class="val" id="val-neck">42 см</span></div>
+            <input type="range" min="30" max="55" step="0.5" value="42" id="slider-neck">
+          </div>
+          <div class="slider-row">
+            <div class="top"><label>Грудь</label><span class="val" id="val-chest">128 см</span></div>
+            <input type="range" min="80" max="150" step="0.5" value="128" id="slider-chest">
+          </div>
+          <div class="slider-row">
+            <div class="top"><label>Живот</label><span class="val" id="val-belly">135 см</span></div>
+            <input type="range" min="70" max="160" step="0.5" value="135" id="slider-belly">
+          </div>
+          <div class="slider-row">
+            <div class="top"><label>Бёдра</label><span class="val" id="val-hips">128 см</span></div>
+            <input type="range" min="80" max="160" step="0.5" value="128" id="slider-hips">
+          </div>
+          <button class="secondary-btn" id="save-measurement-btn" style="margin-top:0">Сохранить замеры за сегодня</button>
+        </div>
+      </div>
+
+      <div class="portion-card">
+        <h3>Расчёт порций на сегодня <span style="font-weight:400; color:var(--muted); font-size:12px">(от текущего веса)</span></h3>
+        <div class="portion-grid">
+          <div class="portion-tile"><div class="ic">🍳</div><div class="v" id="port-breakfast">55 г</div><div class="l">Завтрак</div></div>
+          <div class="portion-tile"><div class="ic">🍽️</div><div class="v" id="port-lunch">200 г</div><div class="l">Обед · белок</div></div>
+          <div class="portion-tile"><div class="ic">🥗</div><div class="v" id="port-dinner">220 мл</div><div class="l">Ужин · салат</div></div>
+        </div>
+      </div>
+
+      <div class="section" style="padding-bottom:0">
+        <div class="section-head"><h2>Меню по дням</h2></div>
+      </div>
+      <div class="day-pills" id="day-pills"></div>
+      <div id="meals-container"></div>
+
+      <div class="alert-card" id="missing-alert">
+        <div class="alert-head">
+          <div class="ic">⚠️</div>
+          <div>
+            <div class="t" id="missing-title">Не хватает продуктов на неделю</div>
+            <div class="s" id="missing-sub">Сверяем с холодильником и морозилкой…</div>
+          </div>
+        </div>
+        <div class="missing-list" id="missing-list"></div>
+      </div>
+
+      <div class="tip-card" id="tip-card">
+        <div class="ic">💬</div>
+        <div style="flex:1; min-width:0;">
+          <div class="t" id="tip-text">Вы вышли из категории ожирения 3-й степени — снижение веса идёт за счёт жировой массы, а не воды или мышц. Продолжайте в том же темпе.</div>
+          <div class="who" id="tip-who">Подсказано человеком</div>
+        </div>
+        <button id="tip-close-btn" aria-label="Закрыть совет" style="flex-shrink:0; background:none; border:none; font-size:15px; color:var(--muted); align-self:flex-start; min-height:24px; min-width:24px;">✕</button>
+      </div>
+    </section>
+
+    <!-- ===== RECIPES LIST ===== -->
+    <section class="screen" id="screen-recipes">
+      <div class="topbar"><h1>Рецепты</h1></div>
+      <div class="section" style="padding-top:0">
+        <div class="section-head"><h2>Приём пищи вне программы</h2></div>
+      </div>
+      <div class="fridge-list" id="recipes-list"></div>
+    </section>
+
+    <!-- ===== RECIPE DETAIL ===== -->
+    <section class="screen" id="screen-recipe-detail">
+      <div class="back-row"><button class="back-btn" data-back="recipes">← Назад</button></div>
+      <div class="hero-photo" id="recipe-hero">🍗</div>
+      <div class="detail-block">
+        <h2 id="recipe-title">Название блюда</h2>
+        <div class="sub" id="recipe-meta">25 мин · 2 порции</div>
+        <div class="section-head" style="margin-top:4px; margin-bottom:10px"><h2 style="font-size:15px">Ингредиенты</h2></div>
+        <ul class="recipe-ingredients" id="recipe-ingredients"></ul>
+        <div class="section-head" style="margin-top:16px; margin-bottom:10px"><h2 style="font-size:15px">Как готовить</h2></div>
+        <ol class="recipe-steps" id="recipe-steps"></ol>
+      </div>
+    </section>
+
+    <!-- ===== MEASUREMENT HISTORY ===== -->
+    <section class="screen" id="screen-measure-history">
+      <div class="back-row"><button class="back-btn" data-back="diet">← Назад</button></div>
+      <div class="detail-block" style="padding-top:6px">
+        <h2 style="margin-bottom:4px">История замеров</h2>
+        <div class="sub" style="margin-bottom:16px">Вес, шея, грудь, живот, бёдра по датам</div>
+        <div id="history-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+      </div>
+    </section>
+
+    <!-- ===== CART ===== -->
+    <section class="screen" id="screen-cart">
+      <div class="topbar">
+        <h1>Корзина</h1>
+      </div>
+      <div class="section" style="padding-top:0; padding-bottom:6px">
+        <div class="summary-card" id="cart-summary">
+          <div><div class="num" id="cart-count">0</div><div class="label">товаров</div></div>
+        </div>
+      </div>
+      <div class="fridge-list" id="cart-list"></div>
+      <div class="placeholder" id="cart-empty" style="display:none">
+        <div class="ic">🛒</div>
+        <h2>Корзина пуста</h2>
+        <p>Продукты, которых не хватает, появятся здесь — например, после проверки на вкладке «Диета».</p>
+      </div>
+    </section>
+
+    <!-- ===== PROFILE ===== -->
+    <section class="screen" id="screen-profile">
+      <div class="topbar"><h1>Профиль</h1></div>
+      <div class="section" style="padding-top:0">
+        <div class="summary-card" style="margin-bottom:18px">
+          <div class="avatar" style="width:52px;height:52px;font-size:19px">Х</div>
+          <div><div style="font-weight:600; font-size:16px">Хозяин</div><div style="font-size:12.5px; color:var(--ink-soft)">Программа питания · 2-й месяц</div></div>
+        </div>
+        <button class="secondary-btn" data-nav="diet" style="margin-top:0">🥗 Мои данные и диета</button>
+        <button class="secondary-btn" data-nav="cart">🛒 Корзина</button>
+        <button class="secondary-btn" data-nav="vision">📷 Распознать продукт</button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-item active" data-nav="home"><span class="ic">🏠</span>Home</button>
+  <button class="nav-item" data-nav="fridge"><span class="ic">🥬</span>Fridge</button>
+  <button class="nav-item" data-nav="vision"><span class="ic">📷</span>Vision</button>
+  <button class="nav-item" data-nav="diet"><span class="ic">🥗</span>Диета</button>
+  <button class="nav-item" data-nav="recipes"><span class="ic">📖</span>Рецепты</button>
+  <button class="nav-item" data-nav="cart"><span class="ic" style="position:relative">🛒<span class="cart-badge" id="cart-badge" style="display:none">0</span></span>Корзина</button>
+</nav>
+
+<button class="fab" id="fab" data-mode="meal" style="display:none">+</button>
+
+<div class="sheet-overlay" id="sheet-overlay"></div>
+<div class="sheet" id="add-sheet">
+  <div class="sheet-handle"></div>
+  <h3>Добавить продукт</h3>
+  <button class="sheet-option" id="sheet-photo-opt"><span class="ic">📷</span>Сфотографировать</button>
+  <button class="sheet-option" data-toast="Открываю сканер штрихкода…"><span class="ic">▣</span>Сканировать штрихкод</button>
+  <button class="sheet-option" id="sheet-manual-opt"><span class="ic">✎</span>Добавить вручную</button>
+  <button class="sheet-cancel" id="sheet-cancel">Отмена</button>
+</div>
+
+<div class="sheet" id="meal-sheet">
+  <div class="sheet-handle"></div>
+  <h3>Добавить блюдо (вне диеты)</h3>
+  <div class="form-field"><label>Название блюда</label><input type="text" id="custom-dish-name" placeholder="Например: Плов"></div>
+  <div class="form-field">
+    <label>Что потратить из холодильника</label>
+    <div id="custom-dish-ingredients" style="display:flex; flex-direction:column; gap:8px; max-height:230px; overflow-y:auto;"></div>
+  </div>
+  <button class="primary-btn" id="save-custom-dish-btn">Добавить блюдо</button>
+  <button class="sheet-cancel" id="meal-sheet-cancel">Отмена</button>
+</div>
+
+<div class="sheet" id="manual-sheet">
+  <div class="sheet-handle"></div>
+  <h3>Добавить вручную</h3>
+  <div class="dest-row">
+    <button class="dest-btn active" id="manual-dest-fridge">❄️ Холодильник</button>
+    <button class="dest-btn" id="manual-dest-freezer">🧊 Морозилка</button>
+  </div>
+  <label style="display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:8px">Отметьте, что нужно добавить:</label>
+  <div id="manual-checklist" style="display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; margin-bottom:14px;"></div>
+  <button class="primary-btn" id="manual-add-confirm-btn">Добавить отмеченное</button>
+  <div class="form-field" style="margin-top:14px; margin-bottom:10px">
+    <label>Своё название (если нет в списке)</label>
+    <input type="text" id="manual-custom-name" placeholder="Например: Кокосовое молоко">
+  </div>
+  <button class="secondary-btn" id="manual-custom-add-btn" style="margin-top:0">Добавить своё</button>
+  <button class="sheet-cancel" id="manual-sheet-cancel">Отмена</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===================== SUPABASE ===================== */
+const SUPABASE_URL = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const APP_EMAIL_DOMAIN = 'myonlinefarm-smartfridge.app';
+function usernameToEmail(u){ return u.trim().toLowerCase() + '@' + APP_EMAIL_DOMAIN; }
+let currentUserId = null;
+
+/* ===================== DATE HELPERS ===================== */
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+function addDays(base, days){ const d = new Date(base); d.setDate(d.getDate()+days); return d; }
+function isoDate(d){ return d.toISOString().slice(0,10); }
+function daysUntil(dateStr){ if(!dateStr) return 999; const d = new Date(dateStr); d.setHours(0,0,0,0); return Math.round((d-TODAY)/86400000); }
+function expiryLabel(days){
+  if(days <= 0) return 'истёк срок';
+  if(days === 1) return '1 день';
+  if(days < 5) return days+' дня';
+  return days+' дней';
+}
+function computeFreshStatus(days){
+  if(days <= 0) return 'bad';
+  if(days <= 3) return 'warn';
+  return 'fresh';
+}
+function trimNum(n){ return Number.isInteger(n) ? n : parseFloat(n.toFixed(2)); }
+function formatQty(item){ return item.note ? item.note : `${trimNum(item.qtyNum||0)} ${item.unit||'шт'}`; }
+
+/* ===================== DATA ===================== */
+const fridgeData = [
+  {name:'Авокадо', emoji:'🥑', qtyNum:3, unit:'шт', location:'Средняя полка', expiresOn:isoDate(addDays(TODAY,2))},
+  {name:'Молоко 3%', emoji:'🥛', qtyNum:1, unit:'л', location:'Дверца', expiresOn:isoDate(addDays(TODAY,4))},
+  {name:'Куриное филе', emoji:'🍗', qtyNum:500, unit:'г', location:'Средняя полка', expiresOn:isoDate(addDays(TODAY,3))},
+  {name:'Йогурт натуральный', emoji:'🥣', qtyNum:2, unit:'шт', location:'Верхняя полка', expiresOn:isoDate(addDays(TODAY,9))},
+  {name:'Помидоры', emoji:'🍅', qtyNum:6, unit:'шт', location:'Средняя полка', expiresOn:isoDate(addDays(TODAY,6))},
+  {name:'Твёрдый сыр 45%', emoji:'🧀', qtyNum:200, unit:'г', location:'Дверца', expiresOn:isoDate(addDays(TODAY,14))},
+  {name:'Свежая зелень', emoji:'🌿', qtyNum:1, unit:'шт', location:'Средняя полка', expiresOn:isoDate(addDays(TODAY,2))},
+  {name:'Отрубной хлеб', emoji:'🍞', qtyNum:1, unit:'шт', location:'Верхняя полка', expiresOn:isoDate(addDays(TODAY,5))},
+  {name:'Кефир', emoji:'🍶', qtyNum:500, unit:'мл', location:'Дверца', expiresOn:isoDate(addDays(TODAY,6))},
+];
+const freezerData = [
+  {name:'Филе индейки', emoji:'🍗', qtyNum:600, unit:'г', location:'Морозилка', expiresOn:isoDate(addDays(TODAY,180))},
+  {name:'Рыбное филе (треска)', emoji:'🐟', qtyNum:400, unit:'г', location:'Морозилка', expiresOn:isoDate(addDays(TODAY,180))},
+  {name:'Морской коктейль', emoji:'🦐', qtyNum:300, unit:'г', location:'Морозилка', expiresOn:isoDate(addDays(TODAY,180))},
+  {name:'Замороженные ягоды', emoji:'🫐', qtyNum:250, unit:'г', location:'Морозилка', expiresOn:isoDate(addDays(TODAY,180))},
+  {name:'Овощная смесь', emoji:'🥦', qtyNum:400, unit:'г', location:'Морозилка', expiresOn:isoDate(addDays(TODAY,180))},
+  {name:'Говяжий язык отварной', emoji:'🥩', qtyNum:300, unit:'г', location:'Морозилка', expiresOn:isoDate(addDays(TODAY,90))},
+];
+
+// Единая база продуктов — используется для автоподсказок в Vision/ручном добавлении, авто-срока годности и выбора холодильник/морозилка
+const productCatalog = [
+  {name:'Молоко 3%', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:5, compartment:'fridge'},
+  {name:'Молоко', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:5, compartment:'fridge'},
+  {name:'Яйца', emoji:'🥚', unit:'шт', defaultQty:10, shelfDays:21, compartment:'fridge'},
+  {name:'Хлеб отрубной', emoji:'🍞', unit:'шт', defaultQty:1, shelfDays:5, compartment:'fridge'},
+  {name:'Твёрдый сыр', emoji:'🧀', unit:'г', defaultQty:200, shelfDays:20, compartment:'fridge'},
+  {name:'Творог', emoji:'🥣', unit:'г', defaultQty:300, shelfDays:6, compartment:'fridge'},
+  {name:'Творог 9%', emoji:'🧀', unit:'г', defaultQty:400, shelfDays:6, compartment:'fridge'},
+  {name:'Йогурт натуральный', emoji:'🍶', unit:'шт', defaultQty:2, shelfDays:10, compartment:'fridge'},
+  {name:'Куриное филе', emoji:'🍗', unit:'г', defaultQty:500, shelfDays:3, compartment:'fridge'},
+  {name:'Говядина', emoji:'🥩', unit:'г', defaultQty:500, shelfDays:3, compartment:'fridge'},
+  {name:'Рыба (филе)', emoji:'🐟', unit:'г', defaultQty:400, shelfDays:2, compartment:'fridge'},
+  {name:'Треска (филе)', emoji:'🐟', unit:'г', defaultQty:400, shelfDays:180, compartment:'freezer'},
+  {name:'Брокколи', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:6, compartment:'fridge'},
+  {name:'Овощи свежие', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:7, compartment:'fridge'},
+  {name:'Помидоры', emoji:'🍅', unit:'шт', defaultQty:6, shelfDays:6, compartment:'fridge'},
+  {name:'Огурцы', emoji:'🥒', unit:'шт', defaultQty:6, shelfDays:7, compartment:'fridge'},
+  {name:'Зелень', emoji:'🌿', unit:'шт', defaultQty:1, shelfDays:4, compartment:'fridge'},
+  {name:'Авокадо', emoji:'🥑', unit:'шт', defaultQty:3, shelfDays:5, compartment:'fridge'},
+  {name:'Яблоки', emoji:'🍎', unit:'шт', defaultQty:5, shelfDays:14, compartment:'fridge'},
+  {name:'Орехи (грецкий/миндаль)', emoji:'🥜', unit:'г', defaultQty:150, shelfDays:90, compartment:'fridge'},
+  {name:'Мёд', emoji:'🍯', unit:'г', defaultQty:350, shelfDays:365, compartment:'fridge'},
+  {name:'Красная икра', emoji:'🐠', unit:'г', defaultQty:100, shelfDays:14, compartment:'fridge'},
+  {name:'Кефир', emoji:'🍶', unit:'мл', defaultQty:500, shelfDays:6, compartment:'fridge'},
+  {name:'Филе индейки', emoji:'🍗', unit:'г', defaultQty:600, shelfDays:180, compartment:'freezer'},
+  {name:'Морской коктейль', emoji:'🦐', unit:'г', defaultQty:300, shelfDays:180, compartment:'freezer'},
+  {name:'Замороженные ягоды', emoji:'🫐', unit:'г', defaultQty:250, shelfDays:180, compartment:'freezer'},
+  {name:'Овощная смесь', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:180, compartment:'freezer'},
+  {name:'Говяжий язык отварной', emoji:'🥩', unit:'г', defaultQty:300, shelfDays:90, compartment:'freezer'},
+];
+function findCatalog(name){
+  const q = (name||'').trim().toLowerCase();
+  return productCatalog.find(c => c.name.toLowerCase() === q);
+}
+
+// Корзина — начальный список покупок; пополняется из алерта "не хватает на неделю" и Vision
+const cartData = [
+  {name:'Молоко 3%', emoji:'🥛', qtyNum:1, unit:'л'},
+  {name:'Яйца', emoji:'🥚', qtyNum:10, unit:'шт'},
+  {name:'Отрубной хлеб', emoji:'🍞', qtyNum:1, unit:'шт'},
+  {name:'Творог 9%', emoji:'🧀', qtyNum:400, unit:'г'},
+];
+
+// Учёт для расчёта "спасено еды": используется vs выброшено
+let usedCount = 0, usedWeightKg = 0, wastedCount = 0;
+function estimateKg(item){
+  const n = item.qtyNum || 1;
+  if(item.unit === 'кг') return n;
+  if(item.unit === 'г') return n/1000;
+  if(item.unit === 'л') return n;
+  if(item.unit === 'мл') return n/1000;
+  return n*0.15; // шт → приблизительно 150 г за штуку
+}
+
+// Рецепты вне программы диеты — своя мини-БД рецептов с пошаговыми инструкциями
+const recipesData = [
+  {id:'r1', icon:'🍗', title:'Куриное филе гриль с овощным салатом', time:'25 мин', servings:'2 порции', tags:['Обед'], match:['куриное филе'],
+   ingredients:[{name:'Куриное филе',qty:'400 г'},{name:'Помидоры',qty:'2 шт'},{name:'Огурцы',qty:'2 шт'},{name:'Оливковое масло',qty:'1 ст.л.'},{name:'Лимонный сок',qty:'по вкусу'}],
+   steps:['Разогреть сковороду-гриль на среднем огне.','Куриное филе слегка отбить, посолить и поперчить.','Обжарить филе по 5-6 минут с каждой стороны до готовности.','Помидоры и огурцы нарезать кубиками.','Заправить овощи маслом и лимонным соком, перемешать.','Подавать филе вместе с салатом.']},
+  {id:'r2', icon:'🐟', title:'Треска, запечённая с овощами', time:'30 мин', servings:'2 порции', tags:['Обед'], match:['треска','рыба'],
+   ingredients:[{name:'Треска (филе)',qty:'400 г'},{name:'Овощная смесь',qty:'300 г'},{name:'Оливковое масло',qty:'1 ст.л.'},{name:'Соль, перец',qty:'по вкусу'}],
+   steps:['Разморозить филе трески при комнатной температуре.','Разогреть духовку до 190°C.','Выложить рыбу и овощную смесь на противень, сбрызнуть маслом.','Посолить, поперчить.','Запекать 20-25 минут до готовности.']},
+  {id:'r3', icon:'🥑', title:'Салат с авокадо и яйцом', time:'10 мин', servings:'1 порция', tags:['Ужин','Быстро'], match:['авокадо'],
+   ingredients:[{name:'Авокадо',qty:'1 шт'},{name:'Яйца',qty:'2 шт'},{name:'Помидоры',qty:'1 шт'},{name:'Оливковое масло',qty:'1 ч.л.'}],
+   steps:['Яйца отварить вкрутую (8-9 минут), остудить и очистить.','Авокадо очистить и нарезать кубиками.','Помидоры нарезать дольками.','Смешать все ингредиенты, заправить маслом, посолить по вкусу.']},
+  {id:'r4', icon:'🥣', title:'Бутерброд с сыром и зеленью', time:'5 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['отрубной хлеб','твёрдый сыр'],
+   ingredients:[{name:'Хлеб отрубной',qty:'1 кусок'},{name:'Твёрдый сыр',qty:'2-3 ломтика'},{name:'Зелень',qty:'по вкусу'}],
+   steps:['Подсушить хлеб в тостере при желании.','Выложить сыр на хлеб.','Посыпать свежей зеленью.']},
+  {id:'r5', icon:'🍳', title:'Омлет с зеленью', time:'10 мин', servings:'1 порция', tags:['Завтрак'], match:['яйца','зелень'],
+   ingredients:[{name:'Яйца',qty:'3 шт'},{name:'Молоко',qty:'2 ст.л.'},{name:'Зелень',qty:'по вкусу'},{name:'Масло сливочное',qty:'1 ч.л.'}],
+   steps:['Яйца взбить с молоком и щепоткой соли.','Разогреть сковороду с маслом на среднем огне.','Вылить смесь, готовить под крышкой 3-4 минуты.','Посыпать рубленой зеленью перед подачей.']},
+  {id:'r6', icon:'🦐', title:'Морской коктейль с чесноком', time:'15 мин', servings:'2 порции', tags:['Обед'], match:['морской коктейль'],
+   ingredients:[{name:'Морской коктейль',qty:'300 г'},{name:'Чеснок',qty:'2 зубчика'},{name:'Оливковое масло',qty:'1 ст.л.'},{name:'Лимон',qty:'половина'}],
+   steps:['Разморозить морской коктейль.','Разогреть масло на сковороде, добавить давленый чеснок.','Обжарить морепродукты 4-5 минут на сильном огне.','Сбрызнуть лимонным соком перед подачей.']},
+  {id:'r7', icon:'🫐', title:'Смузи с замороженными ягодами', time:'5 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['замороженные ягоды'],
+   ingredients:[{name:'Замороженные ягоды',qty:'150 г'},{name:'Йогурт натуральный',qty:'150 г'},{name:'Мёд',qty:'1 ч.л.'}],
+   steps:['Положить ягоды, йогурт и мёд в блендер.','Взбить до однородности 30-40 секунд.','Перелить в стакан и подавать сразу.']},
+  {id:'r8', icon:'🥗', title:'Овощной салат с творогом', time:'10 мин', servings:'1 порция', tags:['Ужин'], match:['творог','помидоры','огурцы'],
+   ingredients:[{name:'Творог',qty:'150 г'},{name:'Помидоры',qty:'2 шт'},{name:'Огурцы',qty:'2 шт'},{name:'Зелень',qty:'по вкусу'}],
+   steps:['Овощи нарезать произвольно.','Смешать с творогом.','Посыпать зеленью, посолить по вкусу.']},
+  {id:'r9', icon:'🥩', title:'Говяжий язык с зеленью', time:'10 мин', servings:'2 порции', tags:['Обед'], match:['говяжий язык'],
+   ingredients:[{name:'Говяжий язык отварной',qty:'300 г'},{name:'Зелень',qty:'по вкусу'},{name:'Горчица',qty:'1 ч.л.'}],
+   steps:['Язык нарезать тонкими ломтиками.','Выложить на тарелку, посыпать зеленью.','Подавать с горчицей.']},
+  {id:'r10', icon:'🍎', title:'Творог с яблоком и орехами', time:'5 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['творог','яблоки','орехи'],
+   ingredients:[{name:'Творог',qty:'200 г'},{name:'Яблоки',qty:'1 шт'},{name:'Орехи (грецкий/миндаль)',qty:'20 г'},{name:'Мёд',qty:'1 ч.л.'}],
+   steps:['Яблоко нарезать мелкими кубиками.','Орехи слегка измельчить.','Смешать творог, яблоко и орехи, полить мёдом.']},
+  {id:'r11', icon:'🍅', title:'Греческий салат с сыром', time:'12 мин', servings:'2 порции', tags:['Обед','Ужин'], match:['твёрдый сыр','помидоры','огурцы'],
+   ingredients:[{name:'Помидоры',qty:'3 шт'},{name:'Огурцы',qty:'2 шт'},{name:'Твёрдый сыр',qty:'100 г'},{name:'Оливковое масло',qty:'1 ст.л.'}],
+   steps:['Овощи нарезать крупными кубиками.','Сыр нарезать кубиками или раскрошить.','Смешать всё, заправить маслом, посолить по вкусу.']},
+  {id:'r12', icon:'🥛', title:'Окрошка на кефире', time:'15 мин', servings:'2 порции', tags:['Обед'], match:['кефир','огурцы','яйца'],
+   ingredients:[{name:'Кефир',qty:'500 мл'},{name:'Огурцы',qty:'2 шт'},{name:'Яйца',qty:'2 шт'},{name:'Куриное филе',qty:'150 г'},{name:'Зелень',qty:'по вкусу'}],
+   steps:['Яйца отварить, остудить и нарезать кубиками.','Куриное филе отварить и нарезать кубиками.','Огурцы нарезать мелкими кубиками.','Смешать все ингредиенты, залить кефиром.','Посолить, посыпать зеленью.']},
+  {id:'r13', icon:'🍞', title:'Тост с авокадо', time:'8 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['авокадо','отрубной хлеб'],
+   ingredients:[{name:'Хлеб отрубной',qty:'2 куска'},{name:'Авокадо',qty:'1 шт'},{name:'Лимонный сок',qty:'по вкусу'},{name:'Соль, перец',qty:'по вкусу'}],
+   steps:['Хлеб подсушить в тостере.','Авокадо размять вилкой с лимонным соком.','Намазать на тост, посолить и поперчить.']},
+  {id:'r14', icon:'🥕', title:'Тушёные овощи с индейкой', time:'25 мин', servings:'2 порции', tags:['Обед','Ужин'], match:['филе индейки','овощная смесь'],
+   ingredients:[{name:'Филе индейки',qty:'400 г'},{name:'Овощная смесь',qty:'300 г'},{name:'Оливковое масло',qty:'1 ст.л.'}],
+   steps:['Разморозить филе индейки, нарезать кубиками.','Обжарить на масле 5-7 минут.','Добавить овощную смесь, накрыть крышкой.','Тушить 12-15 минут до готовности.']},
+];
+function computeCookable(){
+  const inventoryNames = fridgeData.concat(freezerData).map(i => i.name.toLowerCase());
+  return recipesData.filter(r => r.match.some(kw => inventoryNames.some(n => n.includes(kw))));
+}
+
+// Диета по дням программы (базовые порции при весе 117.5 кг)
+const dietDays = [
+  {d:1, breakfastT:'Бутерброд с сыром', breakfastS:'Отрубной хлеб + масло + твёрдый сыр, чай/кофе', lunchT:'Мясо + овощной салат', lunchS:'Курица/баранина/говядина/конина, любым способом + салат из 3 овощей', lunchBase:200, dinnerT:'Салат с красной икрой', dinnerS:'Овощной салат с бобовыми + красная икра 1 ст.л. + хлеб + фреш', dinnerBase:220,
+   breakfastItems:[{name:'Хлеб отрубной',qty:'55 г'},{name:'Масло сливочное',qty:'1 ч.л.'},{name:'Сыр твёрдый',qty:'80 г'},{name:'Чай/кофе/вода',qty:'300 мл'}],
+   lunchItems:[{name:'Куриное филе (или мясо)',qty:'200 г'},{name:'Овощи свежие, 3 вида',qty:'220 мл'},{name:'Кефир/йогурт/молоко',qty:'260 мл'}],
+   dinnerItems:[{name:'Овощи отварные',qty:'220 мл'},{name:'Красная икра',qty:'55 г'},{name:'Хлеб отрубной',qty:'55 г'},{name:'Сок фреш',qty:'290 мл'}]},
+  {d:2, breakfastT:'Мясо/казы + масло', breakfastS:'Отрубной хлеб + растительное масло + мясо или отварной язык, чай/кофе', lunchT:'Рыба или морепродукты', lunchS:'Любая рыба/морепродукты, любым способом + овощной салат', lunchBase:210, dinnerT:'Салат оливье', dinnerS:'Овощной салат с мясом и бобовыми, лёгкий майонез/йогурт + хлеб + фреш', dinnerBase:220,
+   breakfastItems:[{name:'Хлеб отрубной',qty:'55 г'},{name:'Масло растительное',qty:'2 ч.л.'},{name:'Говяжий язык отварной',qty:'80 г'},{name:'Чай/кофе/вода',qty:'300 мл'}],
+   lunchItems:[{name:'Рыба или морепродукты',qty:'210 г'},{name:'Овощи свежие',qty:'220 мл'},{name:'Кефир/йогурт/молоко',qty:'260 мл'}],
+   dinnerItems:[{name:'Овощи отварные с мясом',qty:'220 мл'},{name:'Хлеб отрубной',qty:'55 г'},{name:'Сок фреш',qty:'290 мл'}]},
+  {d:3, breakfastT:'Бутерброд с сыром', breakfastS:'Отрубной хлеб + масло + твёрдый сыр, чай/кофе', lunchT:'Мясо + овощной салат', lunchS:'Мясо любым способом + салат из 3 овощей', lunchBase:200, dinnerT:'Салат с авокадо', dinnerS:'Овощной салат с бобовыми + авокадо + хлеб + фреш', dinnerBase:220,
+   breakfastItems:[{name:'Хлеб отрубной',qty:'55 г'},{name:'Масло сливочное',qty:'1 ч.л.'},{name:'Сыр твёрдый',qty:'80 г'},{name:'Чай/кофе/вода',qty:'300 мл'}],
+   lunchItems:[{name:'Куриное филе (или мясо)',qty:'200 г'},{name:'Овощи свежие, 3 вида',qty:'220 мл'},{name:'Кефир/йогурт/молоко',qty:'260 мл'}],
+   dinnerItems:[{name:'Овощи отварные',qty:'210 мл'},{name:'Авокадо мякоть',qty:'55 г'},{name:'Хлеб отрубной',qty:'по вкусу'},{name:'Сок фреш',qty:'280 мл'}]},
+  {d:4, breakfastT:'Мясо/казы + масло', breakfastS:'Отрубной хлеб + растительное масло + мясо или отварной язык, чай/кофе', lunchT:'Рыба или морепродукты', lunchS:'Любая рыба/морепродукты + овощной салат', lunchBase:210, dinnerT:'Салат оливье', dinnerS:'Овощной салат с мясом и бобовыми + хлеб + фреш', dinnerBase:220,
+   breakfastItems:[{name:'Хлеб отрубной',qty:'55 г'},{name:'Масло растительное',qty:'2 ч.л.'},{name:'Говяжий язык отварной',qty:'80 г'},{name:'Чай/кофе/вода',qty:'300 мл'}],
+   lunchItems:[{name:'Рыба или морепродукты',qty:'210 г'},{name:'Овощи свежие',qty:'220 мл'},{name:'Кефир/йогурт/молоко',qty:'260 мл'}],
+   dinnerItems:[{name:'Овощи отварные с мясом',qty:'220 мл'},{name:'Хлеб отрубной',qty:'55 г'},{name:'Сок фреш',qty:'290 мл'}]},
+  {d:5, breakfastT:'Омлет / яичница', breakfastS:'3 средних яйца, без хлеба, чай/кофе', lunchT:'Мясо + овощной салат', lunchS:'Мясо любым способом + салат из свежих овощей', lunchBase:200, dinnerT:'Салат с печенью трески', dinnerS:'Овощной салат с бобовыми + консервированная печень трески + хлеб + фреш', dinnerBase:220,
+   breakfastItems:[{name:'Яйца средние',qty:'3 шт'},{name:'Чай/кофе/вода',qty:'300 мл'}],
+   lunchItems:[{name:'Куриное филе (или мясо)',qty:'200 г'},{name:'Овощи свежие',qty:'220 мл'},{name:'Кефир/йогурт/молоко',qty:'260 мл'}],
+   dinnerItems:[{name:'Овощи отварные',qty:'200 мл'},{name:'Хлеб отрубной',qty:'50 г'},{name:'Печень трески консерв.',qty:'1 ст.л.'},{name:'Сок фреш',qty:'290 мл'}]},
+  {d:6, breakfastT:'Мясо/казы + масло', breakfastS:'Отрубной хлеб + растительное масло + мясо или язык, чай/кофе', lunchT:'Рыба или морепродукты', lunchS:'Любая рыба/морепродукты + овощной салат', lunchBase:210, dinnerT:'Салат оливье', dinnerS:'Овощной салат с мясом и бобовыми + хлеб + фреш', dinnerBase:220,
+   breakfastItems:[{name:'Хлеб отрубной',qty:'55 г'},{name:'Масло растительное',qty:'2 ч.л.'},{name:'Говяжий язык отварной',qty:'80 г'},{name:'Чай/кофе/вода',qty:'300 мл'}],
+   lunchItems:[{name:'Рыба или морепродукты',qty:'210 г'},{name:'Овощи свежие',qty:'220 мл'},{name:'Кефир/йогурт/молоко',qty:'260 мл'}],
+   dinnerItems:[{name:'Овощи отварные с мясом',qty:'220 мл'},{name:'Хлеб отрубной',qty:'55 г'},{name:'Сок фреш',qty:'290 мл'}]},
+  {d:7, breakfastT:'Разгрузочный день', breakfastS:'Кефир/молоко, творог, орехи, мёд, яблоки — 5-6 приёмов в течение дня', lunchT:'—', lunchS:'Приёмы пищи распределены равномерно, жидкости — до 2 л', lunchBase:0, dinnerT:'—', dinnerS:'Повторяется каждую неделю в один и тот же день', dinnerBase:0,
+   breakfastItems:[{name:'Кефир/молоко',qty:'670 мл'},{name:'Творог 9%',qty:'300 г'},{name:'Орехи (грецкий/миндаль)',qty:'30 г'},{name:'Мёд жидкий',qty:'2 ст.л.'},{name:'Яблоки',qty:'3 шт'}],
+   lunchItems:[], dinnerItems:[]},
+];
+
+// Продукты, нужные на неделю программы, но которых нет в текущем инвентаре — сверяются по ключевым словам
+const weeklyRequiredItems = [
+  {name:'Яйца', keyword:'яйц', forText:'Завтрак · День 5'},
+  {name:'Красная икра или икра рыбы', keyword:'икра', forText:'Ужин · День 1'},
+  {name:'Консервированная печень трески', keyword:'печень трески', forText:'Ужин · День 5'},
+  {name:'Грецкий орех или миндаль', keyword:'орех', forText:'День 7 · разгрузочный'},
+  {name:'Мёд жидкий', keyword:'мёд', forText:'День 7 · разгрузочный'},
+  {name:'Творог (жирность не более 9%)', keyword:'творог', forText:'День 7 · разгрузочный'},
+  {name:'Свежие фрукты для сока (яблоко, груша)', keyword:'яблок', forText:'Ужин · ежедневно'},
+  {name:'Разнообразные свежие овощи (огурцы, капуста, морковь)', keyword:'огур', forText:'Обед/ужин · ежедневно'},
+];
+
+const tips = [
+  {text:'Вы вышли из категории ожирения 3-й степени — снижение веса идёт за счёт жировой массы, а не воды или мышц. Продолжайте в том же темпе.', source:'human'},
+  {text:'Важен каждый грамм и каждый миллилитр: старайтесь взвешивать порции, а не оценивать на глаз.', source:'human'},
+  {text:'На разгрузочный день выбирайте один и тот же день недели каждую неделю — так организму легче адаптироваться.', source:'human'},
+  {text:'Замену завтрака на кашу (овсяная, гречневая, пшённая, перловая) можно делать не чаще 2 раз в неделю — только из цельной крупы.', source:'human'},
+  {text:'Пейте стакан воды за 20 минут до еды — это помогает лучше чувствовать сытость и не переедать.', source:'ai'},
+  {text:'Добавляйте зелень почти в каждый приём пищи: она почти без калорий, но даёт объём и клетчатку.', source:'ai'},
+  {text:'Старайтесь ужинать за 2-3 часа до сна — это может улучшить пищеварение и качество сна.', source:'ai'},
+  {text:'Замените одну чашку кофе в день на травяной чай без сахара — небольшая, но устойчивая привычка.', source:'ai'},
+];
+
+// История замеров по датам — для экрана "История" (шея/грудь/живот/бёдра/вес)
+let measurementHistory = [
+  {date:'2026-07-28', weight:126, neck:44, chest:132, belly:142, hips:131},
+  {date:'2026-08-11', weight:121.5, neck:43, chest:130, belly:138, hips:129.5},
+  {date:'2026-08-20', weight:117.5, neck:42, chest:128, belly:135, hips:128},
+];
+function formatRuDate(iso){
+  const [y,m,d] = iso.split('-');
+  const months = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;
+}
+
+/* ===================== NAVIGATION ===================== */
+const screens = document.querySelectorAll('.screen');
+const navButtons = document.querySelectorAll('[data-nav]');
+const fab = document.getElementById('fab');
+let history = ['home'];
+
+function showScreen(name, push=true){
+  screens.forEach(s => s.classList.toggle('active', s.id === 'screen-'+name));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
+  document.querySelectorAll('.side-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
+  fab.style.display = (name === 'fridge' || name === 'home') ? 'flex' : 'none';
+  fab.dataset.mode = name === 'home' ? 'meal' : 'product';
+  document.querySelector('.main-col').scrollTop = 0;
+  if(push) history.push(name);
+  if(name === 'vision'){ /* nothing auto */ }
+}
+
+const topLevelScreens = new Set(['home','fridge','vision','diet','recipes','cart','profile']);
+navButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.nav;
+    if(topLevelScreens.has(target)){
+      history = [target];
+      showScreen(target, false);
+    } else {
+      history.push(target);
+      showScreen(target, false);
+    }
+  });
+});
+document.querySelectorAll('[data-back]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    history.pop();
+    const prev = history[history.length-1] || btn.dataset.back || 'home';
+    showScreen(prev, false);
+  });
+});
+
+/* ---- product detail: which array/index is currently open ---- */
+let currentProduct = null; // {list:'fridge'|'freezer', idx}
+let currentCompartment = 'fridge';
+function getArr(listName){ return listName === 'freezer' ? freezerData : fridgeData; }
+
+function openProduct(listName, idx, opts={}){
+  const push = opts.push !== false;
+  currentProduct = {list:listName, idx};
+  const p = getArr(listName)[idx];
+  if(!p) return;
+  const days = daysUntil(p.expiresOn);
+  document.getElementById('product-hero').textContent = p.emoji;
+  document.getElementById('product-name').textContent = p.name;
+  document.getElementById('product-sub').textContent = `${listName==='freezer'?'Морозилка':'Холодильник'} · ${p.location||'—'}`;
+  document.getElementById('product-qty').textContent = formatQty(p);
+  document.getElementById('product-exp').textContent = listName==='freezer' ? '−18°C' : (days<=0?'срок истёк': `через ${expiryLabel(days)}`);
+  if(push) history.push('product');
+  showScreen('product', false);
+}
+
+document.addEventListener('click', (e)=>{
+  const row = e.target.closest('.product-row[data-list], .expire-card[data-list]');
+  if(row) openProduct(row.dataset.list, parseInt(row.dataset.idx));
+  const rc = e.target.closest('[data-recipe]');
+  if(rc) openRecipe(rc.dataset.recipe);
+});
+
+/* ===================== SKELETON -> CONTENT ===================== */
+setTimeout(()=>{
+  document.getElementById('summary-skel').style.display='none';
+  document.getElementById('summary-loaded').style.display='flex';
+  updateSummary();
+}, 700);
+
+function ringSvg(pct, color){
+  const r = 24, c = 2*Math.PI*r;
+  const off = c * (1 - pct/100);
+  return `<svg width="56" height="56" viewBox="0 0 56 56">
+    <circle class="ring-track" cx="28" cy="28" r="${r}"></circle>
+    <circle class="ring-fill" cx="28" cy="28" r="${r}" stroke="${color}" stroke-dasharray="${c}" stroke-dashoffset="${off}"></circle>
+  </svg>`;
+}
+function renderExpiringRow(){
+  const soon = fridgeData
+    .map((p, idx) => ({p, idx, days: daysUntil(p.expiresOn)}))
+    .filter(x => x.days <= 4)
+    .sort((a,b)=>a.days-b.days)
+    .slice(0,3);
+  const row = document.getElementById('expiring-row');
+  row.innerHTML = soon.length ? soon.map(({p, idx, days}) => {
+    const color = days<=1 ? 'var(--danger)' : 'var(--warn)';
+    const pct = Math.max(15, Math.min(100, Math.round((1 - days/7)*100)));
+    return `
+    <div class="expire-card" data-list="fridge" data-idx="${idx}">
+      <div class="ring-wrap">${ringSvg(pct,color)}<div class="ring-emoji">${p.emoji}</div></div>
+      <div class="p-name">${p.name}</div>
+      <div class="p-days" style="color:${color}">${expiryLabel(days)}</div>
+    </div>`;
+  }).join('') : `<div style="font-size:12.5px; color:var(--muted); padding:8px 4px">Ничего не истекает в ближайшие дни</div>`;
+  document.getElementById('sum-expiring').textContent = soon.length;
+}
+
+function updateSummary(){
+  document.getElementById('sum-total').textContent = fridgeData.length + freezerData.length;
+  renderExpiringRow();
+  updateSavedBanner();
+}
+
+function updateSavedBanner(){
+  const total = usedCount + wastedCount;
+  const pct = total===0 ? 100 : Math.round(usedCount/total*100);
+  document.getElementById('sum-saved-pct').textContent = pct+'%';
+  document.getElementById('saved-banner-text').textContent = `За месяц спасено ${usedWeightKg.toFixed(1)} кг еды`;
+  document.getElementById('saved-banner-sub').textContent = total===0
+    ? 'Отмечайте продукты «Использовано» или «Выброшено» — так считается экономия'
+    : `Расчёт: использовано ${usedCount} из ${total} отмеченных продуктов (${pct}%) до истечения срока`;
+}
+
+function renderFridgeList(compartment){
+  const list = document.getElementById('fridge-list');
+  const data = compartment === 'freezer' ? freezerData : fridgeData;
+  list.innerHTML = data.map((p, idx) => {
+    const days = daysUntil(p.expiresOn);
+    const status = compartment === 'freezer' ? 'frost' : computeFreshStatus(days);
+    const label = compartment === 'freezer' ? '−18°C' : expiryLabel(days);
+    return `
+    <div class="product-row" data-list="${compartment}" data-idx="${idx}">
+      <div class="product-thumb">${p.emoji}</div>
+      <div class="product-info"><div class="n">${p.name}</div><div class="q">${formatQty(p)}</div></div>
+      <div class="status-pill status-${status}">${label}</div>
+    </div>`;
+  }).join('');
+}
+setTimeout(()=> renderFridgeList('fridge'), 600);
+
+document.querySelectorAll('.seg-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentCompartment = btn.dataset.compartment;
+    renderFridgeList(currentCompartment);
+  });
+});
+
+function renderSuggestRow(){
+  const cookable = computeCookable();
+  const list = cookable.length ? cookable : recipesData.slice(0,4);
+  document.getElementById('suggest-row').innerHTML = list.map(r => `
+    <div class="suggest-card" data-recipe="${r.id}">
+      <div class="ic">${r.icon}</div>
+      <div class="t">${r.title}</div>
+      <div class="s">${r.time} · ${r.servings}</div>
+      <span class="tag">${r.tags.join(' · ')}</span>
+    </div>`).join('');
+  document.getElementById('home-meals-row').innerHTML = list.slice(0,3).map(r => `
+    <div class="recipe-card" data-recipe="${r.id}">
+      <div class="recipe-img">${r.icon}</div>
+      <div class="recipe-body"><div class="t">${r.title}</div><div class="s">${r.time} · ${r.servings}</div></div>
+    </div>`).join('');
+}
+renderSuggestRow();
+
+function renderRecipesList(){
+  document.getElementById('recipes-list').innerHTML = recipesData.map(r => `
+    <div class="product-row" data-recipe="${r.id}">
+      <div class="product-thumb">${r.icon}</div>
+      <div class="product-info"><div class="n">${r.title}</div><div class="q">${r.time} · ${r.servings}</div></div>
+    </div>`).join('');
+}
+renderRecipesList();
+
+function openRecipe(id){
+  const r = recipesData.find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('recipe-hero').textContent = r.icon;
+  document.getElementById('recipe-title').textContent = r.title;
+  document.getElementById('recipe-meta').textContent = `${r.time} · ${r.servings}`;
+  document.getElementById('recipe-ingredients').innerHTML = r.ingredients.map(i=>`<li><span class="iname">${i.name}</span><span class="iqty">${i.qty}</span></li>`).join('');
+  document.getElementById('recipe-steps').innerHTML = r.steps.map((s)=>`<li><span class="step-num"></span><span>${s}</span></li>`).join('');
+  document.querySelectorAll('#recipe-steps .step-num').forEach((el,i)=> el.textContent = i+1);
+  history.push('recipe-detail');
+  showScreen('recipe-detail', false);
+}
+
+/* ===================== SHEETS ===================== */
+const overlay = document.getElementById('sheet-overlay');
+const addSheet = document.getElementById('add-sheet');
+const mealSheet = document.getElementById('meal-sheet');
+const manualSheet = document.getElementById('manual-sheet');
+const allSheets = [addSheet, mealSheet, manualSheet];
+
+function openSheet(sheetEl){
+  overlay.classList.add('open');
+  allSheets.forEach(s => s.classList.toggle('open', s === sheetEl));
+}
+function closeSheet(){
+  overlay.classList.remove('open');
+  allSheets.forEach(s => s.classList.remove('open'));
+}
+fab.addEventListener('click', ()=>{
+  if(fab.dataset.mode === 'meal'){
+    populateCustomDishIngredients();
+    openSheet(mealSheet);
+  } else {
+    openSheet(addSheet);
+  }
+});
+overlay.addEventListener('click', closeSheet);
+document.getElementById('sheet-cancel').addEventListener('click', closeSheet);
+document.getElementById('meal-sheet-cancel').addEventListener('click', closeSheet);
+document.querySelectorAll('.sheet-option[data-toast]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ closeSheet(); showToast(btn.dataset.toast); });
+});
+document.getElementById('sheet-photo-opt').addEventListener('click', ()=>{
+  closeSheet();
+  history = ['vision']; showScreen('vision', false);
+});
+document.getElementById('sheet-manual-opt').addEventListener('click', ()=>{
+  populateManualChecklist();
+  openSheet(manualSheet);
+});
+
+/* ---- custom off-diet dish: pick fridge items to spend ---- */
+function populateCustomDishIngredients(){
+  const box = document.getElementById('custom-dish-ingredients');
+  if(fridgeData.length === 0){
+    box.innerHTML = `<div style="font-size:12.5px; color:var(--muted)">В холодильнике пока пусто</div>`;
+    return;
+  }
+  box.innerHTML = fridgeData.map((p, idx) => `
+    <label class="ingredient-check">
+      <input type="checkbox" data-idx="${idx}">
+      <span class="thumb">${p.emoji}</span>
+      <span class="label">${p.name}</span>
+      <span class="qty">${formatQty(p)}</span>
+    </label>`).join('');
+}
+
+document.getElementById('save-custom-dish-btn').addEventListener('click', ()=>{
+  const nameInput = document.getElementById('custom-dish-name');
+  const dishName = nameInput.value.trim();
+  if(!dishName){ showToast('Введите название блюда', true); return; }
+  const checked = Array.from(document.querySelectorAll('#custom-dish-ingredients input[type=checkbox]:checked'))
+    .map(cb => parseInt(cb.dataset.idx))
+    .sort((a,b)=>b-a); // remove from the end first, indices stay valid
+  checked.forEach(idx => {
+    const [removed] = fridgeData.splice(idx, 1);
+    dbDeleteItem(removed);
+  });
+  nameInput.value = '';
+  closeSheet();
+  renderFridgeList(currentCompartment);
+  updateSummary();
+  renderMissingAlert();
+  const spentMsg = checked.length ? `, списано продуктов: ${checked.length}` : '';
+  showToast(`«${dishName}» добавлено${spentMsg}`);
+});
+
+/* ===================== TOAST ===================== */
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function showToast(msg, isError=false){
+  clearTimeout(toastTimer);
+  toastEl.innerHTML = (isError ? '⚠️ ' : '✅ ') + msg + (isError ? ' <span class="retry" id="retryLink">Повторить</span>' : '');
+  toastEl.classList.add('show');
+  toastTimer = setTimeout(()=> toastEl.classList.remove('show'), 2600);
+  const retry = document.getElementById('retryLink');
+  if(retry) retry.addEventListener('click', ()=> showToast('Сохранено'));
+}
+const stepFor = {'шт':1, 'г':10, 'кг':0.1, 'мл':50, 'л':0.1};
+function adjustQtyField(numId, unitId, dir){
+  const unit = document.getElementById(unitId).value;
+  const input = document.getElementById(numId);
+  let val = parseFloat(input.value) || 0;
+  val = Math.max(0, +(val + dir*(stepFor[unit]||1)).toFixed(2));
+  input.value = val;
+}
+
+document.getElementById('edit-open-btn').addEventListener('click', ()=>{
+  if(!currentProduct) return;
+  const p = getArr(currentProduct.list)[currentProduct.idx];
+  document.getElementById('edit-name').value = p.name;
+  document.getElementById('edit-qty-num').value = p.qtyNum;
+  document.getElementById('edit-qty-unit').value = p.unit;
+  document.getElementById('edit-location').value = p.location || 'Средняя полка';
+  document.getElementById('edit-exp').value = p.expiresOn;
+  history.push('edit');
+  showScreen('edit', false);
+});
+document.getElementById('edit-qty-inc').addEventListener('click', ()=> adjustQtyField('edit-qty-num','edit-qty-unit',1));
+document.getElementById('edit-qty-dec').addEventListener('click', ()=> adjustQtyField('edit-qty-num','edit-qty-unit',-1));
+
+document.getElementById('save-edit-btn').addEventListener('click', ()=>{
+  if(!currentProduct) return;
+  const p = getArr(currentProduct.list)[currentProduct.idx];
+  p.name = document.getElementById('edit-name').value.trim() || p.name;
+  p.qtyNum = parseFloat(document.getElementById('edit-qty-num').value) || 0;
+  p.unit = document.getElementById('edit-qty-unit').value;
+  p.location = document.getElementById('edit-location').value;
+  p.expiresOn = document.getElementById('edit-exp').value || p.expiresOn;
+  dbUpdateItem(p);
+  updateSummary();
+  renderFridgeList(currentCompartment);
+  showToast('Сохранено');
+  history.pop();
+  openProduct(currentProduct.list, currentProduct.idx, {push:false});
+});
+
+document.getElementById('use-product-btn').addEventListener('click', ()=>{
+  if(!currentProduct) return;
+  const arr = getArr(currentProduct.list);
+  const [item] = arr.splice(currentProduct.idx, 1);
+  usedCount++; usedWeightKg += estimateKg(item);
+  dbDeleteItem(item);
+  dbSaveStats();
+  updateSummary();
+  renderFridgeList(currentCompartment);
+  renderMissingAlert();
+  showToast(`«${item.name}» использовано`);
+  history.pop();
+  const prev = history[history.length-1] || 'fridge';
+  showScreen(prev, false);
+});
+
+document.getElementById('toss-product-btn').addEventListener('click', ()=>{
+  if(!currentProduct) return;
+  const arr = getArr(currentProduct.list);
+  const [item] = arr.splice(currentProduct.idx, 1);
+  wastedCount++;
+  dbDeleteItem(item);
+  dbSaveStats();
+  updateSummary();
+  renderFridgeList(currentCompartment);
+  renderMissingAlert();
+  showToast(`«${item.name}» выброшено`, true);
+  history.pop();
+  const prev = history[history.length-1] || 'fridge';
+  showScreen(prev, false);
+});
+
+/* ===================== VISION (camera) ===================== */
+const stage = document.getElementById('vision-stage');
+const ctrlIdle = document.getElementById('vision-controls-idle');
+const ctrlLive = document.getElementById('vision-controls-live');
+const ctrlDenied = document.getElementById('vision-controls-denied');
+const visionResult = document.getElementById('vision-result');
+let stream = null;
+let videoEl = null;
+
+function setVisionState(state, message){
+  ctrlIdle.style.display = state==='idle' ? 'flex' : 'none';
+  ctrlLive.style.display = state==='live' ? 'flex' : 'none';
+  ctrlDenied.style.display = (state==='denied'||state==='nocamera') ? 'flex' : 'none';
+
+  if(state === 'idle'){
+    stage.innerHTML = `<div class="vision-state" id="vision-idle"><div class="ic">📷</div><h3>Доступ к камере</h3><p>Разрешите доступ к камере, чтобы распознавать продукты автоматически.</p></div>`;
+  } else if(state === 'denied'){
+    stage.innerHTML = `<div class="vision-state"><div class="ic">🚫</div><h3>Доступ к камере запрещён</h3><p>Разрешите доступ к камере в настройках браузера, либо загрузите фото из галереи.</p></div>`;
+  } else if(state === 'nocamera'){
+    stage.innerHTML = `<div class="vision-state"><div class="ic">❔</div><h3>Камера не найдена</h3><p>На этом устройстве не обнаружена камера. Загрузите фото из галереи.</p></div>`;
+  } else if(state === 'live'){
+    stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-frame"></div><div class="scan-line"></div>`;
+    videoEl = document.getElementById('vision-video');
+    videoEl.srcObject = stream;
+  } else if(state === 'scanning'){
+    stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-frame"></div><div class="scan-line"></div><div class="vision-state" style="position:absolute; bottom:0; background:linear-gradient(to top, rgba(0,0,0,0.6), transparent); width:100%; padding-top:40px"><p>Распознаём продукт…</p></div>`;
+    videoEl = document.getElementById('vision-video');
+    if(stream) videoEl.srcObject = stream;
+  }
+  visionResult.classList.remove('show');
+}
+
+async function requestCamera(){
+  setVisionState('idle');
+  stage.querySelector('.vision-state h3').textContent = 'Запрашиваем доступ…';
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    setVisionState('live');
+  }catch(err){
+    if(err.name === 'NotFoundError' || err.name === 'OverconstrainedError'){
+      setVisionState('nocamera');
+    } else {
+      setVisionState('denied');
+    }
+  }
+}
+document.getElementById('request-camera-btn').addEventListener('click', requestCamera);
+document.getElementById('retry-camera-btn').addEventListener('click', requestCamera);
+document.getElementById('stop-camera-btn').addEventListener('click', ()=>{
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  setVisionState('idle');
+});
+
+const demoRecognitions = [
+  {name:'Брокколи', emoji:'🥦', conf:94},
+  {name:'Куриное филе', emoji:'🍗', conf:91},
+  {name:'Яблоки', emoji:'🍎', conf:97},
+  {name:'Творог', emoji:'🧀', conf:88},
+  {name:'Треска (филе)', emoji:'🐟', conf:90},
+];
+
+function setDest(compartment){
+  document.getElementById('dest-fridge').classList.toggle('active', compartment !== 'freezer');
+  document.getElementById('dest-freezer').classList.toggle('active', compartment === 'freezer');
+}
+function applyCatalogEntry(entry){
+  document.getElementById('vr-thumb').textContent = entry.emoji;
+  document.getElementById('vr-qty-num').value = entry.defaultQty;
+  document.getElementById('vr-qty-unit').value = entry.unit;
+  document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, entry.shelfDays));
+  setDest(entry.compartment);
+}
+function renderSuggestions(query){
+  const box = document.getElementById('vr-suggest-list');
+  const q = query.trim().toLowerCase();
+  if(!q){ box.classList.remove('show'); box.innerHTML=''; return; }
+  const matches = productCatalog.filter(c => c.name.toLowerCase().includes(q)).slice(0,6);
+  if(!matches.length){ box.classList.remove('show'); box.innerHTML=''; return; }
+  box.innerHTML = matches.map(m => `<div class="autocomplete-item" data-name="${m.name}">${m.emoji} ${m.name}</div>`).join('');
+  box.classList.add('show');
+  box.querySelectorAll('.autocomplete-item').forEach(el=>{
+    el.addEventListener('mousedown', (ev)=>{
+      ev.preventDefault();
+      const entry = findCatalog(el.dataset.name);
+      document.getElementById('vr-name-input').value = entry.name;
+      applyCatalogEntry(entry);
+      box.classList.remove('show'); box.innerHTML='';
+    });
+  });
+}
+document.getElementById('vr-name-input').addEventListener('input', (e)=> renderSuggestions(e.target.value));
+document.getElementById('vr-name-input').addEventListener('blur', ()=> setTimeout(()=>{ document.getElementById('vr-suggest-list').classList.remove('show'); }, 150));
+document.getElementById('vr-qty-inc').addEventListener('click', ()=> adjustQtyField('vr-qty-num','vr-qty-unit',1));
+document.getElementById('vr-qty-dec').addEventListener('click', ()=> adjustQtyField('vr-qty-num','vr-qty-unit',-1));
+
+function runRecognition(){
+  setVisionState('scanning');
+  setTimeout(()=>{
+    const r = demoRecognitions[Math.floor(Math.random()*demoRecognitions.length)];
+    document.getElementById('vr-name-input').value = r.name;
+    document.getElementById('vr-conf').textContent = `Распознано с точностью ${r.conf}%`;
+    const entry = findCatalog(r.name);
+    if(entry){ applyCatalogEntry(entry); } else { document.getElementById('vr-thumb').textContent = r.emoji; document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY,5)); }
+    if(stream){ setVisionState('live'); } else { stage.innerHTML = `<div class="vision-state"><div class="ic">${r.emoji}</div><h3>${r.name}</h3></div>`; }
+    visionResult.classList.add('show');
+  }, 1100);
+}
+document.getElementById('capture-btn').addEventListener('click', runRecognition);
+document.getElementById('retake-btn').addEventListener('click', ()=>{
+  visionResult.classList.remove('show');
+  if(stream) setVisionState('live'); else setVisionState('idle');
+});
+
+document.getElementById('gallery-btn-live').addEventListener('click', ()=> document.getElementById('gallery-input').click());
+document.getElementById('upload-gallery-btn').addEventListener('click', ()=> document.getElementById('gallery-input').click());
+document.getElementById('gallery-input').addEventListener('change', (e)=>{
+  if(e.target.files && e.target.files[0]) runRecognition();
+});
+
+/* ---- manual add via checklist (no typing needed) ---- */
+function populateManualChecklist(){
+  document.getElementById('manual-checklist').innerHTML = productCatalog.map((p, idx) => `
+    <label class="ingredient-check">
+      <input type="checkbox" data-manual-idx="${idx}">
+      <span class="thumb">${p.emoji}</span>
+      <span class="label">${p.name}</span>
+    </label>`).join('');
+}
+document.getElementById('manual-add-open-btn').addEventListener('click', ()=>{
+  populateManualChecklist();
+  openSheet(manualSheet);
+});
+document.getElementById('manual-dest-fridge').addEventListener('click', ()=>{
+  document.getElementById('manual-dest-fridge').classList.add('active');
+  document.getElementById('manual-dest-freezer').classList.remove('active');
+});
+document.getElementById('manual-dest-freezer').addEventListener('click', ()=>{
+  document.getElementById('manual-dest-freezer').classList.add('active');
+  document.getElementById('manual-dest-fridge').classList.remove('active');
+});
+document.getElementById('manual-sheet-cancel').addEventListener('click', closeSheet);
+document.getElementById('manual-add-confirm-btn').addEventListener('click', ()=>{
+  const checked = Array.from(document.querySelectorAll('#manual-checklist input[type=checkbox]:checked'))
+    .map(cb => productCatalog[parseInt(cb.dataset.manualIdx)]);
+  if(checked.length === 0){ showToast('Отметьте хотя бы один продукт', true); return; }
+  const toFreezer = document.getElementById('manual-dest-freezer').classList.contains('active');
+  const target = toFreezer ? freezerData : fridgeData;
+  checked.forEach(entry => {
+    const newItem = {
+      name:entry.name, emoji:entry.emoji, qtyNum:entry.defaultQty, unit:entry.unit,
+      location: toFreezer ? 'Морозилка' : 'Средняя полка',
+      expiresOn: isoDate(addDays(TODAY, toFreezer ? Math.max(entry.shelfDays,60) : entry.shelfDays))
+    };
+    target.push(newItem);
+    dbInsertItem(newItem, toFreezer?'freezer':'fridge');
+  });
+  closeSheet();
+  renderFridgeList(currentCompartment);
+  updateSummary();
+  renderMissingAlert();
+  showToast(`Добавлено: ${checked.length} ${checked.length===1?'продукт':'продуктов'} в ${toFreezer?'морозилку':'холодильник'}`);
+});
+document.getElementById('manual-custom-add-btn').addEventListener('click', ()=>{
+  const nameInput = document.getElementById('manual-custom-name');
+  const name = nameInput.value.trim();
+  if(!name){ showToast('Введите название продукта', true); return; }
+  const toFreezer = document.getElementById('manual-dest-freezer').classList.contains('active');
+  const entry = findCatalog(name);
+  const target = toFreezer ? freezerData : fridgeData;
+  const newItem = {
+    name, emoji: entry ? entry.emoji : '📦',
+    qtyNum: entry ? entry.defaultQty : 1, unit: entry ? entry.unit : 'шт',
+    location: toFreezer ? 'Морозилка' : 'Средняя полка',
+    expiresOn: isoDate(addDays(TODAY, entry ? (toFreezer?Math.max(entry.shelfDays,60):entry.shelfDays) : (toFreezer?60:5)))
+  };
+  target.push(newItem);
+  dbInsertItem(newItem, toFreezer?'freezer':'fridge');
+  nameInput.value = '';
+  closeSheet();
+  renderFridgeList(currentCompartment);
+  updateSummary();
+  renderMissingAlert();
+  showToast(`«${name}» добавлено в ${toFreezer?'морозилку':'холодильник'}`);
+});
+
+document.getElementById('dest-fridge').addEventListener('click', ()=> setDest('fridge'));
+document.getElementById('dest-freezer').addEventListener('click', ()=> setDest('freezer'));
+document.getElementById('confirm-add-btn').addEventListener('click', ()=>{
+  const name = document.getElementById('vr-name-input').value.trim();
+  if(!name){ showToast('Введите название товара', true); return; }
+  const toFreezer = document.getElementById('dest-freezer').classList.contains('active');
+  const qtyNum = parseFloat(document.getElementById('vr-qty-num').value) || 1;
+  const unit = document.getElementById('vr-qty-unit').value;
+  const expiresOn = document.getElementById('vr-exp-date').value || isoDate(addDays(TODAY, toFreezer?90:5));
+  const entry = findCatalog(name);
+  const emoji = entry ? entry.emoji : (document.getElementById('vr-thumb').textContent || '📦');
+  const target = toFreezer ? freezerData : fridgeData;
+  const newItem = {name, emoji, qtyNum, unit, location: toFreezer?'Морозилка':'Средняя полка', expiresOn};
+  target.push(newItem);
+  dbInsertItem(newItem, toFreezer?'freezer':'fridge');
+  updateSummary();
+  renderFridgeList(currentCompartment);
+  renderSuggestRow();
+  showToast(`«${name}» добавлено в ${toFreezer?'морозилку':'холодильник'}`);
+  visionResult.classList.remove('show');
+});
+
+/* ===================== DIET TAB ===================== */
+const baseWeight = 117.5;
+function updatePortions(){
+  const w = parseFloat(document.getElementById('slider-weight').value);
+  const ratio = w / baseWeight;
+  document.getElementById('port-breakfast').textContent = Math.round(55*ratio) + ' г';
+  document.getElementById('port-lunch').textContent = Math.round(200*ratio) + ' г';
+  document.getElementById('port-dinner').textContent = Math.round(220*ratio) + ' мл';
+}
+['weight','neck','chest','belly','hips'].forEach(key=>{
+  const slider = document.getElementById('slider-'+key);
+  const val = document.getElementById('val-'+key);
+  slider.addEventListener('input', ()=>{
+    const unit = key==='weight' ? ' кг' : ' см';
+    val.textContent = parseFloat(slider.value).toFixed(1).replace('.0','') + unit;
+    if(key==='weight'){ updatePortions(); renderDay(daySelected); }
+  });
+});
+
+// масштабирует числовые "г"/"мл" количества пропорционально текущему весу; остальное (шт, ч.л., ст.л.) не трогает
+function scaleQty(qty, ratio){
+  const m = qty.match(/^(\d+(\.\d+)?)\s*(г|мл)$/);
+  if(!m) return qty;
+  return Math.round(parseFloat(m[1]) * ratio) + ' ' + m[3];
+}
+
+function ingredientsHtml(items, ratio){
+  if(!items || !items.length) return '';
+  const lis = items.map(i => `<li><span class="iname">${i.name}</span><span class="iqty">${scaleQty(i.qty, ratio)}</span></li>`).join('');
+  return `<div class="meal-ingredients"><ul>${lis}</ul></div>`;
+}
+
+function mealCardHtml(id, icon, eyebrow, title, desc, portionLabel, items, ratio){
+  return `
+    <div class="meal-card" id="${id}">
+      <button class="meal-card-head" data-toggle="${id}">
+        <div class="ic">${icon}</div>
+        <div class="body">
+          <div class="eyebrow">${eyebrow}</div>
+          <div class="t">${title}</div>
+          <div class="s">${desc}</div>
+          ${portionLabel ? `<span class="portion">${portionLabel}</span>` : ''}
+        </div>
+        <div class="chevron">▾</div>
+      </button>
+      ${ingredientsHtml(items, ratio)}
+    </div>`;
+}
+
+let daySelected = 1;
+function renderDay(d){
+  const day = dietDays.find(x=>x.d===d);
+  const ratio = parseFloat(document.getElementById('slider-weight').value) / baseWeight;
+  const container = document.getElementById('meals-container');
+  const openIds = Array.from(container.querySelectorAll('.meal-card.open')).map(el => el.id);
+  if(day.d === 7){
+    container.innerHTML = mealCardHtml('meal-fast','♻️','Разгрузочный день', day.breakfastT, day.breakfastS, '', day.breakfastItems, ratio);
+  } else {
+    container.innerHTML =
+      mealCardHtml('meal-b','🍳','Завтрак', day.breakfastT, day.breakfastS, '', day.breakfastItems, ratio) +
+      mealCardHtml('meal-l','🍽️','Обед', day.lunchT, day.lunchS, Math.round(day.lunchBase*ratio)+' г белка', day.lunchItems, ratio) +
+      mealCardHtml('meal-d','🥗','Ужин', day.dinnerT, day.dinnerS, Math.round(day.dinnerBase*ratio)+' мл салата', day.dinnerItems, ratio);
+  }
+  openIds.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('open'); });
+  container.querySelectorAll('[data-toggle]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.getElementById(btn.dataset.toggle).classList.toggle('open');
+    });
+  });
+}
+
+/* ===================== WEEKLY MISSING-INGREDIENTS ALERT ===================== */
+function renderMissingAlert(){
+  const inventoryNames = fridgeData.concat(freezerData).map(i => i.name.toLowerCase());
+  const missing = weeklyRequiredItems.filter(req => !inventoryNames.some(n => n.includes(req.keyword)));
+  const titleEl = document.getElementById('missing-title');
+  const subEl = document.getElementById('missing-sub');
+  const listEl = document.getElementById('missing-list');
+  const alertCard = document.getElementById('missing-alert');
+
+  if(missing.length === 0){
+    alertCard.style.background = 'var(--fresh-soft)';
+    titleEl.textContent = 'Всё нужное на неделю есть';
+    titleEl.style.color = 'var(--fresh)';
+    subEl.textContent = 'Холодильник и морозилка покрывают программу на 6 дней + разгрузочный день';
+    listEl.innerHTML = '';
+    return;
+  }
+  alertCard.style.background = '#FBEAEA';
+  titleEl.style.color = 'var(--danger)';
+  titleEl.textContent = `Не хватает ${missing.length} ${missing.length===1?'продукта':'продуктов'} на неделю`;
+  subEl.textContent = 'Сверено с холодильником и морозилкой по программе на 7 дней';
+  listEl.innerHTML = missing.map(m => `
+    <div class="missing-item">
+      <div><div class="n">${m.name}</div><div class="f">нужно на: ${m.forText}</div></div>
+      <button data-add-shopping="${m.name}">В покупки</button>
+    </div>`).join('');
+  listEl.querySelectorAll('[data-add-shopping]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const name = btn.dataset.addShopping;
+      const already = cartData.some(c => c.name === name);
+      if(!already){
+        const entry = findCatalog(name);
+        const newCartItem = {name, emoji:'🛒', qtyNum: entry?entry.defaultQty:1, unit: entry?entry.unit:'шт', note:'нужно докупить'};
+        cartData.push(newCartItem);
+        dbInsertCart(newCartItem);
+        renderCart();
+      }
+      showToast(already ? `«${name}» уже в корзине` : `«${name}» добавлено в корзину`);
+    });
+  });
+}
+
+/* ===================== CART ===================== */
+function renderCart(){
+  const list = document.getElementById('cart-list');
+  const empty = document.getElementById('cart-empty');
+  document.getElementById('cart-count').textContent = cartData.length;
+  if(cartData.length === 0){
+    list.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    list.innerHTML = cartData.map((p, idx) => `
+      <div class="product-row">
+        <div class="product-thumb">${p.emoji}</div>
+        <div class="product-info"><div class="n">${p.name}</div><div class="q">${formatQty(p)}</div></div>
+        <button data-bought="${idx}" style="min-height:36px; padding:0 12px; border-radius:999px; background:var(--fresh); color:#fff; border:none; font-size:11.5px; font-weight:700; font-family:'Inter',sans-serif; flex-shrink:0;">Куплено</button>
+      </div>`).join('');
+    list.querySelectorAll('[data-bought]').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.bought);
+        const item = cartData[idx];
+        cartData.splice(idx, 1);
+        dbDeleteCart(item);
+        const entry = findCatalog(item.name);
+        const toFreezer = entry ? entry.compartment === 'freezer' : false;
+        const shelfDays = entry ? entry.shelfDays : 5;
+        const target = toFreezer ? freezerData : fridgeData;
+        const newItem = {
+          name:item.name, emoji: item.emoji==='🛒' ? (entry?entry.emoji:'📦') : item.emoji,
+          qtyNum:item.qtyNum||1, unit:item.unit||'шт',
+          location: toFreezer?'Морозилка':'Средняя полка',
+          expiresOn: isoDate(addDays(TODAY, shelfDays))
+        };
+        target.push(newItem);
+        dbInsertItem(newItem, toFreezer?'freezer':'fridge');
+        renderCart();
+        updateSummary();
+        renderFridgeList(currentCompartment);
+        renderSuggestRow();
+        showToast(`«${item.name}» куплено и добавлено в ${toFreezer?'морозилку':'холодильник'}`);
+      });
+    });
+  }
+  updateCartBadge();
+}
+function updateCartBadge(){
+  const badge = document.getElementById('cart-badge');
+  if(cartData.length > 0){ badge.style.display='flex'; badge.textContent = cartData.length; }
+  else { badge.style.display='none'; }
+}
+document.getElementById('day-pills').innerHTML = dietDays.map(day => `<button class="day-pill ${day.d===1?'active':''}" data-day="${day.d}">День ${day.d}${day.d===7?' 🔄':''}</button>`).join('');
+document.querySelectorAll('.day-pill').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.day-pill').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    daySelected = parseInt(btn.dataset.day);
+    renderDay(daySelected);
+  });
+});
+renderDay(1);
+updatePortions();
+renderMissingAlert();
+renderCart();
+
+/* ===================== DIET TIPS (человек / ИИ) ===================== */
+let tipIdx = 0;
+function renderTip(){
+  const t = tips[tipIdx];
+  document.getElementById('tip-text').textContent = t.text;
+  document.getElementById('tip-who').textContent = t.source === 'ai' ? 'Подсказано ИИ' : 'Подсказано человеком';
+}
+function showRandomTip(){
+  let next;
+  do { next = Math.floor(Math.random()*tips.length); } while(tips.length>1 && next===tipIdx);
+  tipIdx = next;
+  renderTip();
+}
+showRandomTip();
+document.getElementById('tip-close-btn').addEventListener('click', showRandomTip);
+
+/* ===================== MEASUREMENT REMINDER ===================== */
+let daysUntilMeasurement = 5;
+function renderReminder(){
+  document.getElementById('reminder-title').textContent = daysUntilMeasurement <= 0
+    ? 'Пора сделать замеры сегодня'
+    : `Замер объёмов через ${daysUntilMeasurement} ${daysUntilMeasurement===1?'день':'дня'}`;
+}
+document.getElementById('mark-measured-btn').addEventListener('click', ()=>{
+  daysUntilMeasurement = 14;
+  renderReminder();
+  showToast('Замеры отмечены. Следующее напоминание через 14 дней');
+});
+renderReminder();
+
+/* ===================== MEASUREMENT HISTORY ===================== */
+document.getElementById('toggle-measurements-btn').addEventListener('click', ()=>{
+  const box = document.getElementById('extra-measurements');
+  const isOpen = box.style.display !== 'none';
+  box.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('toggle-measurements-btn').textContent = isOpen
+    ? '+ Добавить замеры за сегодня (шея, грудь, живот, бёдра)'
+    : '− Скрыть замеры';
+});
+document.getElementById('save-measurement-btn').addEventListener('click', ()=>{
+  const entry = {
+    date: isoDate(TODAY),
+    weight: parseFloat(document.getElementById('slider-weight').value),
+    neck: parseFloat(document.getElementById('slider-neck').value),
+    chest: parseFloat(document.getElementById('slider-chest').value),
+    belly: parseFloat(document.getElementById('slider-belly').value),
+    hips: parseFloat(document.getElementById('slider-hips').value),
+  };
+  const existingIdx = measurementHistory.findIndex(m => m.date === entry.date);
+  if(existingIdx >= 0) measurementHistory[existingIdx] = entry; else measurementHistory.push(entry);
+  dbSaveMeasurement(entry);
+  showToast('Замеры за сегодня сохранены');
+});
+function renderHistory(){
+  const sorted = [...measurementHistory].sort((a,b)=> b.date.localeCompare(a.date));
+  document.getElementById('history-list').innerHTML = sorted.length ? sorted.map(m => `
+    <div class="history-row">
+      <div class="d">${formatRuDate(m.date)}</div>
+      <div class="grid">
+        <div><div class="v">${m.weight}</div><div class="l">кг</div></div>
+        <div><div class="v">${m.neck}</div><div class="l">шея</div></div>
+        <div><div class="v">${m.chest}</div><div class="l">грудь</div></div>
+        <div><div class="v">${m.belly}</div><div class="l">живот</div></div>
+        <div><div class="v">${m.hips}</div><div class="l">бёдра</div></div>
+      </div>
+    </div>`).join('') : `<div style="font-size:12.5px; color:var(--muted)">Замеров пока нет</div>`;
+}
+document.getElementById('open-history-btn').addEventListener('click', ()=>{
+  renderHistory();
+  history.push('measure-history');
+  showScreen('measure-history', false);
+});
+
+showScreen('home', false);
+
+/* ===================== SUPABASE DATA SYNC ===================== */
+function toDbRow(p){
+  return {name:p.name, emoji:p.emoji, qty_num:p.qtyNum, unit:p.unit, location:p.location||null, expires_on:p.expiresOn||null};
+}
+async function dbInsertItem(item, compartment){
+  if(!currentUserId) return;
+  const { data, error } = await sb.from('fridge_items').insert({...toDbRow(item), compartment, user_id: currentUserId}).select().single();
+  if(!error && data) item._id = data.id;
+}
+async function dbUpdateItem(item){
+  if(!currentUserId || !item._id) return;
+  await sb.from('fridge_items').update(toDbRow(item)).eq('id', item._id);
+}
+async function dbDeleteItem(item){
+  if(!currentUserId || !item._id) return;
+  await sb.from('fridge_items').delete().eq('id', item._id);
+}
+async function dbInsertCart(item){
+  if(!currentUserId) return;
+  const { data, error } = await sb.from('cart_items').insert({name:item.name, emoji:item.emoji, qty_num:item.qtyNum, unit:item.unit, note:item.note||null, user_id: currentUserId}).select().single();
+  if(!error && data) item._id = data.id;
+}
+async function dbDeleteCart(item){
+  if(!currentUserId || !item._id) return;
+  await sb.from('cart_items').delete().eq('id', item._id);
+}
+async function dbSaveStats(){
+  if(!currentUserId) return;
+  await sb.from('food_stats').upsert({user_id: currentUserId, used_count: usedCount, used_weight_kg: usedWeightKg, wasted_count: wastedCount});
+}
+async function dbSaveMeasurement(entry){
+  if(!currentUserId) return;
+  await sb.from('measurement_logs').upsert(
+    {user_id: currentUserId, log_date: entry.date, weight: entry.weight, neck: entry.neck, chest: entry.chest, belly: entry.belly, hips: entry.hips},
+    {onConflict:'user_id,log_date'}
+  );
+}
+
+async function seedInitialData(userId){
+  const rows = [
+    ...fridgeData.map(p => ({...toDbRow(p), compartment:'fridge', user_id:userId})),
+    ...freezerData.map(p => ({...toDbRow(p), compartment:'freezer', user_id:userId})),
+  ];
+  const { data } = await sb.from('fridge_items').insert(rows).select();
+  if(data){
+    let i=0;
+    fridgeData.forEach(p => p._id = data[i++].id);
+    freezerData.forEach(p => p._id = data[i++].id);
+  }
+  const cartRows = cartData.map(p => ({name:p.name, emoji:p.emoji, qty_num:p.qtyNum, unit:p.unit, note:p.note||null, user_id:userId}));
+  const { data: cdata } = await sb.from('cart_items').insert(cartRows).select();
+  if(cdata) cartData.forEach((p,i)=> p._id = cdata[i].id);
+
+  const measureRows = measurementHistory.map(m => ({user_id:userId, log_date:m.date, weight:m.weight, neck:m.neck, chest:m.chest, belly:m.belly, hips:m.hips}));
+  await sb.from('measurement_logs').insert(measureRows);
+
+  await sb.from('food_stats').upsert({user_id:userId, used_count:0, used_weight_kg:0, wasted_count:0});
+}
+
+async function loadUserData(){
+  const { data: { user } } = await sb.auth.getUser();
+  if(!user) return;
+  currentUserId = user.id;
+
+  const [fridgeRes, cartRes, measureRes, statsRes] = await Promise.all([
+    sb.from('fridge_items').select('*').eq('user_id', user.id).order('created_at'),
+    sb.from('cart_items').select('*').eq('user_id', user.id).order('created_at'),
+    sb.from('measurement_logs').select('*').eq('user_id', user.id).order('log_date'),
+    sb.from('food_stats').select('*').eq('user_id', user.id).maybeSingle()
+  ]);
+
+  const hasAnyFridgeRows = !fridgeRes.error && fridgeRes.data && fridgeRes.data.length > 0;
+  if(hasAnyFridgeRows){
+    fridgeData.length = 0; freezerData.length = 0;
+    fridgeRes.data.forEach(r => {
+      const item = {name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, location:r.location, expiresOn:r.expires_on, _id:r.id};
+      (r.compartment === 'freezer' ? freezerData : fridgeData).push(item);
+    });
+    if(!cartRes.error && cartRes.data){
+      cartData.length = 0;
+      cartRes.data.forEach(r => cartData.push({name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, note:r.note, _id:r.id}));
+    }
+    if(!measureRes.error && measureRes.data && measureRes.data.length){
+      measurementHistory = measureRes.data.map(r => ({date:r.log_date, weight:Number(r.weight), neck:Number(r.neck), chest:Number(r.chest), belly:Number(r.belly), hips:Number(r.hips)}));
+    }
+    if(!statsRes.error && statsRes.data){
+      usedCount = statsRes.data.used_count; usedWeightKg = Number(statsRes.data.used_weight_kg); wastedCount = statsRes.data.wasted_count;
+    }
+  } else if(!fridgeRes.error) {
+    // первый вход этого аккаунта — переносим стартовые демо-данные в Supabase
+    await seedInitialData(user.id);
+  }
+
+  renderFridgeList(currentCompartment);
+  updateSummary();
+  renderCart();
+  renderMissingAlert();
+  renderSuggestRow();
+  renderRecipesList();
+}
+
+/* ===================== LOGIN GATE (Supabase Auth) ===================== */
+(function(){
+  const loginScreen = document.getElementById('login-screen');
+  const loginForm = document.getElementById('login-form');
+  const loginError = document.getElementById('login-error');
+  const userInput = document.getElementById('login-username');
+  const passInput = document.getElementById('login-password');
+  const submitBtn = loginForm.querySelector('button[type=submit]');
+
+  async function enterApp(){
+    loginScreen.style.display = 'none';
+    await loadUserData();
+  }
+
+  sb.auth.getSession().then(({data})=>{
+    if(data && data.session) enterApp();
+  });
+
+  loginForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const email = usernameToEmail(userInput.value);
+    const password = passInput.value;
+    submitBtn.disabled = true; submitBtn.textContent = 'Входим…';
+    loginError.classList.remove('show');
+    let { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){
+      const signUp = await sb.auth.signUp({ email, password });
+      if(signUp.error || !signUp.data.session){
+        loginError.textContent = signUp.error ? ('Не удалось войти: ' + signUp.error.message) : 'Требуется подтверждение почты — отключите его в настройках Supabase Auth.';
+        loginError.classList.add('show');
+        submitBtn.disabled = false; submitBtn.textContent = 'Войти';
+        return;
+      }
+    }
+    submitBtn.disabled = false; submitBtn.textContent = 'Войти';
+    await enterApp();
+  });
+})();
+</script>
+</body>
+</html>
