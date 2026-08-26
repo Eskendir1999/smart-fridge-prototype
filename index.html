@@ -645,9 +645,9 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         <div class="k">Программа снижения веса · 2-й месяц</div>
         <div class="big">117,5 кг → 74 кг</div>
         <div class="row">
-          <div class="item"><div class="n">39,3</div><div class="l">ИМТ</div></div>
-          <div class="item"><div class="n">2130</div><div class="l">ккал/день</div></div>
-          <div class="item"><div class="n">−8,5 кг</div><div class="l">за месяц</div></div>
+          <div class="item"><div class="n" id="hero-imt">39,3</div><div class="l">ИМТ</div></div>
+          <div class="item"><div class="n" id="hero-kcal">2130</div><div class="l">ккал/день</div></div>
+          <div class="item"><div class="n" id="hero-lost">−8,5 кг</div><div class="l">с начала программы</div></div>
         </div>
       </div>
 
@@ -1566,13 +1566,28 @@ document.getElementById('edit-qty-dec').addEventListener('click', ()=> adjustQty
 
 document.getElementById('save-edit-btn').addEventListener('click', ()=>{
   if(!currentProduct) return;
-  const p = getArr(currentProduct.list)[currentProduct.idx];
+  const arr = getArr(currentProduct.list);
+  const p = arr[currentProduct.idx];
   p.name = document.getElementById('edit-name').value.trim() || p.name;
   p.qtyNum = parseFloat(document.getElementById('edit-qty-num').value) || 0;
   p.unit = document.getElementById('edit-qty-unit').value;
   p.location = document.getElementById('edit-location').value;
   p.expiresOn = document.getElementById('edit-exp').value || p.expiresOn;
-  dbUpdateItem(p);
+
+  // "Морозилка" как место хранения означает реальный переезд в другую вкладку/compartment,
+  // а не просто текстовую метку — иначе карточка товара показывала бы противоречивое
+  // "Холодильник · Морозилка" одновременно.
+  const newCompartment = p.location === 'Морозилка' ? 'freezer' : 'fridge';
+  if(newCompartment !== currentProduct.list){
+    arr.splice(currentProduct.idx, 1);
+    const targetArr = getArr(newCompartment);
+    targetArr.push(p);
+    dbUpdateItem(p, newCompartment);
+    currentProduct = {list:newCompartment, idx: targetArr.length-1};
+  } else {
+    dbUpdateItem(p);
+  }
+
   updateSummary();
   renderFridgeList(currentCompartment);
   showToast('Сохранено');
@@ -1758,7 +1773,11 @@ async function runRecognition(imgEl){
     }
     if(mapped){
       const entry = findCatalog(mapped.name);
-      showRecognitionResult(entry.name, entry.emoji, `Распознано моделью с точностью ${Math.round(mapped.pred.probability*100)}%`, entry);
+      const pct = Math.round(mapped.pred.probability*100);
+      const confText = pct >= 50
+        ? `Распознано моделью с точностью ${pct}%`
+        : `Похоже на «${entry.name}», но уверенность всего ${pct}% — проверьте перед добавлением`;
+      showRecognitionResult(entry.name, entry.emoji, confText, entry);
     } else if(top){
       showRecognitionResult(top.className, '📷', `Похоже на «${top.className}» (${Math.round(top.probability*100)}%) — это не из нашего каталога, уточните название`, null);
     } else {
@@ -1836,7 +1855,14 @@ async function onBarcodeDetected(code){
     history.pop();
     showScreen('vision', false);
     visionResult.classList.add('show');
-    if(data.status === 1 && data.product){
+    if(res.status === 400){
+      document.getElementById('vr-name-input').value = '';
+      document.getElementById('vr-conf').textContent = `Штрихкод «${code}» не похож на настоящий (нужно 6-14 цифр) — впишите название сами`;
+      document.getElementById('vr-thumb').textContent = '📦';
+      document.getElementById('vr-qty-num').value = 1;
+      document.getElementById('vr-qty-unit').value = 'шт';
+      document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, 5));
+    } else if(data.status === 1 && data.product){
       const p = data.product;
       const name = p.product_name_ru || p.product_name || `Товар ${code}`;
       const photo = p.image_front_url || p.image_url || null;
@@ -1962,6 +1988,11 @@ document.getElementById('confirm-add-btn').addEventListener('click', ()=>{
 
 /* ===================== DIET TAB ===================== */
 const baseWeight = 117.5;
+const startWeight = 117.5; // вес на старте программы — фиксированная точка отсчёта
+const baseImt = 39.3; // ИМТ на старте — используется, чтобы вывести рост и держать ИМТ согласованным с весом
+const heightM = Math.sqrt(startWeight / baseImt);
+const baseKcal = 2130; // дневная норма ккал на старте — масштабируется вместе с весом, как и порции
+
 function updatePortions(){
   const w = parseFloat(document.getElementById('slider-weight').value);
   const ratio = w / baseWeight;
@@ -1969,15 +2000,26 @@ function updatePortions(){
   document.getElementById('port-lunch').textContent = Math.round(200*ratio) + ' г';
   document.getElementById('port-dinner').textContent = Math.round(220*ratio) + ' мл';
 }
+function updateDietHero(){
+  const w = parseFloat(document.getElementById('slider-weight').value);
+  const imt = w / (heightM*heightM);
+  const kcal = Math.round(baseKcal * (w/startWeight));
+  const lost = startWeight - w;
+  document.getElementById('hero-imt').textContent = imt.toFixed(1).replace('.', ',');
+  document.getElementById('hero-kcal').textContent = kcal;
+  const lostSign = lost > 0 ? '−' : lost < 0 ? '+' : '';
+  document.getElementById('hero-lost').textContent = lostSign + Math.abs(lost).toFixed(1).replace('.0','').replace('.', ',') + ' кг';
+}
 ['weight','neck','chest','belly','hips'].forEach(key=>{
   const slider = document.getElementById('slider-'+key);
   const val = document.getElementById('val-'+key);
   slider.addEventListener('input', ()=>{
     const unit = key==='weight' ? ' кг' : ' см';
     val.textContent = parseFloat(slider.value).toFixed(1).replace('.0','') + unit;
-    if(key==='weight'){ updatePortions(); renderDay(daySelected); }
+    if(key==='weight'){ updatePortions(); updateDietHero(); renderDay(daySelected); }
   });
 });
+updateDietHero();
 
 // масштабирует числовые "г"/"мл" количества пропорционально текущему весу; остальное (шт, ч.л., ст.л.) не трогает
 function scaleQty(qty, ratio){
@@ -2221,9 +2263,11 @@ async function dbInsertItem(item, compartment){
   const { data, error } = await sb.from('fridge_items').insert({...toDbRow(item), compartment, user_id: currentUserId}).select().single();
   if(!error && data) item._id = data.id;
 }
-async function dbUpdateItem(item){
+async function dbUpdateItem(item, compartment){
   if(!currentUserId || !item._id) return;
-  await sb.from('fridge_items').update(toDbRow(item)).eq('id', item._id);
+  const payload = toDbRow(item);
+  if(compartment) payload.compartment = compartment;
+  await sb.from('fridge_items').update(payload).eq('id', item._id);
 }
 async function dbDeleteItem(item){
   if(!currentUserId || !item._id) return;
