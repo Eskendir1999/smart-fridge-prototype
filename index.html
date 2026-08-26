@@ -859,8 +859,17 @@ let currentUserId = null;
 /* ===================== DATE HELPERS ===================== */
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 function addDays(base, days){ const d = new Date(base); d.setDate(d.getDate()+days); return d; }
-function isoDate(d){ return d.toISOString().slice(0,10); }
-function daysUntil(dateStr){ if(!dateStr) return 999; const d = new Date(dateStr); d.setHours(0,0,0,0); return Math.round((d-TODAY)/86400000); }
+function isoDate(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function parseLocalDate(dateStr){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function daysUntil(dateStr){ if(!dateStr) return 999; const d = parseLocalDate(dateStr); return Math.round((d-TODAY)/86400000); }
 function expiryLabel(days){
   if(days <= 0) return 'истёк срок';
   if(days === 1) return '1 день';
