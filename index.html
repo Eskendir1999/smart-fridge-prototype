@@ -51,7 +51,7 @@
 *{box-sizing:border-box; margin:0; padding:0;}
 html,body{ height:100%; }
 body{ font-family:'Inter', sans-serif; background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; overscroll-behavior-y:none; }
-h1,h2,h3,.display{ font-family:'Fraunces', serif; }
+h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-height:1.12; }
 
 #app{ min-height:100dvh; display:flex; flex-direction:column; max-width:1400px; margin:0 auto; position:relative; background:var(--bg); }
 
@@ -73,7 +73,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
 .section-head .link{ font-size:13px; color:var(--fresh); font-weight:600; background:none; border:none; font-family:'Inter',sans-serif; }
 
 .summary-card{ background:linear-gradient(135deg,#EFF7F1,#F7F2E8); border-radius:var(--radius-lg); padding:20px; display:flex; gap:16px; align-items:center; box-shadow:var(--shadow); }
-.summary-card .num{ font-family:'Fraunces',serif; font-size:34px; font-weight:600; color:var(--fresh); line-height:1; }
+.summary-card .num{ font-family:'Fraunces',serif; font-size:34px; font-weight:600; color:var(--fresh); line-height:1; letter-spacing:-0.02em; }
 .summary-card .label{ font-size:13px; color:var(--ink-soft); margin-top:4px; }
 .summary-divider{ width:1px; align-self:stretch; background:var(--line); }
 
@@ -135,9 +135,11 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
 
 .sheet-overlay{ position:fixed; inset:0; background:rgba(20,24,20,0.4); opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:90; }
 .sheet-overlay.open{ opacity:1; pointer-events:auto; }
-.sheet{ position:fixed; left:0; right:0; bottom:0; background:var(--surface); border-radius:24px 24px 0 0; padding: 10px 20px calc(20px + var(--safe-b)) 20px; transform:translateY(105%); transition:transform .28s cubic-bezier(.32,.72,0,1); z-index:95; max-width:560px; margin:0 auto; box-shadow: 0 -8px 30px rgba(0,0,0,0.15); pointer-events:none; }
+.sheet{ position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,0.86); -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%); border-radius:24px 24px 0 0; padding: 10px 20px calc(20px + var(--safe-b)) 20px; transform:translateY(105%); transition:transform .28s cubic-bezier(.32,.72,0,1); z-index:95; max-width:560px; margin:0 auto; box-shadow: 0 -8px 30px rgba(0,0,0,0.15); pointer-events:none; }
 .sheet.open{ transform:translateY(0); pointer-events:auto; }
-.sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:2px; margin:6px auto 14px auto; }
+.sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:2px; margin:6px auto 14px auto; position:relative; touch-action:none; cursor:grab; }
+.sheet-handle::before{ content:''; position:absolute; left:50%; top:50%; width:64px; height:36px; transform:translate(-50%,-50%); }
+.sheet-handle:active{ cursor:grabbing; }
 .sheet h3{ font-size:17px; font-weight:600; margin-bottom:14px; }
 .sheet-option{ display:flex; align-items:center; gap:14px; min-height:56px; width:100%; background:none; border:none; border-top:1px solid var(--line); text-align:left; font-size:15px; font-weight:600; color:var(--ink); font-family:'Inter',sans-serif; }
 .sheet-option:first-of-type{ border-top:none; }
@@ -205,7 +207,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
 /* ===== Diet tab ===== */
 .diet-hero{ margin:6px 20px 18px 20px; background:linear-gradient(135deg,#1F2A24,#2E3E33); border-radius:var(--radius-lg); padding:20px; color:#fff; box-shadow:var(--shadow); }
 .diet-hero .k{ font-size:12px; color:#A9C2AE; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
-.diet-hero .big{ font-family:'Fraunces',serif; font-size:30px; font-weight:600; margin:4px 0 10px 0; }
+.diet-hero .big{ font-family:'Fraunces',serif; font-size:30px; font-weight:600; margin:4px 0 10px 0; letter-spacing:-0.02em; line-height:1.08; }
 .diet-hero .row{ display:flex; gap:18px; }
 .diet-hero .row .item .n{ font-size:15px; font-weight:600; }
 .diet-hero .row .item .l{ font-size:11px; color:#A9C2AE; }
@@ -306,7 +308,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
 .history-row .grid .l{ font-size:9.5px; color:var(--muted); margin-top:2px; }
 
 /* ===== Bottom nav ===== */
-.bottom-nav{ position:fixed; left:0; right:0; bottom:0; background:rgba(251,247,242,0.92); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; padding: 10px calc(6px + var(--safe-l)) calc(10px + var(--safe-b)) calc(6px + var(--safe-r)); z-index:50; max-width:1400px; margin:0 auto; }
+.bottom-nav{ position:fixed; left:0; right:0; bottom:0; background:rgba(251,247,242,0.92); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; padding: 10px calc(6px + var(--safe-l)) calc(10px + var(--safe-b)) calc(6px + var(--safe-r)); z-index:50; max-width:1400px; margin:0 auto; }
 .nav-item{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; min-height:44px; background:none; border:none; color:var(--muted); font-family:'Inter',sans-serif; font-size:10px; font-weight:600; }
 .nav-item .ic{ font-size:20px; }
 .nav-item.active{ color:var(--fresh); }
@@ -354,6 +356,35 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; }
 .login-error{ font-size:12.5px; color:var(--danger); background:#FBEAEA; border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:14px; display:none; text-align:center; }
 .login-error.show{ display:block; }
 .login-submit{ margin-top:6px; }
+
+/* ===== Press feedback: respond on down, not on release ===== */
+.primary-btn, .secondary-btn, .ghost-btn, .dest-btn, .qty-btn, .sheet-option, .sheet-cancel,
+.day-pill, .chip, .product-row, .expire-card, .suggest-card, .recipe-card,
+.nav-item, .side-item, .meal-card-head, .autocomplete-item, .missing-item button,
+.back-btn, .avatar[data-nav]{
+  transition: transform 100ms ease-out;
+}
+.primary-btn:active, .secondary-btn:active, .ghost-btn:active, .dest-btn:active, .qty-btn:active,
+.sheet-option:active, .sheet-cancel:active, .day-pill:active, .chip:active, .product-row:active,
+.expire-card:active, .suggest-card:active, .recipe-card:active, .nav-item:active, .side-item:active,
+.meal-card-head:active, .autocomplete-item:active, .missing-item button:active, .back-btn:active,
+.avatar[data-nav]:active{
+  transform: scale(0.97);
+}
+
+/* ===== Reduced motion / transparency ===== */
+@media (prefers-reduced-motion: reduce){
+  .sheet{ transition: opacity 200ms ease !important; transform: none !important; opacity: 0; }
+  .sheet.open{ opacity: 1; }
+  .sheet-overlay{ transition: opacity 150ms ease; }
+  .scan-line{ animation: none !important; }
+  .skeleton{ animation: none !important; }
+  *{ scroll-behavior: auto !important; }
+}
+@media (prefers-reduced-transparency: reduce){
+  .bottom-nav{ background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .sheet{ background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
 </style>
 </head>
 <body>
@@ -1269,21 +1300,154 @@ function openRecipe(id){
   showScreen('recipe-detail', false);
 }
 
-/* ===================== SHEETS ===================== */
+/* ===================== MOTION: springs, rubber-band, momentum projection ===================== */
+function prefersReducedMotion(){ return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+function rubberband(overshoot, dimension, constant=0.55){
+  const sign = overshoot < 0 ? -1 : 1;
+  const o = Math.abs(overshoot);
+  return sign * (o*dimension*constant) / (dimension + constant*o);
+}
+function projectMomentum(velocity, decelerationRate=0.998){
+  return (velocity/1000) * decelerationRate / (1-decelerationRate);
+}
+// Damping ratio 1.0 = critically damped (no overshoot); <1.0 = bounce. Response = characteristic settle time (s).
+function animateSpring({from, velocity=0, to, dampingRatio=1, response=0.4, onUpdate, onComplete}){
+  const w0 = 2*Math.PI/response;
+  const stiffness = w0*w0;
+  const dampingCoef = 2*dampingRatio*w0;
+  let pos = from, vel = velocity, cancelled = false, raf = null, lastT = null;
+  function step(now){
+    if(cancelled) return;
+    if(lastT === null) lastT = now;
+    const dt = Math.min((now-lastT)/1000, 1/30);
+    lastT = now;
+    const accel = -stiffness*(pos-to) - dampingCoef*vel;
+    vel += accel*dt;
+    pos += vel*dt;
+    if(Math.abs(pos-to) < 0.5 && Math.abs(vel) < 30){
+      onUpdate(to, 0);
+      if(onComplete) onComplete();
+      return;
+    }
+    onUpdate(pos, vel);
+    raf = requestAnimationFrame(step);
+  }
+  raf = requestAnimationFrame(step);
+  return { cancel(){ cancelled = true; if(raf) cancelAnimationFrame(raf); } };
+}
+
+/* ===================== SHEETS (spring-driven, draggable, interruptible) ===================== */
 const overlay = document.getElementById('sheet-overlay');
 const addSheet = document.getElementById('add-sheet');
 const mealSheet = document.getElementById('meal-sheet');
 const manualSheet = document.getElementById('manual-sheet');
 const allSheets = [addSheet, mealSheet, manualSheet];
+const sheetSprings = new Map();
+
+function isMobileSheet(){ return !window.matchMedia('(min-width:768px)').matches; }
+function currentSheetY(sheetEl){
+  const t = getComputedStyle(sheetEl).transform;
+  if(t === 'none') return 0;
+  return new DOMMatrixReadOnly(t).m42;
+}
+function cancelSheetSpring(sheetEl){
+  const s = sheetSprings.get(sheetEl);
+  if(s){ s.cancel(); sheetSprings.delete(sheetEl); }
+}
+function springSheetTo(sheetEl, target, opts={}){
+  cancelSheetSpring(sheetEl);
+  const from = opts.from != null ? opts.from : currentSheetY(sheetEl);
+  sheetEl.style.transition = 'none';
+  const ctrl = animateSpring({
+    from, velocity: opts.velocity||0, to: target,
+    dampingRatio: opts.dampingRatio!=null ? opts.dampingRatio : 1,
+    response: opts.response || 0.35,
+    onUpdate:(y)=>{ sheetEl.style.transform = `translateY(${y}px)`; },
+    onComplete:()=>{
+      sheetSprings.delete(sheetEl);
+      if(target === 0){
+        sheetEl.classList.add('open');
+      } else {
+        sheetEl.classList.remove('open');
+        sheetEl.style.transform = '';
+        sheetEl.style.transition = '';
+      }
+      if(opts.onComplete) opts.onComplete();
+    }
+  });
+  sheetSprings.set(sheetEl, ctrl);
+}
 
 function openSheet(sheetEl){
   overlay.classList.add('open');
-  allSheets.forEach(s => s.classList.toggle('open', s === sheetEl));
+  allSheets.forEach(s => { if(s !== sheetEl){ cancelSheetSpring(s); s.style.transform=''; s.style.transition=''; s.classList.remove('open'); } });
+  if(isMobileSheet() && !prefersReducedMotion()){
+    const h = sheetEl.offsetHeight || 400;
+    springSheetTo(sheetEl, 0, { from: h+40, dampingRatio:0.86, response:0.32 });
+  } else {
+    sheetEl.classList.add('open');
+  }
 }
 function closeSheet(){
   overlay.classList.remove('open');
-  allSheets.forEach(s => s.classList.remove('open'));
+  allSheets.forEach(s => {
+    if(!s.classList.contains('open') && !sheetSprings.has(s)) return;
+    if(isMobileSheet() && !prefersReducedMotion()){
+      const h = s.offsetHeight || 400;
+      springSheetTo(s, h+40, { dampingRatio:1, response:0.32 });
+    } else {
+      cancelSheetSpring(s);
+      s.classList.remove('open');
+    }
+  });
 }
+
+/* ---- drag-to-dismiss on the handle: 1:1 tracking, rubber-band, velocity handoff ---- */
+function makeSheetDraggable(sheetEl){
+  const handle = sheetEl.querySelector('.sheet-handle');
+  if(!handle) return;
+  let dragging = false, startClientY = 0, startY = 0, hist = [];
+  handle.addEventListener('pointerdown', (e)=>{
+    if(!isMobileSheet() || !sheetEl.classList.contains('open')) return;
+    handle.setPointerCapture(e.pointerId);
+    cancelSheetSpring(sheetEl);
+    dragging = true;
+    startClientY = e.clientY;
+    startY = currentSheetY(sheetEl);
+    sheetEl.style.transition = 'none';
+    hist = [{t:performance.now(), y:e.clientY}];
+  });
+  handle.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    let delta = e.clientY - startClientY;
+    if(delta < 0) delta = rubberband(delta, 140, 0.55); // resist dragging past fully-open
+    const y = Math.max(0, startY + delta);
+    sheetEl.style.transform = `translateY(${y}px)`;
+    hist.push({t:performance.now(), y:e.clientY});
+    if(hist.length > 6) hist.shift();
+  });
+  function endDrag(e){
+    if(!dragging) return;
+    dragging = false;
+    const last = hist[hist.length-1] || {t:performance.now(), y:e.clientY};
+    const first = hist[0] || last;
+    const dt = (last.t-first.t)/1000;
+    const velocity = dt > 0.001 ? (last.y-first.y)/dt : 0;
+    const y = currentSheetY(sheetEl);
+    const h = sheetEl.offsetHeight || 400;
+    const projected = y + projectMomentum(velocity);
+    const shouldClose = projected > h*0.32 || velocity > 600;
+    if(shouldClose){
+      overlay.classList.remove('open');
+      springSheetTo(sheetEl, h+40, { from:y, velocity, dampingRatio:1, response:0.32 });
+    } else {
+      springSheetTo(sheetEl, 0, { from:y, velocity, dampingRatio:0.86, response:0.3 });
+    }
+  }
+  handle.addEventListener('pointerup', endDrag);
+  handle.addEventListener('pointercancel', endDrag);
+}
+allSheets.forEach(makeSheetDraggable);
 fab.addEventListener('click', ()=>{
   if(fab.dataset.mode === 'meal'){
     populateCustomDishIngredients();
