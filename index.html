@@ -88,6 +88,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .ring-track{ fill:none; stroke:var(--line); stroke-width:5; }
 .ring-fill{ fill:none; stroke-width:5; stroke-linecap:round; transition:stroke-dashoffset .6s ease; }
 .ring-emoji{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.25rem; }
+.ring-emoji img{ width:38px; height:38px; border-radius:50%; object-fit:cover; }
 .expire-card .p-name{ font-size:0.8125rem; font-weight:600; text-align:center; }
 .expire-card .p-days{ font-size:0.6875rem; text-align:center; margin-top:0.125rem; font-weight:600; }
 
@@ -153,6 +154,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .ingredient-check{ display:flex; align-items:center; gap:0.625rem; min-height:44px; padding:0 0.625rem; border-radius:var(--radius-sm); background:var(--bg); border:1px solid var(--line); }
 .ingredient-check input[type=checkbox]{ width:20px; height:20px; accent-color:var(--fresh); flex-shrink:0; }
 .ingredient-check .thumb{ font-size:1.125rem; }
+.ingredient-check .thumb img{ width:22px; height:22px; border-radius:6px; object-fit:cover; display:block; }
 .ingredient-check .label{ font-size:0.8438rem; font-weight:600; flex:1; }
 .ingredient-check .qty{ font-size:0.7188rem; color:var(--muted); }
 
@@ -928,36 +930,38 @@ const freezerData = [
 // Единая база продуктов — используется для автоподсказок в Vision/ручном добавлении, авто-срока годности и выбора холодильник/морозилка
 // Иконки-фото для россыпных продуктов — Grocery Store Dataset (marcusklasson, MIT), хотлинк на raw GitHub
 const GSD_BASE = 'https://raw.githubusercontent.com/marcusklasson/GroceryStoreDataset/master/dataset/iconic-images-and-descriptions';
+// Фото готовых ингредиентов (молоко, мясо, сыр и т.п.) — бесплатные фото-ассеты TheMealDB
+const MDB_ING = 'https://www.themealdb.com/images/ingredients';
 
 const productCatalog = [
-  {name:'Молоко 3%', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:5, compartment:'fridge'},
-  {name:'Молоко', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:5, compartment:'fridge'},
-  {name:'Яйца', emoji:'🥚', unit:'шт', defaultQty:10, shelfDays:21, compartment:'fridge'},
-  {name:'Хлеб отрубной', emoji:'🍞', unit:'шт', defaultQty:1, shelfDays:5, compartment:'fridge'},
-  {name:'Твёрдый сыр', emoji:'🧀', unit:'г', defaultQty:200, shelfDays:20, compartment:'fridge'},
-  {name:'Творог', emoji:'🥣', unit:'г', defaultQty:300, shelfDays:6, compartment:'fridge'},
-  {name:'Творог 9%', emoji:'🧀', unit:'г', defaultQty:400, shelfDays:6, compartment:'fridge'},
-  {name:'Йогурт натуральный', emoji:'🍶', unit:'шт', defaultQty:2, shelfDays:10, compartment:'fridge'},
-  {name:'Куриное филе', emoji:'🍗', unit:'г', defaultQty:500, shelfDays:3, compartment:'fridge'},
-  {name:'Говядина', emoji:'🥩', unit:'г', defaultQty:500, shelfDays:3, compartment:'fridge'},
-  {name:'Рыба (филе)', emoji:'🐟', unit:'г', defaultQty:400, shelfDays:2, compartment:'fridge'},
-  {name:'Треска (филе)', emoji:'🐟', unit:'г', defaultQty:400, shelfDays:180, compartment:'freezer'},
-  {name:'Брокколи', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:6, compartment:'fridge'},
-  {name:'Овощи свежие', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:7, compartment:'fridge'},
+  {name:'Молоко 3%', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Milk.png'},
+  {name:'Молоко', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Milk.png'},
+  {name:'Яйца', emoji:'🥚', unit:'шт', defaultQty:10, shelfDays:21, compartment:'fridge', photo:MDB_ING+'/Eggs.png'},
+  {name:'Хлеб отрубной', emoji:'🍞', unit:'шт', defaultQty:1, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Bread.png'},
+  {name:'Твёрдый сыр', emoji:'🧀', unit:'г', defaultQty:200, shelfDays:20, compartment:'fridge', photo:MDB_ING+'/Cheddar%20Cheese.png'},
+  {name:'Творог', emoji:'🥣', unit:'г', defaultQty:300, shelfDays:6, compartment:'fridge', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/%D0%A2%D0%B2%D0%BE%D1%80%D0%BE%D0%B3.jpg/500px-%D0%A2%D0%B2%D0%BE%D1%80%D0%BE%D0%B3.jpg'},
+  {name:'Творог 9%', emoji:'🧀', unit:'г', defaultQty:400, shelfDays:6, compartment:'fridge', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/%D0%A2%D0%B2%D0%BE%D1%80%D0%BE%D0%B3.jpg/500px-%D0%A2%D0%B2%D0%BE%D1%80%D0%BE%D0%B3.jpg'},
+  {name:'Йогурт натуральный', emoji:'🍶', unit:'шт', defaultQty:2, shelfDays:10, compartment:'fridge', photo:MDB_ING+'/Natural%20Yoghurt.png'},
+  {name:'Куриное филе', emoji:'🍗', unit:'г', defaultQty:500, shelfDays:3, compartment:'fridge', photo:MDB_ING+'/Chicken%20Breast.png'},
+  {name:'Говядина', emoji:'🥩', unit:'г', defaultQty:500, shelfDays:3, compartment:'fridge', photo:MDB_ING+'/Beef.png'},
+  {name:'Рыба (филе)', emoji:'🐟', unit:'г', defaultQty:400, shelfDays:2, compartment:'fridge', photo:MDB_ING+'/White%20Fish.png'},
+  {name:'Треска (филе)', emoji:'🐟', unit:'г', defaultQty:400, shelfDays:180, compartment:'freezer', photo:MDB_ING+'/Cod.png'},
+  {name:'Брокколи', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:6, compartment:'fridge', photo:MDB_ING+'/Broccoli.png'},
+  {name:'Овощи свежие', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:7, compartment:'fridge', photo:MDB_ING+'/Vegetables.png'},
   {name:'Помидоры', emoji:'🍅', unit:'шт', defaultQty:6, shelfDays:6, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Tomato/Regular-Tomato/Regular-Tomato_Iconic.jpg'},
   {name:'Огурцы', emoji:'🥒', unit:'шт', defaultQty:6, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Cucumber/Cucumber_Iconic.jpg'},
-  {name:'Зелень', emoji:'🌿', unit:'шт', defaultQty:1, shelfDays:4, compartment:'fridge'},
+  {name:'Зелень', emoji:'🌿', unit:'шт', defaultQty:1, shelfDays:4, compartment:'fridge', photo:MDB_ING+'/Parsley.png'},
   {name:'Авокадо', emoji:'🥑', unit:'шт', defaultQty:3, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Avocado/Avocado_Iconic.jpg'},
   {name:'Яблоки', emoji:'🍎', unit:'шт', defaultQty:5, shelfDays:14, compartment:'fridge', photo:GSD_BASE+'/Fruit/Apple/Royal-Gala/Royal-Gala_Iconic.jpg'},
-  {name:'Орехи (грецкий/миндаль)', emoji:'🥜', unit:'г', defaultQty:150, shelfDays:90, compartment:'fridge'},
-  {name:'Мёд', emoji:'🍯', unit:'г', defaultQty:350, shelfDays:365, compartment:'fridge'},
-  {name:'Красная икра', emoji:'🐠', unit:'г', defaultQty:100, shelfDays:14, compartment:'fridge'},
-  {name:'Кефир', emoji:'🍶', unit:'мл', defaultQty:500, shelfDays:6, compartment:'fridge'},
-  {name:'Филе индейки', emoji:'🍗', unit:'г', defaultQty:600, shelfDays:180, compartment:'freezer'},
-  {name:'Морской коктейль', emoji:'🦐', unit:'г', defaultQty:300, shelfDays:180, compartment:'freezer'},
-  {name:'Замороженные ягоды', emoji:'🫐', unit:'г', defaultQty:250, shelfDays:180, compartment:'freezer'},
-  {name:'Овощная смесь', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:180, compartment:'freezer'},
-  {name:'Говяжий язык отварной', emoji:'🥩', unit:'г', defaultQty:300, shelfDays:90, compartment:'freezer'},
+  {name:'Орехи (грецкий/миндаль)', emoji:'🥜', unit:'г', defaultQty:150, shelfDays:90, compartment:'fridge', photo:MDB_ING+'/Walnuts.png'},
+  {name:'Мёд', emoji:'🍯', unit:'г', defaultQty:350, shelfDays:365, compartment:'fridge', photo:MDB_ING+'/Honey.png'},
+  {name:'Красная икра', emoji:'🐠', unit:'г', defaultQty:100, shelfDays:14, compartment:'fridge', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Lachskaviar%2C_Salmon_roe%2C_Red_caviar%2C_%D0%9A%D1%80%D0%B0%D1%81%D0%BD%D0%B0%D1%8F_%D0%B8%D0%BA%D1%80%D0%B0_005.JPG/500px-Lachskaviar%2C_Salmon_roe%2C_Red_caviar%2C_%D0%9A%D1%80%D0%B0%D1%81%D0%BD%D0%B0%D1%8F_%D0%B8%D0%BA%D1%80%D0%B0_005.JPG'},
+  {name:'Кефир', emoji:'🍶', unit:'мл', defaultQty:500, shelfDays:6, compartment:'fridge', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Kefir_Ariani_bottles_in_Greece.jpg/500px-Kefir_Ariani_bottles_in_Greece.jpg'},
+  {name:'Филе индейки', emoji:'🍗', unit:'г', defaultQty:600, shelfDays:180, compartment:'freezer', photo:MDB_ING+'/Turkey.png'},
+  {name:'Морской коктейль', emoji:'🦐', unit:'г', defaultQty:300, shelfDays:180, compartment:'freezer', photo:MDB_ING+'/Shrimp.png'},
+  {name:'Замороженные ягоды', emoji:'🫐', unit:'г', defaultQty:250, shelfDays:180, compartment:'freezer', photo:MDB_ING+'/Blueberries.png'},
+  {name:'Овощная смесь', emoji:'🥦', unit:'г', defaultQty:400, shelfDays:180, compartment:'freezer', photo:MDB_ING+'/Vegetables.png'},
+  {name:'Говяжий язык отварной', emoji:'🥩', unit:'г', defaultQty:300, shelfDays:90, compartment:'freezer', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Beef_tongue_dishes_for_dinner.jpg/500px-Beef_tongue_dishes_for_dinner.jpg'},
   // Расширенный словарь россыпных фруктов/овощей — Grocery Store Dataset
   {name:'Бананы', emoji:'🍌', unit:'шт', defaultQty:6, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Banana/Banana_Iconic.jpg'},
   {name:'Киви', emoji:'🥝', unit:'шт', defaultQty:4, shelfDays:14, compartment:'fridge', photo:GSD_BASE+'/Fruit/Kiwi/Kiwi_Iconic.jpg'},
@@ -985,8 +989,8 @@ const productCatalog = [
   {name:'Картофель', emoji:'🥔', unit:'шт', defaultQty:10, shelfDays:30, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Potato/Floury-Potato/Floury-Potato_Iconic.jpg'},
   {name:'Свёкла', emoji:'🥔', unit:'шт', defaultQty:3, shelfDays:21, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Red-Beet/Red-Beet_Iconic.jpg'},
   {name:'Кабачок', emoji:'🥒', unit:'шт', defaultQty:2, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Zucchini/Zucchini_Iconic.jpg'},
-  {name:'Клубника', emoji:'🍓', unit:'г', defaultQty:300, shelfDays:3, compartment:'fridge'},
-  {name:'Инжир', emoji:'🟤', unit:'шт', defaultQty:4, shelfDays:5, compartment:'fridge'},
+  {name:'Клубника', emoji:'🍓', unit:'г', defaultQty:300, shelfDays:3, compartment:'fridge', photo:MDB_ING+'/Strawberries.png'},
+  {name:'Инжир', emoji:'🟤', unit:'шт', defaultQty:4, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Figs.png'},
 ];
 
 // ImageNet-класс (MobileNet) -> название в нашем каталоге; используется для реального
@@ -1011,6 +1015,28 @@ const IMAGENET_TO_CATALOG = {
 function findCatalog(name){
   const q = (name||'').trim().toLowerCase();
   return productCatalog.find(c => c.name.toLowerCase() === q);
+}
+// Товары в холодильнике/морозилке хранят только свой emoji, а не фото — фото ищем
+// по названию в каталоге, чтобы не хранить и не синхронизировать его отдельно.
+// Точного совпадения не всегда достаточно (старые демо-товары вроде "Твёрдый сыр 45%"
+// или "Отрубной хлеб" отличаются от каталожных "Твёрдый сыр"/"Хлеб отрубной" суффиксом
+// или порядком слов) — поэтому для поиска фото сравниваем по набору слов, без учёта чисел/%.
+function normalizeProductName(name){
+  return (name||'').toLowerCase().replace(/\d+%?/g, '').split(/\s+/).filter(Boolean).sort().join(' ');
+}
+function findCatalogFuzzy(name){
+  const exact = findCatalog(name);
+  if(exact) return exact;
+  const target = normalizeProductName(name);
+  if(!target) return null;
+  return productCatalog.find(c => normalizeProductName(c.name) === target) || null;
+}
+function productThumbHtml(p){
+  const entry = findCatalogFuzzy(p.name);
+  const photo = entry && entry.photo;
+  return photo
+    ? `<img src="${photo}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${p.emoji}'))">`
+    : p.emoji;
 }
 
 // Корзина — начальный список покупок; пополняется из алерта "не хватает на неделю" и Vision
@@ -1197,7 +1223,7 @@ function openProduct(listName, idx, opts={}){
   const p = getArr(listName)[idx];
   if(!p) return;
   const days = daysUntil(p.expiresOn);
-  document.getElementById('product-hero').textContent = p.emoji;
+  document.getElementById('product-hero').innerHTML = productThumbHtml(p);
   document.getElementById('product-name').textContent = p.name;
   const compartmentLabel = listName==='freezer' ? 'Морозилка' : 'Холодильник';
   document.getElementById('product-sub').textContent = (p.location && p.location !== compartmentLabel)
@@ -1243,7 +1269,7 @@ function renderExpiringRow(){
     const pct = Math.max(15, Math.min(100, Math.round((1 - days/7)*100)));
     return `
     <div class="expire-card" data-list="fridge" data-idx="${idx}">
-      <div class="ring-wrap">${ringSvg(pct,color)}<div class="ring-emoji">${p.emoji}</div></div>
+      <div class="ring-wrap">${ringSvg(pct,color)}<div class="ring-emoji">${productThumbHtml(p)}</div></div>
       <div class="p-name">${p.name}</div>
       <div class="p-days" style="color:${color}">${expiryLabel(days)}</div>
     </div>`;
@@ -1276,7 +1302,7 @@ function renderFridgeList(compartment){
     const label = compartment === 'freezer' ? '−18°C' : expiryLabel(days);
     return `
     <div class="product-row" data-list="${compartment}" data-idx="${idx}">
-      <div class="product-thumb">${p.emoji}</div>
+      <div class="product-thumb">${productThumbHtml(p)}</div>
       <div class="product-info"><div class="n">${p.name}</div><div class="q">${formatQty(p)}</div></div>
       <div class="status-pill status-${status}">${label}</div>
     </div>`;
@@ -1522,7 +1548,7 @@ function populateCustomDishIngredients(){
   box.innerHTML = fridgeData.map((p, idx) => `
     <label class="ingredient-check">
       <input type="checkbox" data-idx="${idx}">
-      <span class="thumb">${p.emoji}</span>
+      <span class="thumb">${productThumbHtml(p)}</span>
       <span class="label">${p.name}</span>
       <span class="qty">${formatQty(p)}</span>
     </label>`).join('');
@@ -2145,7 +2171,7 @@ function renderCart(){
     empty.style.display = 'none';
     list.innerHTML = cartData.map((p, idx) => `
       <div class="product-row">
-        <div class="product-thumb">${p.emoji}</div>
+        <div class="product-thumb">${productThumbHtml(p)}</div>
         <div class="product-info"><div class="n">${p.name}</div><div class="q">${formatQty(p)}</div></div>
         <button data-bought="${idx}" style="min-height:36px; padding:0 0.75rem; border-radius:999px; background:var(--fresh); color:#fff; border:none; font-size:0.7188rem; font-weight:700; font-family:'Inter',sans-serif; flex-shrink:0;">Куплено</button>
       </div>`).join('');
