@@ -805,6 +805,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         <button class="secondary-btn" data-nav="diet" style="margin-top:0">🥗 Мои данные и диета</button>
         <button class="secondary-btn" data-nav="cart">🛒 Корзина</button>
         <button class="secondary-btn" data-nav="vision">📷 Распознать продукт</button>
+        <button class="secondary-btn" id="open-family-btn">👪 Семья</button>
         <button class="secondary-btn" id="logout-btn" style="color:var(--danger); border-color:#F0D3D3">↪ Выйти</button>
       </div>
     </section>
@@ -863,6 +864,24 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
   <button class="sheet-cancel" id="manual-sheet-cancel">Отмена</button>
 </div>
 
+<div class="sheet" id="family-sheet">
+  <div class="sheet-handle"></div>
+  <h3>Семья</h3>
+  <div style="font-size:0.7812rem; color:var(--ink-soft); margin-bottom:0.75rem">Поделитесь кодом, чтобы близкие видели тот же холодильник, что и вы.</div>
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-sm); padding:0.875rem 1rem; margin-bottom:0.625rem">
+    <div style="font-family:'SF Mono', ui-monospace, monospace; font-size:1.25rem; font-weight:700; letter-spacing:0.15em" id="family-invite-code">——————</div>
+    <button class="secondary-btn" id="family-copy-code-btn" style="width:auto; margin-top:0; padding:0.5rem 0.875rem; min-height:auto">Копировать</button>
+  </div>
+  <div style="font-size:0.7812rem; color:var(--ink-soft); margin-bottom:1rem" id="family-members-count">Вместе с вами: 1 человек</div>
+  <label style="display:block; font-size:0.7812rem; font-weight:600; color:var(--ink-soft); margin-bottom:0.5rem">Присоединиться к чужому холодильнику по коду:</label>
+  <div class="form-field" style="margin-bottom:0.625rem">
+    <input type="text" id="family-join-code" placeholder="Например: A1B2C3" style="text-transform:uppercase">
+  </div>
+  <div class="login-error" id="family-join-error"></div>
+  <button class="primary-btn" id="family-join-btn">Присоединиться</button>
+  <button class="sheet-cancel" id="family-sheet-cancel">Готово</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -877,6 +896,8 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const APP_EMAIL_DOMAIN = 'myonlinefarm-smartfridge.app';
 function usernameToEmail(u){ return u.trim().toLowerCase() + '@' + APP_EMAIL_DOMAIN; }
 let currentUserId = null;
+let currentHouseholdId = null;
+let familyMemberCount = 1;
 
 /* ===================== DATE HELPERS ===================== */
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
@@ -1408,7 +1429,8 @@ const overlay = document.getElementById('sheet-overlay');
 const addSheet = document.getElementById('add-sheet');
 const mealSheet = document.getElementById('meal-sheet');
 const manualSheet = document.getElementById('manual-sheet');
-const allSheets = [addSheet, mealSheet, manualSheet];
+const familySheet = document.getElementById('family-sheet');
+const allSheets = [addSheet, mealSheet, manualSheet, familySheet];
 const sheetSprings = new Map();
 
 function isMobileSheet(){ return !window.matchMedia('(min-width:768px)').matches; }
@@ -1964,6 +1986,13 @@ document.getElementById('manual-dest-freezer').addEventListener('click', ()=>{
   document.getElementById('manual-dest-fridge').classList.remove('active');
 });
 document.getElementById('manual-sheet-cancel').addEventListener('click', closeSheet);
+document.getElementById('family-sheet-cancel').addEventListener('click', closeSheet);
+document.getElementById('open-family-btn').addEventListener('click', ()=>{ renderFamily(); openSheet(familySheet); });
+document.getElementById('family-copy-code-btn').addEventListener('click', ()=>{
+  const code = document.getElementById('family-invite-code').textContent;
+  navigator.clipboard?.writeText(code).then(()=> showToast('Код скопирован'));
+});
+document.getElementById('family-join-btn').addEventListener('click', joinFamilyByCode);
 document.getElementById('manual-add-confirm-btn').addEventListener('click', ()=>{
   const checked = Array.from(document.querySelectorAll('#manual-checklist input[type=checkbox]:checked'))
     .map(cb => productCatalog[parseInt(cb.dataset.manualIdx)]);
@@ -2377,7 +2406,7 @@ function toDbRow(p){
 }
 async function dbInsertItem(item, compartment){
   if(!currentUserId) return;
-  const { data, error } = await sb.from('fridge_items').insert({...toDbRow(item), compartment, user_id: currentUserId}).select().single();
+  const { data, error } = await sb.from('fridge_items').insert({...toDbRow(item), compartment, user_id: currentUserId, household_id: currentHouseholdId}).select().single();
   if(!error && data) item._id = data.id;
 }
 async function dbUpdateItem(item, compartment){
@@ -2392,7 +2421,7 @@ async function dbDeleteItem(item){
 }
 async function dbInsertCart(item){
   if(!currentUserId) return;
-  const { data, error } = await sb.from('cart_items').insert({name:item.name, emoji:item.emoji, qty_num:item.qtyNum, unit:item.unit, note:item.note||null, user_id: currentUserId}).select().single();
+  const { data, error } = await sb.from('cart_items').insert({name:item.name, emoji:item.emoji, qty_num:item.qtyNum, unit:item.unit, note:item.note||null, user_id: currentUserId, household_id: currentHouseholdId}).select().single();
   if(!error && data) item._id = data.id;
 }
 async function dbDeleteCart(item){
@@ -2411,13 +2440,59 @@ async function dbSaveMeasurement(entry){
   );
 }
 
+function genInviteCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for(let i=0;i<6;i++) code += chars[Math.floor(Math.random()*chars.length)];
+  return code;
+}
+
 async function initEmptyAccount(userId){
   fridgeData.length = 0;
   freezerData.length = 0;
   cartData.length = 0;
   measurementHistory = [];
   usedCount = 0; usedWeightKg = 0; wastedCount = 0;
+  const { data: hh } = await sb.from('households').insert({invite_code: genInviteCode()}).select().single();
+  currentHouseholdId = hh.id;
+  await sb.from('household_members').insert({user_id: userId, household_id: hh.id});
   await sb.from('food_stats').upsert({user_id:userId, used_count:0, used_weight_kg:0, wasted_count:0});
+}
+
+async function renderFamily(){
+  const codeEl = document.getElementById('family-invite-code');
+  const countEl = document.getElementById('family-members-count');
+  codeEl.textContent = '——————';
+  countEl.textContent = 'Загрузка…';
+  const { data: hh } = await sb.from('households').select('invite_code').eq('id', currentHouseholdId).maybeSingle();
+  const { count } = await sb.from('household_members').select('user_id', {count:'exact', head:true}).eq('household_id', currentHouseholdId);
+  codeEl.textContent = hh ? hh.invite_code : '——————';
+  familyMemberCount = count || 1;
+  countEl.textContent = familyMemberCount === 1 ? 'Вместе с вами: пока только вы' : `Вместе с вами: ${familyMemberCount} человек`;
+}
+
+async function joinFamilyByCode(){
+  const input = document.getElementById('family-join-code');
+  const errEl = document.getElementById('family-join-error');
+  errEl.classList.remove('show');
+  const code = input.value.trim().toUpperCase();
+  if(!code) return;
+  const { data: hh, error: hhErr } = await sb.from('households').select('id').eq('invite_code', code).maybeSingle();
+  if(hhErr || !hh){
+    errEl.textContent = 'Код не найден. Проверьте и попробуйте снова.';
+    errEl.classList.add('show');
+    return;
+  }
+  const { error: joinErr } = await sb.from('household_members').update({household_id: hh.id}).eq('user_id', currentUserId);
+  if(joinErr){
+    errEl.textContent = 'Не удалось присоединиться: ' + joinErr.message;
+    errEl.classList.add('show');
+    return;
+  }
+  input.value = '';
+  closeSheet();
+  showToast('Вы присоединились к холодильнику');
+  await loadUserData();
 }
 
 function displayNameFromEmail(email){
@@ -2439,33 +2514,39 @@ async function loadUserData(){
   currentUserId = user.id;
   updateGreetingName(user.email);
 
+  const { data: membership } = await sb.from('household_members').select('household_id').eq('user_id', user.id).maybeSingle();
+  if(membership){
+    currentHouseholdId = membership.household_id;
+  } else {
+    // первый вход этого аккаунта — создаём личное домохозяйство и начинаем с пустого холодильника
+    await initEmptyAccount(user.id);
+  }
+
   const [fridgeRes, cartRes, measureRes, statsRes] = await Promise.all([
-    sb.from('fridge_items').select('*').eq('user_id', user.id).order('created_at'),
-    sb.from('cart_items').select('*').eq('user_id', user.id).order('created_at'),
+    sb.from('fridge_items').select('*').eq('household_id', currentHouseholdId).order('created_at'),
+    sb.from('cart_items').select('*').eq('household_id', currentHouseholdId).order('created_at'),
     sb.from('measurement_logs').select('*').eq('user_id', user.id).order('log_date'),
     sb.from('food_stats').select('*').eq('user_id', user.id).maybeSingle()
   ]);
 
-  const hasAnyFridgeRows = !fridgeRes.error && fridgeRes.data && fridgeRes.data.length > 0;
-  if(hasAnyFridgeRows){
-    fridgeData.length = 0; freezerData.length = 0;
+  fridgeData.length = 0; freezerData.length = 0;
+  if(!fridgeRes.error && fridgeRes.data){
     fridgeRes.data.forEach(r => {
       const item = {name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, location:r.location, expiresOn:r.expires_on, _id:r.id};
       (r.compartment === 'freezer' ? freezerData : fridgeData).push(item);
     });
-    if(!cartRes.error && cartRes.data){
-      cartData.length = 0;
-      cartRes.data.forEach(r => cartData.push({name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, note:r.note, _id:r.id}));
-    }
-    if(!measureRes.error && measureRes.data && measureRes.data.length){
-      measurementHistory = measureRes.data.map(r => ({date:r.log_date, weight:Number(r.weight), neck:Number(r.neck), chest:Number(r.chest), belly:Number(r.belly), hips:Number(r.hips)}));
-    }
-    if(!statsRes.error && statsRes.data){
-      usedCount = statsRes.data.used_count; usedWeightKg = Number(statsRes.data.used_weight_kg); wastedCount = statsRes.data.wasted_count;
-    }
-  } else if(!fridgeRes.error) {
-    // первый вход этого аккаунта — начинаем с пустого холодильника, без демо-данных
-    await initEmptyAccount(user.id);
+  }
+  cartData.length = 0;
+  if(!cartRes.error && cartRes.data){
+    cartRes.data.forEach(r => cartData.push({name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, note:r.note, _id:r.id}));
+  }
+  if(!measureRes.error && measureRes.data && measureRes.data.length){
+    measurementHistory = measureRes.data.map(r => ({date:r.log_date, weight:Number(r.weight), neck:Number(r.neck), chest:Number(r.chest), belly:Number(r.belly), hips:Number(r.hips)}));
+  } else {
+    measurementHistory = [];
+  }
+  if(!statsRes.error && statsRes.data){
+    usedCount = statsRes.data.used_count; usedWeightKg = Number(statsRes.data.used_weight_kg); wastedCount = statsRes.data.wasted_count;
   }
 
   renderFridgeList(currentCompartment);
