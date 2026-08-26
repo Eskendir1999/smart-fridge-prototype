@@ -1809,7 +1809,7 @@ async function onBarcodeDetected(code){
   stopBarcodeScan();
   document.getElementById('barcode-stage').innerHTML = `<div class="vision-state"><div class="ic">🔎</div><h3>Ищем товар…</h3><p>Штрихкод: ${code}</p></div>`;
   try{
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,product_name_ru,brands,image_front_url,image_url,quantity`);
+    const res = await fetch(`/api/off-lookup?barcode=${encodeURIComponent(code)}`);
     const data = await res.json();
     history.pop();
     showScreen('vision', false);
