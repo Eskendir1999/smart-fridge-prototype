@@ -806,6 +806,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         <button class="secondary-btn" data-nav="cart">🛒 Корзина</button>
         <button class="secondary-btn" data-nav="vision">📷 Распознать продукт</button>
         <button class="secondary-btn" id="open-family-btn">👪 Семья</button>
+        <button class="secondary-btn" id="push-toggle-btn">🔔 Уведомления об истечении срока</button>
         <button class="secondary-btn" id="logout-btn" style="color:var(--danger); border-color:#F0D3D3">↪ Выйти</button>
       </div>
     </section>
@@ -892,6 +893,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 /* ===================== SUPABASE ===================== */
 const SUPABASE_URL = '__SUPABASE_URL__';
 const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+const VAPID_PUBLIC_KEY = '__VAPID_PUBLIC_KEY__';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const APP_EMAIL_DOMAIN = 'myonlinefarm-smartfridge.app';
 function usernameToEmail(u){ return u.trim().toLowerCase() + '@' + APP_EMAIL_DOMAIN; }
@@ -2555,7 +2557,63 @@ async function loadUserData(){
   renderMissingAlert();
   renderSuggestRow();
   renderRecipesList();
+  initPushUI();
 }
+
+/* ===================== PUSH-УВЕДОМЛЕНИЯ ОБ ИСТЕЧЕНИИ СРОКА ===================== */
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+function pushSupported(){
+  return 'serviceWorker' in navigator && 'PushManager' in window && VAPID_PUBLIC_KEY;
+}
+async function initPushUI(){
+  const btn = document.getElementById('push-toggle-btn');
+  if(!pushSupported()){ btn.style.display = 'none'; return; }
+  try{
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const sub = await reg.pushManager.getSubscription();
+    btn.textContent = sub ? '🔔 Уведомления включены (нажмите, чтобы отключить)' : '🔔 Уведомления об истечении срока';
+  }catch(e){
+    btn.style.display = 'none';
+  }
+}
+async function togglePushSubscription(){
+  const btn = document.getElementById('push-toggle-btn');
+  if(!pushSupported()) return;
+  const reg = await navigator.serviceWorker.register('/sw.js');
+  const existing = await reg.pushManager.getSubscription();
+  if(existing){
+    await sb.from('push_subscriptions').delete().eq('endpoint', existing.endpoint);
+    await existing.unsubscribe();
+    btn.textContent = '🔔 Уведомления об истечении срока';
+    showToast('Уведомления отключены');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if(perm !== 'granted'){
+    showToast('Разрешение на уведомления не дано', true);
+    return;
+  }
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+  });
+  const json = sub.toJSON();
+  const { error } = await sb.from('push_subscriptions').upsert({
+    user_id: currentUserId, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth
+  }, { onConflict: 'endpoint' });
+  if(error){
+    showToast('Не удалось сохранить подписку: ' + error.message, true);
+    return;
+  }
+  btn.textContent = '🔔 Уведомления включены (нажмите, чтобы отключить)';
+  showToast('Уведомления включены');
+}
+document.getElementById('push-toggle-btn').addEventListener('click', togglePushSubscription);
 
 /* ===================== LOGIN GATE (Supabase Auth) ===================== */
 (function(){
