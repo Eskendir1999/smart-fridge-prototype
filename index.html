@@ -92,7 +92,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .expire-card .p-days{ font-size:0.6875rem; text-align:center; margin-top:0.125rem; font-weight:600; }
 
 .recipe-card{ width:200px; border-radius:var(--radius-md); overflow:hidden; background:var(--surface); box-shadow:var(--shadow); flex-shrink:0; }
-.recipe-img{ width:100%; aspect-ratio:16/9; background:linear-gradient(135deg,#D9C9A8,#B8CDB0); display:flex; align-items:center; justify-content:center; font-size:1.75rem; }
+.recipe-img{ width:100%; aspect-ratio:16/9; background:linear-gradient(135deg,#D9C9A8,#B8CDB0); display:flex; align-items:center; justify-content:center; font-size:1.75rem; overflow:hidden; }
+.recipe-img img{ width:100%; height:100%; object-fit:cover; display:block; }
 .recipe-body{ padding:0.625rem 0.75rem 0.75rem 0.75rem; }
 .recipe-body .t{ font-size:0.8438rem; font-weight:600; margin-bottom:0.125rem; }
 .recipe-body .s{ font-size:0.7188rem; color:var(--muted); }
@@ -113,15 +114,18 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 
 .suggest-row{ display:flex; gap:0.75rem; overflow-x:auto; padding:0.125rem 1.25rem 0.375rem 1.25rem; margin:0 -1.25rem 0.375rem -1.25rem; -webkit-overflow-scrolling:touch; }
 .suggest-row::-webkit-scrollbar{ display:none; }
-.suggest-card{ flex-shrink:0; width:210px; background:var(--surface); border-radius:var(--radius-md); padding:0.75rem; box-shadow:var(--shadow); }
-.suggest-card .ic{ font-size:1.375rem; margin-bottom:0.375rem; }
+.suggest-card{ flex-shrink:0; width:210px; background:var(--surface); border-radius:var(--radius-md); box-shadow:var(--shadow); overflow:hidden; }
+.suggest-photo{ width:100%; aspect-ratio:16/9; background:linear-gradient(135deg,#D9C9A8,#B8CDB0); display:flex; align-items:center; justify-content:center; font-size:1.5rem; overflow:hidden; }
+.suggest-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+.suggest-body{ padding:0.625rem 0.75rem 0.75rem 0.75rem; }
 .suggest-card .t{ font-size:0.8438rem; font-weight:600; margin-bottom:0.1875rem; }
 .suggest-card .s{ font-size:0.7188rem; color:var(--muted); line-height:1.4; }
 .suggest-card .tag{ display:inline-block; margin-top:0.5rem; font-size:0.6562rem; font-weight:700; color:var(--fresh); background:var(--fresh-soft); padding:0.1875rem 0.5rem; border-radius:999px; }
 
 .fridge-list{ padding:0.25rem 1.25rem 6.25rem 1.25rem; display:flex; flex-direction:column; gap:0.625rem; }
 .product-row{ display:flex; align-items:center; gap:0.75rem; background:var(--surface); border-radius:var(--radius-md); padding:0.625rem 0.75rem; box-shadow:var(--shadow); min-height:44px; cursor:pointer; }
-.product-thumb{ width:48px; height:48px; border-radius:12px; flex-shrink:0; background:linear-gradient(135deg,#F0E6D2,#DCE8DD); display:flex; align-items:center; justify-content:center; font-size:1.25rem; }
+.product-thumb{ width:48px; height:48px; border-radius:12px; flex-shrink:0; background:linear-gradient(135deg,#F0E6D2,#DCE8DD); display:flex; align-items:center; justify-content:center; font-size:1.25rem; overflow:hidden; }
+.product-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
 .product-info{ flex:1; min-width:0; }
 .product-info .n{ font-size:0.9062rem; font-weight:600; }
 .product-info .q{ font-size:0.7812rem; color:var(--muted); margin-top:0.0625rem; }
@@ -152,7 +156,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .ingredient-check .label{ font-size:0.8438rem; font-weight:600; flex:1; }
 .ingredient-check .qty{ font-size:0.7188rem; color:var(--muted); }
 
-.hero-photo{ width:100%; aspect-ratio:1/1; max-height:280px; background:linear-gradient(135deg,#F0E6D2,#DCE8DD); border-radius:0 0 28px 28px; display:flex; align-items:center; justify-content:center; font-size:4rem; }
+.hero-photo{ width:100%; aspect-ratio:1/1; max-height:280px; background:linear-gradient(135deg,#F0E6D2,#DCE8DD); border-radius:0 0 28px 28px; display:flex; align-items:center; justify-content:center; font-size:4rem; overflow:hidden; }
+.hero-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
 .detail-block{ padding:1.125rem 1.25rem; }
 .detail-block h2{ font-size:1.375rem; font-weight:600; margin-bottom:0.25rem; }
 .detail-block .sub{ font-size:0.8438rem; color:var(--muted); margin-bottom:1rem; }
@@ -1014,46 +1019,46 @@ function estimateKg(item){
 
 // Рецепты вне программы диеты — своя мини-БД рецептов с пошаговыми инструкциями
 const recipesData = [
-  {id:'r1', icon:'🍗', title:'Куриное филе гриль с овощным салатом', time:'25 мин', servings:'2 порции', tags:['Обед'], match:['куриное филе'],
+  {id:'r1', icon:'🍗', photo:'https://www.themealdb.com/images/media/meals/cj56fs1762340001.jpg', title:'Куриное филе гриль с овощным салатом', time:'25 мин', servings:'2 порции', tags:['Обед'], match:['куриное филе'],
    ingredients:[{name:'Куриное филе',qty:'400 г'},{name:'Помидоры',qty:'2 шт'},{name:'Огурцы',qty:'2 шт'},{name:'Оливковое масло',qty:'1 ст.л.'},{name:'Лимонный сок',qty:'по вкусу'}],
    steps:['Разогреть сковороду-гриль на среднем огне.','Куриное филе слегка отбить, посолить и поперчить.','Обжарить филе по 5-6 минут с каждой стороны до готовности.','Помидоры и огурцы нарезать кубиками.','Заправить овощи маслом и лимонным соком, перемешать.','Подавать филе вместе с салатом.']},
-  {id:'r2', icon:'🐟', title:'Треска, запечённая с овощами', time:'30 мин', servings:'2 порции', tags:['Обед'], match:['треска','рыба'],
+  {id:'r2', icon:'🐟', photo:'https://www.themealdb.com/images/media/meals/do7zps1614349775.jpg', title:'Треска, запечённая с овощами', time:'30 мин', servings:'2 порции', tags:['Обед'], match:['треска','рыба'],
    ingredients:[{name:'Треска (филе)',qty:'400 г'},{name:'Овощная смесь',qty:'300 г'},{name:'Оливковое масло',qty:'1 ст.л.'},{name:'Соль, перец',qty:'по вкусу'}],
    steps:['Разморозить филе трески при комнатной температуре.','Разогреть духовку до 190°C.','Выложить рыбу и овощную смесь на противень, сбрызнуть маслом.','Посолить, поперчить.','Запекать 20-25 минут до готовности.']},
-  {id:'r3', icon:'🥑', title:'Салат с авокадо и яйцом', time:'10 мин', servings:'1 порция', tags:['Ужин','Быстро'], match:['авокадо'],
+  {id:'r3', icon:'🥑', photo:'https://www.themealdb.com/images/media/meals/1549542994.jpg', title:'Салат с авокадо и яйцом', time:'10 мин', servings:'1 порция', tags:['Ужин','Быстро'], match:['авокадо'],
    ingredients:[{name:'Авокадо',qty:'1 шт'},{name:'Яйца',qty:'2 шт'},{name:'Помидоры',qty:'1 шт'},{name:'Оливковое масло',qty:'1 ч.л.'}],
    steps:['Яйца отварить вкрутую (8-9 минут), остудить и очистить.','Авокадо очистить и нарезать кубиками.','Помидоры нарезать дольками.','Смешать все ингредиенты, заправить маслом, посолить по вкусу.']},
-  {id:'r4', icon:'🥣', title:'Бутерброд с сыром и зеленью', time:'5 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['отрубной хлеб','твёрдый сыр'],
+  {id:'r4', icon:'🥣', photo:'https://www.themealdb.com/images/media/meals/xutquv1505330523.jpg', title:'Бутерброд с сыром и зеленью', time:'5 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['отрубной хлеб','твёрдый сыр'],
    ingredients:[{name:'Хлеб отрубной',qty:'1 кусок'},{name:'Твёрдый сыр',qty:'2-3 ломтика'},{name:'Зелень',qty:'по вкусу'}],
    steps:['Подсушить хлеб в тостере при желании.','Выложить сыр на хлеб.','Посыпать свежей зеленью.']},
-  {id:'r5', icon:'🍳', title:'Омлет с зеленью', time:'10 мин', servings:'1 порция', tags:['Завтрак'], match:['яйца','зелень'],
+  {id:'r5', icon:'🍳', photo:'https://www.themealdb.com/images/media/meals/yvpuuy1511797244.jpg', title:'Омлет с зеленью', time:'10 мин', servings:'1 порция', tags:['Завтрак'], match:['яйца','зелень'],
    ingredients:[{name:'Яйца',qty:'3 шт'},{name:'Молоко',qty:'2 ст.л.'},{name:'Зелень',qty:'по вкусу'},{name:'Масло сливочное',qty:'1 ч.л.'}],
    steps:['Яйца взбить с молоком и щепоткой соли.','Разогреть сковороду с маслом на среднем огне.','Вылить смесь, готовить под крышкой 3-4 минуты.','Посыпать рубленой зеленью перед подачей.']},
-  {id:'r6', icon:'🦐', title:'Морской коктейль с чесноком', time:'15 мин', servings:'2 порции', tags:['Обед'], match:['морской коктейль'],
+  {id:'r6', icon:'🦐', photo:'https://www.themealdb.com/images/media/meals/96lt871763480970.jpg', title:'Морской коктейль с чесноком', time:'15 мин', servings:'2 порции', tags:['Обед'], match:['морской коктейль'],
    ingredients:[{name:'Морской коктейль',qty:'300 г'},{name:'Чеснок',qty:'2 зубчика'},{name:'Оливковое масло',qty:'1 ст.л.'},{name:'Лимон',qty:'половина'}],
    steps:['Разморозить морской коктейль.','Разогреть масло на сковороде, добавить давленый чеснок.','Обжарить морепродукты 4-5 минут на сильном огне.','Сбрызнуть лимонным соком перед подачей.']},
-  {id:'r7', icon:'🫐', title:'Смузи с замороженными ягодами', time:'5 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['замороженные ягоды'],
+  {id:'r7', icon:'🫐', photo:'https://www.themealdb.com/images/media/meals/pjbaq11784731571.jpg', title:'Смузи с замороженными ягодами', time:'5 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['замороженные ягоды'],
    ingredients:[{name:'Замороженные ягоды',qty:'150 г'},{name:'Йогурт натуральный',qty:'150 г'},{name:'Мёд',qty:'1 ч.л.'}],
    steps:['Положить ягоды, йогурт и мёд в блендер.','Взбить до однородности 30-40 секунд.','Перелить в стакан и подавать сразу.']},
-  {id:'r8', icon:'🥗', title:'Овощной салат с творогом', time:'10 мин', servings:'1 порция', tags:['Ужин'], match:['творог','помидоры','огурцы'],
+  {id:'r8', icon:'🥗', photo:'https://www.themealdb.com/images/media/meals/w0rsga1782683912.jpg', title:'Овощной салат с творогом', time:'10 мин', servings:'1 порция', tags:['Ужин'], match:['творог','помидоры','огурцы'],
    ingredients:[{name:'Творог',qty:'150 г'},{name:'Помидоры',qty:'2 шт'},{name:'Огурцы',qty:'2 шт'},{name:'Зелень',qty:'по вкусу'}],
    steps:['Овощи нарезать произвольно.','Смешать с творогом.','Посыпать зеленью, посолить по вкусу.']},
-  {id:'r9', icon:'🥩', title:'Говяжий язык с зеленью', time:'10 мин', servings:'2 порции', tags:['Обед'], match:['говяжий язык'],
+  {id:'r9', icon:'🥩', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Beef_tongue_dishes_for_dinner.jpg/500px-Beef_tongue_dishes_for_dinner.jpg', title:'Говяжий язык с зеленью', time:'10 мин', servings:'2 порции', tags:['Обед'], match:['говяжий язык'],
    ingredients:[{name:'Говяжий язык отварной',qty:'300 г'},{name:'Зелень',qty:'по вкусу'},{name:'Горчица',qty:'1 ч.л.'}],
    steps:['Язык нарезать тонкими ломтиками.','Выложить на тарелку, посыпать зеленью.','Подавать с горчицей.']},
-  {id:'r10', icon:'🍎', title:'Творог с яблоком и орехами', time:'5 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['творог','яблоки','орехи'],
+  {id:'r10', icon:'🍎', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/%D0%A2%D0%B2%D0%BE%D1%80%D0%BE%D0%B3.jpg/500px-%D0%A2%D0%B2%D0%BE%D1%80%D0%BE%D0%B3.jpg', title:'Творог с яблоком и орехами', time:'5 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['творог','яблоки','орехи'],
    ingredients:[{name:'Творог',qty:'200 г'},{name:'Яблоки',qty:'1 шт'},{name:'Орехи (грецкий/миндаль)',qty:'20 г'},{name:'Мёд',qty:'1 ч.л.'}],
    steps:['Яблоко нарезать мелкими кубиками.','Орехи слегка измельчить.','Смешать творог, яблоко и орехи, полить мёдом.']},
-  {id:'r11', icon:'🍅', title:'Греческий салат с сыром', time:'12 мин', servings:'2 порции', tags:['Обед','Ужин'], match:['твёрдый сыр','помидоры','огурцы'],
+  {id:'r11', icon:'🍅', photo:'https://www.themealdb.com/images/media/meals/6awyvm1782685205.jpg', title:'Греческий салат с сыром', time:'12 мин', servings:'2 порции', tags:['Обед','Ужин'], match:['твёрдый сыр','помидоры','огурцы'],
    ingredients:[{name:'Помидоры',qty:'3 шт'},{name:'Огурцы',qty:'2 шт'},{name:'Твёрдый сыр',qty:'100 г'},{name:'Оливковое масло',qty:'1 ст.л.'}],
    steps:['Овощи нарезать крупными кубиками.','Сыр нарезать кубиками или раскрошить.','Смешать всё, заправить маслом, посолить по вкусу.']},
-  {id:'r12', icon:'🥛', title:'Окрошка на кефире', time:'15 мин', servings:'2 порции', tags:['Обед'], match:['кефир','огурцы','яйца'],
+  {id:'r12', icon:'🥛', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/%D0%9E%D0%BA%D1%80%D0%BE%D1%88%D0%BA%D0%B0_Okroshka_05.jpg/500px-%D0%9E%D0%BA%D1%80%D0%BE%D1%88%D0%BA%D0%B0_Okroshka_05.jpg', title:'Окрошка на кефире', time:'15 мин', servings:'2 порции', tags:['Обед'], match:['кефир','огурцы','яйца'],
    ingredients:[{name:'Кефир',qty:'500 мл'},{name:'Огурцы',qty:'2 шт'},{name:'Яйца',qty:'2 шт'},{name:'Куриное филе',qty:'150 г'},{name:'Зелень',qty:'по вкусу'}],
    steps:['Яйца отварить, остудить и нарезать кубиками.','Куриное филе отварить и нарезать кубиками.','Огурцы нарезать мелкими кубиками.','Смешать все ингредиенты, залить кефиром.','Посолить, посыпать зеленью.']},
-  {id:'r13', icon:'🍞', title:'Тост с авокадо', time:'8 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['авокадо','отрубной хлеб'],
+  {id:'r13', icon:'🍞', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Avocado_toast.jpg/500px-Avocado_toast.jpg', title:'Тост с авокадо', time:'8 мин', servings:'1 порция', tags:['Завтрак','Быстро'], match:['авокадо','отрубной хлеб'],
    ingredients:[{name:'Хлеб отрубной',qty:'2 куска'},{name:'Авокадо',qty:'1 шт'},{name:'Лимонный сок',qty:'по вкусу'},{name:'Соль, перец',qty:'по вкусу'}],
    steps:['Хлеб подсушить в тостере.','Авокадо размять вилкой с лимонным соком.','Намазать на тост, посолить и поперчить.']},
-  {id:'r14', icon:'🥕', title:'Тушёные овощи с индейкой', time:'25 мин', servings:'2 порции', tags:['Обед','Ужин'], match:['филе индейки','овощная смесь'],
+  {id:'r14', icon:'🥕', photo:'https://www.themealdb.com/images/media/meals/6vi2cv1763075785.jpg', title:'Тушёные овощи с индейкой', time:'25 мин', servings:'2 порции', tags:['Обед','Ужин'], match:['филе индейки','овощная смесь'],
    ingredients:[{name:'Филе индейки',qty:'400 г'},{name:'Овощная смесь',qty:'300 г'},{name:'Оливковое масло',qty:'1 ст.л.'}],
    steps:['Разморозить филе индейки, нарезать кубиками.','Обжарить на масле 5-7 минут.','Добавить овощную смесь, накрыть крышкой.','Тушить 12-15 минут до готовности.']},
 ];
@@ -1270,19 +1275,26 @@ document.querySelectorAll('.seg-btn').forEach(btn=>{
   });
 });
 
+function recipePhotoHtml(r){
+  return r.photo
+    ? `<img src="${r.photo}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${r.icon}'))">`
+    : r.icon;
+}
 function renderSuggestRow(){
   const cookable = computeCookable();
   const list = cookable.length ? cookable : recipesData.slice(0,4);
   document.getElementById('suggest-row').innerHTML = list.map(r => `
     <div class="suggest-card" data-recipe="${r.id}">
-      <div class="ic">${r.icon}</div>
-      <div class="t">${r.title}</div>
-      <div class="s">${r.time} · ${r.servings}</div>
-      <span class="tag">${r.tags.join(' · ')}</span>
+      <div class="suggest-photo">${recipePhotoHtml(r)}</div>
+      <div class="suggest-body">
+        <div class="t">${r.title}</div>
+        <div class="s">${r.time} · ${r.servings}</div>
+        <span class="tag">${r.tags.join(' · ')}</span>
+      </div>
     </div>`).join('');
   document.getElementById('home-meals-row').innerHTML = list.slice(0,3).map(r => `
     <div class="recipe-card" data-recipe="${r.id}">
-      <div class="recipe-img">${r.icon}</div>
+      <div class="recipe-img">${recipePhotoHtml(r)}</div>
       <div class="recipe-body"><div class="t">${r.title}</div><div class="s">${r.time} · ${r.servings}</div></div>
     </div>`).join('');
 }
@@ -1291,7 +1303,7 @@ renderSuggestRow();
 function renderRecipesList(){
   document.getElementById('recipes-list').innerHTML = recipesData.map(r => `
     <div class="product-row" data-recipe="${r.id}">
-      <div class="product-thumb">${r.icon}</div>
+      <div class="product-thumb">${recipePhotoHtml(r)}</div>
       <div class="product-info"><div class="n">${r.title}</div><div class="q">${r.time} · ${r.servings}</div></div>
     </div>`).join('');
 }
@@ -1300,7 +1312,8 @@ renderRecipesList();
 function openRecipe(id){
   const r = recipesData.find(x=>x.id===id);
   if(!r) return;
-  document.getElementById('recipe-hero').textContent = r.icon;
+  const hero = document.getElementById('recipe-hero');
+  hero.innerHTML = recipePhotoHtml(r);
   document.getElementById('recipe-title').textContent = r.title;
   document.getElementById('recipe-meta').textContent = `${r.time} · ${r.servings}`;
   document.getElementById('recipe-ingredients').innerHTML = r.ingredients.map(i=>`<li><span class="iname">${i.name}</span><span class="iqty">${i.qty}</span></li>`).join('');
