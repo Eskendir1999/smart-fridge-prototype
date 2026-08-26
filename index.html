@@ -1199,7 +1199,10 @@ function openProduct(listName, idx, opts={}){
   const days = daysUntil(p.expiresOn);
   document.getElementById('product-hero').textContent = p.emoji;
   document.getElementById('product-name').textContent = p.name;
-  document.getElementById('product-sub').textContent = `${listName==='freezer'?'Морозилка':'Холодильник'} · ${p.location||'—'}`;
+  const compartmentLabel = listName==='freezer' ? 'Морозилка' : 'Холодильник';
+  document.getElementById('product-sub').textContent = (p.location && p.location !== compartmentLabel)
+    ? `${compartmentLabel} · ${p.location}`
+    : compartmentLabel;
   document.getElementById('product-qty').textContent = formatQty(p);
   document.getElementById('product-exp').textContent = listName==='freezer' ? '−18°C' : (days<=0?'срок истёк': `через ${expiryLabel(days)}`);
   if(push) history.push('product');
