@@ -471,14 +471,9 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         </div>
       </div>
 
-      <div class="section">
+      <div class="section" id="low-stock-section" style="display:none">
         <div class="section-head"><h2>Заканчивается</h2></div>
-        <div class="chip-row">
-          <div class="chip"><span class="dot"></span>Молоко</div>
-          <div class="chip"><span class="dot"></span>Яйца</div>
-          <div class="chip"><span class="dot"></span>Хлеб отрубной</div>
-          <div class="chip"><span class="dot"></span>Творог</div>
-        </div>
+        <div class="chip-row" id="low-stock-row"></div>
       </div>
 
       <div class="section">
@@ -900,6 +895,7 @@ function usernameToEmail(u){ return u.trim().toLowerCase() + '@' + APP_EMAIL_DOM
 let currentUserId = null;
 let currentHouseholdId = null;
 let familyMemberCount = 1;
+let userDataLoaded = false; // true после первого успешного loadUserData() — ограждает Home-виджеты от рендера на демо-данных до входа
 
 /* ===================== DATE HELPERS ===================== */
 const TODAY = new Date(); TODAY.setHours(0,0,0,0);
@@ -1266,11 +1262,14 @@ document.addEventListener('click', (e)=>{
 });
 
 /* ===================== SKELETON -> CONTENT ===================== */
-setTimeout(()=>{
+// Раскрывается из loadUserData(), когда реальные данные из Supabase уже
+// загружены — раньше это было по таймеру (700мс) и на секунду показывало
+// демо-заглушку вместо настоящего холодильника.
+function revealSummary(){
   document.getElementById('summary-skel').style.display='none';
   document.getElementById('summary-loaded').style.display='flex';
   updateSummary();
-}, 700);
+}
 
 function ringSvg(pct, color){
   const r = 24, c = 2*Math.PI*r;
@@ -2163,6 +2162,7 @@ function renderMissingAlert(){
     titleEl.style.color = 'var(--fresh)';
     subEl.textContent = 'Холодильник и морозилка покрывают программу на 6 дней + разгрузочный день';
     listEl.innerHTML = '';
+    renderLowStock(missing);
     return;
   }
   alertCard.style.background = '#FBEAEA';
@@ -2188,6 +2188,20 @@ function renderMissingAlert(){
       showToast(already ? `«${name}» уже в корзине` : `«${name}» добавлено в корзину`);
     });
   });
+  renderLowStock(missing);
+}
+
+function renderLowStock(missing){
+  const section = document.getElementById('low-stock-section');
+  const row = document.getElementById('low-stock-row');
+  if(!userDataLoaded) return; // до входа fridgeData/freezerData ещё демо-заглушка — не показываем на Home
+  if(!missing.length){
+    section.style.display = 'none';
+    row.innerHTML = '';
+    return;
+  }
+  section.style.display = '';
+  row.innerHTML = missing.map(m => `<div class="chip"><span class="dot"></span>${m.name}</div>`).join('');
 }
 
 /* ===================== CART ===================== */
@@ -2551,8 +2565,9 @@ async function loadUserData(){
     usedCount = statsRes.data.used_count; usedWeightKg = Number(statsRes.data.used_weight_kg); wastedCount = statsRes.data.wasted_count;
   }
 
+  userDataLoaded = true;
   renderFridgeList(currentCompartment);
-  updateSummary();
+  revealSummary();
   renderCart();
   renderMissingAlert();
   renderSuggestRow();
