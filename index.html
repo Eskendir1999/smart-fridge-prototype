@@ -811,6 +811,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         <button class="secondary-btn" data-nav="vision">📷 Распознать продукт</button>
         <button class="secondary-btn" id="open-family-btn">👪 Семья</button>
         <button class="secondary-btn" id="push-toggle-btn">🔔 Уведомления об истечении срока</button>
+        <button class="secondary-btn" id="install-app-btn" style="display:none">📲 Установить приложение</button>
         <button class="secondary-btn" id="logout-btn" style="color:var(--danger); border-color:#F0D3D3">↪ Выйти</button>
       </div>
     </section>
@@ -2697,6 +2698,43 @@ async function togglePushSubscription(){
   showToast('Уведомления включены');
 }
 document.getElementById('push-toggle-btn').addEventListener('click', togglePushSubscription);
+
+/* ===================== УСТАНОВКА PWA НА ЭКРАН ===================== */
+let deferredInstallPrompt = null;
+function isStandaloneMode(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isIOS(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+function updateInstallButton(){
+  const btn = document.getElementById('install-app-btn');
+  if(isStandaloneMode()){ btn.style.display = 'none'; return; }
+  if(deferredInstallPrompt || isIOS()){ btn.style.display = ''; }
+}
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  updateInstallButton();
+});
+window.addEventListener('appinstalled', ()=>{
+  deferredInstallPrompt = null;
+  document.getElementById('install-app-btn').style.display = 'none';
+  showToast('Приложение установлено');
+});
+document.getElementById('install-app-btn').addEventListener('click', async ()=>{
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    updateInstallButton();
+    return;
+  }
+  if(isIOS()){
+    showToast('В Safari: значок «Поделиться» → «На экран «Домой»');
+  }
+});
+updateInstallButton();
 
 /* ===================== LOGIN GATE (Supabase Auth) ===================== */
 (function(){
