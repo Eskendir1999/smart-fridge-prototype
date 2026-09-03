@@ -472,7 +472,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       </div>
 
       <div class="section" id="low-stock-section" style="display:none">
-        <div class="section-head"><h2>Заканчивается</h2></div>
+        <div class="section-head"><h2>Заканчивается</h2><button class="link" id="low-stock-cart-btn">В корзину →</button></div>
         <div class="chip-row" id="low-stock-row"></div>
       </div>
 
@@ -2148,6 +2148,16 @@ function renderDay(d){
 }
 
 /* ===================== WEEKLY MISSING-INGREDIENTS ALERT ===================== */
+function addMissingToCart(name){
+  const already = cartData.some(c => c.name === name);
+  if(!already){
+    const entry = findCatalog(name);
+    const newCartItem = {name, emoji:'🛒', qtyNum: entry?entry.defaultQty:1, unit: entry?entry.unit:'шт', note:'нужно докупить'};
+    cartData.push(newCartItem);
+    dbInsertCart(newCartItem);
+  }
+  return !already;
+}
 function renderMissingAlert(){
   const inventoryNames = fridgeData.concat(freezerData).map(i => i.name.toLowerCase());
   const missing = weeklyRequiredItems.filter(req => !inventoryNames.some(n => n.includes(req.keyword)));
@@ -2177,24 +2187,20 @@ function renderMissingAlert(){
   listEl.querySelectorAll('[data-add-shopping]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const name = btn.dataset.addShopping;
-      const already = cartData.some(c => c.name === name);
-      if(!already){
-        const entry = findCatalog(name);
-        const newCartItem = {name, emoji:'🛒', qtyNum: entry?entry.defaultQty:1, unit: entry?entry.unit:'шт', note:'нужно докупить'};
-        cartData.push(newCartItem);
-        dbInsertCart(newCartItem);
-        renderCart();
-      }
-      showToast(already ? `«${name}» уже в корзине` : `«${name}» добавлено в корзину`);
+      const added = addMissingToCart(name);
+      renderCart();
+      showToast(added ? `«${name}» добавлено в корзину` : `«${name}» уже в корзине`);
     });
   });
   renderLowStock(missing);
 }
 
+let lastLowStockMissing = [];
 function renderLowStock(missing){
   const section = document.getElementById('low-stock-section');
   const row = document.getElementById('low-stock-row');
   if(!userDataLoaded) return; // до входа fridgeData/freezerData ещё демо-заглушка — не показываем на Home
+  lastLowStockMissing = missing;
   if(!missing.length){
     section.style.display = 'none';
     row.innerHTML = '';
@@ -2203,6 +2209,15 @@ function renderLowStock(missing){
   section.style.display = '';
   row.innerHTML = missing.map(m => `<div class="chip"><span class="dot"></span>${m.name}</div>`).join('');
 }
+document.getElementById('low-stock-cart-btn').addEventListener('click', ()=>{
+  if(!lastLowStockMissing.length) return;
+  let addedCount = 0;
+  lastLowStockMissing.forEach(m => { if(addMissingToCart(m.name)) addedCount++; });
+  renderCart();
+  showToast(addedCount
+    ? `Добавлено в корзину: ${addedCount}`
+    : 'Всё это уже в корзине');
+});
 
 /* ===================== CART ===================== */
 function renderCart(){
