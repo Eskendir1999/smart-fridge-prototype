@@ -482,7 +482,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       </div>
 
       <div class="section" style="padding-bottom:0.5rem">
-        <div class="save-banner">
+        <div class="save-banner" id="save-banner-btn" style="cursor:pointer">
           <div class="ic">🌱</div>
           <div>
             <div class="t" id="saved-banner-text">За месяц спасено 0 кг еды</div>
@@ -754,6 +754,15 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
     </section>
 
     <!-- ===== MEASUREMENT HISTORY ===== -->
+    <section class="screen" id="screen-food-log">
+      <div class="back-row"><button class="back-btn" data-back="home">← Назад</button></div>
+      <div class="detail-block" style="padding-top:0.375rem">
+        <h2 style="margin-bottom:0.25rem">Журнал продуктов</h2>
+        <div class="sub" style="margin-bottom:1rem">Что использовано вовремя, а что выброшено</div>
+        <div id="food-log-list" style="display:flex; flex-direction:column; gap:0.625rem;"></div>
+      </div>
+    </section>
+
     <section class="screen" id="screen-measure-history">
       <div class="back-row"><button class="back-btn" data-back="diet">← Назад</button></div>
       <div class="detail-block" style="padding-top:0.375rem">
@@ -1666,9 +1675,11 @@ document.getElementById('use-product-btn').addEventListener('click', ()=>{
   if(!currentProduct) return;
   const arr = getArr(currentProduct.list);
   const [item] = arr.splice(currentProduct.idx, 1);
-  usedCount++; usedWeightKg += estimateKg(item);
+  const kg = estimateKg(item);
+  usedCount++; usedWeightKg += kg;
   dbDeleteItem(item);
   dbSaveStats();
+  dbLogFoodEvent(item, 'used', kg);
   updateSummary();
   renderFridgeList(currentCompartment);
   renderMissingAlert();
@@ -1685,6 +1696,7 @@ document.getElementById('toss-product-btn').addEventListener('click', ()=>{
   wastedCount++;
   dbDeleteItem(item);
   dbSaveStats();
+  dbLogFoodEvent(item, 'wasted', estimateKg(item));
   updateSummary();
   renderFridgeList(currentCompartment);
   renderMissingAlert();
@@ -2429,6 +2441,40 @@ document.getElementById('open-history-btn').addEventListener('click', ()=>{
   showScreen('measure-history', false);
 });
 
+function foodLogDayLabel(iso){
+  const days = Math.round((TODAY - parseLocalDate(iso)) / 86400000);
+  if(days === 0) return 'Сегодня';
+  if(days === 1) return 'Вчера';
+  return formatRuDate(iso);
+}
+async function renderFoodLog(){
+  const listEl = document.getElementById('food-log-list');
+  listEl.innerHTML = `<div style="font-size:0.7812rem; color:var(--muted)">Загрузка…</div>`;
+  if(!currentHouseholdId){ listEl.innerHTML = `<div style="font-size:0.7812rem; color:var(--muted)">Журнал пуст</div>`; return; }
+  const { data, error } = await sb.from('food_events').select('*').eq('household_id', currentHouseholdId).order('created_at', {ascending:false}).limit(100);
+  if(error || !data || !data.length){ listEl.innerHTML = `<div style="font-size:0.7812rem; color:var(--muted)">Пока ничего не отмечено — используйте кнопки «Использовано»/«Выброшено» на карточке продукта.</div>`; return; }
+  listEl.innerHTML = data.map(e => {
+    const isUsed = e.action === 'used';
+    const color = isUsed ? 'var(--fresh)' : 'var(--danger)';
+    const label = isUsed ? 'Использовано' : 'Выброшено';
+    const dayLabel = foodLogDayLabel(isoDate(new Date(e.created_at)));
+    return `
+    <div class="product-row">
+      <div class="product-thumb">${e.emoji}</div>
+      <div class="product-info">
+        <div class="n">${e.name}</div>
+        <div class="q">${dayLabel}</div>
+      </div>
+      <div style="font-size:0.7188rem; font-weight:700; color:${color}; flex-shrink:0;">${isUsed?'✓':'🗑'} ${label}</div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('save-banner-btn').addEventListener('click', ()=>{
+  renderFoodLog();
+  history.push('food-log');
+  showScreen('food-log', false);
+});
+
 showScreen('home', false);
 
 /* ===================== SUPABASE DATA SYNC ===================== */
@@ -2462,6 +2508,13 @@ async function dbDeleteCart(item){
 async function dbSaveStats(){
   if(!currentUserId) return;
   await sb.from('food_stats').upsert({user_id: currentUserId, used_count: usedCount, used_weight_kg: usedWeightKg, wasted_count: wastedCount});
+}
+async function dbLogFoodEvent(item, action, qtyKg){
+  if(!currentUserId || !currentHouseholdId) return;
+  await sb.from('food_events').insert({
+    household_id: currentHouseholdId, user_id: currentUserId,
+    name: item.name, emoji: item.emoji || '📦', action, qty_kg: qtyKg ?? null
+  });
 }
 async function dbSaveMeasurement(entry){
   if(!currentUserId) return;
