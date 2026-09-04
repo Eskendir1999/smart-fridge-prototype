@@ -197,11 +197,12 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .scan-frame{ position:absolute; inset:14%; border:2px solid rgba(255,255,255,0.55); border-radius:18px; pointer-events:none; }
 .scan-line{ position:absolute; left:14%; right:14%; top:14%; height:2px; background:var(--fresh); box-shadow:0 0 8px var(--fresh); animation:scan 1.8s ease-in-out infinite; }
 @keyframes scan{ 0%{top:14%;} 50%{top:82%;} 100%{top:14%;} }
-.vision-controls{ display:flex; gap:0.75rem; padding:0 1.25rem; }
-.vision-controls button{ flex:1; }
+.vision-controls{ display:flex; align-items:center; gap:0.75rem; padding:0 1.25rem; }
+.vision-controls button:not(.capture-btn){ flex:1; }
 .ghost-btn{ min-height:50px; border-radius:var(--radius-sm); background:var(--surface); border:1px solid var(--line); color:var(--ink); font-weight:600; font-size:0.9062rem; font-family:'Inter',sans-serif; }
-.capture-btn{ width:66px; height:66px; border-radius:50%; background:#fff; border:4px solid var(--line); flex:none; margin:0 auto; display:block; }
-.capture-btn:active{ transform:scale(0.95); }
+.capture-btn{ width:72px; height:72px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,0.95); box-shadow:0 0 0 3px rgba(0,0,0,0.18), 0 4px 14px rgba(0,0,0,0.3); flex:none; margin:0 auto; display:flex; align-items:center; justify-content:center; padding:0; }
+.capture-btn::after{ content:''; width:56px; height:56px; border-radius:50%; background:var(--fresh); transition:transform 0.15s ease; }
+.capture-btn:active::after{ transform:scale(0.85); }
 .vision-result{ margin:1rem 1.25rem 0 1.25rem; background:var(--surface); border-radius:var(--radius-lg); padding:1rem; box-shadow:var(--shadow); display:none; }
 .vision-result.show{ display:block; }
 .vision-result .row{ display:flex; align-items:center; gap:0.75rem; margin-bottom:0.875rem; }
@@ -1889,7 +1890,33 @@ async function runRecognition(imgEl){
     randomFallbackRecognition();
   }
 }
-document.getElementById('capture-btn').addEventListener('click', ()=> runRecognition());
+function captureVideoFrame(){
+  // Захватываем кадр так же, как его видит пользователь (обрезка под рамку стадии),
+  // вместо того чтобы скармливать модели весь необработанный кадр камеры — тот
+  // обычно шире/другой пропорции, чем видно на экране, и при сжатии в квадрат
+  // 224×224 для MobileNet сильно искажается (отсюда путаница банан↔брокколи).
+  const videoEl = document.getElementById('vision-video');
+  const stageEl = document.getElementById('vision-stage');
+  if(!videoEl || !videoEl.videoWidth) return null;
+  const canvas = document.createElement('canvas');
+  const targetW = 400;
+  const stageAspect = (stageEl.clientWidth && stageEl.clientHeight) ? (stageEl.clientHeight/stageEl.clientWidth) : (4/3);
+  const targetH = Math.round(targetW * stageAspect);
+  canvas.width = targetW; canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+  const targetAspect = targetW / targetH;
+  const srcAspect = vw / vh;
+  let sx, sy, sw, sh;
+  if(srcAspect > targetAspect){ sh = vh; sw = vh * targetAspect; sx = (vw - sw)/2; sy = 0; }
+  else { sw = vw; sh = vw / targetAspect; sx = 0; sy = (vh - sh)/2; }
+  ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, targetW, targetH);
+  return canvas;
+}
+document.getElementById('capture-btn').addEventListener('click', ()=>{
+  const frame = captureVideoFrame();
+  runRecognition(frame || undefined);
+});
 document.getElementById('retake-btn').addEventListener('click', ()=>{
   visionResult.classList.remove('show');
   if(stream) setVisionState('live'); else setVisionState('idle');
