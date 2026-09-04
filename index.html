@@ -566,7 +566,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
     <section class="screen" id="screen-vision">
       <div class="topbar"><h1>Компьютерное зрение</h1></div>
       <div class="section" style="padding-top:0; padding-bottom:0.625rem">
-        <div class="section-head" style="margin-bottom:0.125rem; display:block"><h2 style="font-size:0.875rem; color:var(--ink-soft); font-weight:500">Наведите камеру на продукт — распознаем и добавим в холодильник или морозилку.</h2><p style="font-size:0.7188rem; color:var(--muted); margin-top:0.25rem; line-height:1.4">Модель работает прямо на устройстве и лучше всего узнаёт: банан, лимон, апельсин, ананас, гранат, клубника, инжир, капуста, брокколи, кабачок, огурец, перец, гриб, яблоко. Для остальных продуктов (помидор, картофель, лук и т.п.) — впишите название сами или отсканируйте штрихкод.</p></div>
+        <div class="section-head" style="margin-bottom:0.125rem; display:block"><h2 style="font-size:0.875rem; color:var(--ink-soft); font-weight:500">Наведите камеру на продукт — распознаем и добавим в холодильник или морозилку.</h2><p style="font-size:0.7188rem; color:var(--muted); margin-top:0.25rem; line-height:1.4">Модель работает прямо на устройстве и лучше всего узнаёт: банан, лимон, апельсин, ананас, гранат, клубника, инжир, капуста, цветная капуста, брокколи, кабачок, огурец, перец, гриб, яблоко. Камера также сама подсвечивает рамкой банан, яблоко, апельсин, брокколи, морковь и ещё пару видов еды. Для остальных продуктов (помидор, картофель, лук и т.п.) — впишите название сами или отсканируйте штрихкод.</p></div>
       </div>
 
       <div class="vision-stage" id="vision-stage">
@@ -1024,6 +1024,37 @@ const productCatalog = [
   {name:'Кабачок', emoji:'🥒', unit:'шт', defaultQty:2, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Zucchini/Zucchini_Iconic.jpg'},
   {name:'Клубника', emoji:'🍓', unit:'г', defaultQty:300, shelfDays:3, compartment:'fridge', photo:MDB_ING+'/Strawberries.png'},
   {name:'Инжир', emoji:'🟤', unit:'шт', defaultQty:4, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Figs.png'},
+  // Ещё фрукты/ягоды
+  {name:'Виноград', emoji:'🍇', unit:'г', defaultQty:500, shelfDays:10, compartment:'fridge', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Table_grapes_on_white.jpg/500px-Table_grapes_on_white.jpg'},
+  {name:'Вишня', emoji:'🍒', unit:'г', defaultQty:300, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Cherry.png'},
+  {name:'Абрикосы', emoji:'🍑', unit:'шт', defaultQty:6, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Apricot.png'},
+  {name:'Малина', emoji:'🍓', unit:'г', defaultQty:200, shelfDays:3, compartment:'fridge', photo:MDB_ING+'/Raspberries.png'},
+  {name:'Ежевика', emoji:'🫐', unit:'г', defaultQty:200, shelfDays:3, compartment:'fridge', photo:MDB_ING+'/Blackberries.png'},
+  {name:'Мандарины', emoji:'🍊', unit:'шт', defaultQty:6, shelfDays:14, compartment:'fridge', photo:GSD_BASE+'/Fruit/Satsumas/Satsumas_Iconic.jpg'},
+  {name:'Папайя', emoji:'🥭', unit:'шт', defaultQty:1, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Fruit/Papaya/Papaya_Iconic.jpg'},
+  {name:'Маракуйя', emoji:'🍈', unit:'шт', defaultQty:4, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Fruit/Passion-Fruit/Passion-Fruit_Iconic.jpg'},
+  // Ещё овощи
+  {name:'Цветная капуста', emoji:'🥦', unit:'шт', defaultQty:1, shelfDays:7, compartment:'fridge', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Cauliflower_2.jpg/500px-Cauliflower_2.jpg'},
+  {name:'Шпинат', emoji:'🥬', unit:'г', defaultQty:200, shelfDays:4, compartment:'fridge', photo:MDB_ING+'/Spinach.png'},
+  {name:'Листовой салат', emoji:'🥬', unit:'шт', defaultQty:1, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Lettuce.png'},
+  {name:'Сельдерей', emoji:'🥬', unit:'шт', defaultQty:1, shelfDays:14, compartment:'fridge', photo:MDB_ING+'/Celery.png'},
+  {name:'Кукуруза', emoji:'🌽', unit:'шт', defaultQty:3, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Sweetcorn.png'},
+  {name:'Зелёный горошек', emoji:'🫛', unit:'г', defaultQty:300, shelfDays:5, compartment:'fridge', photo:MDB_ING+'/Peas.png'},
+  {name:'Редис', emoji:'🔴', unit:'г', defaultQty:200, shelfDays:10, compartment:'fridge', photo:MDB_ING+'/Radish.png'},
+  {name:'Тыква', emoji:'🎃', unit:'г', defaultQty:500, shelfDays:30, compartment:'fridge', photo:MDB_ING+'/Pumpkin.png'},
+  {name:'Батат', emoji:'🍠', unit:'шт', defaultQty:3, shelfDays:21, compartment:'fridge', photo:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Raw_sweet_potato.jpg/500px-Raw_sweet_potato.jpg'},
+  {name:'Спаржа', emoji:'🥬', unit:'г', defaultQty:250, shelfDays:5, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Asparagus/Asparagus_Iconic.jpg'},
+  {name:'Лук-порей', emoji:'🧅', unit:'шт', defaultQty:2, shelfDays:14, compartment:'fridge', photo:GSD_BASE+'/Vegetables/Leek/Leek_Iconic.jpg'},
+  // Напитки/тетрапаки — MobileNet не отличает бренды по форме упаковки, поэтому основной
+  // путь узнать конкретный напиток — сканер штрихкода (Open Food Facts); эти записи нужны
+  // для ручного добавления и как разумные значения по умолчанию (срок/кол-во/фото-заглушка).
+  {name:'Сок', emoji:'🧃', unit:'л', defaultQty:1, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Packages/Juice/God-Morgon-Apple-Juice/God-Morgon-Apple-Juice_Iconic.jpg'},
+  {name:'Растительное молоко овсяное', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Packages/Oat-Milk/Oatly-Oat-Milk/Oatly-Oat-Milk_Iconic.jpg'},
+  {name:'Растительное молоко соевое', emoji:'🥛', unit:'л', defaultQty:1, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Packages/Soy-Milk/Alpro-Fresh-Soy-Milk/Alpro-Fresh-Soy-Milk_Iconic.jpg'},
+  {name:'Сметана', emoji:'🥣', unit:'г', defaultQty:200, shelfDays:10, compartment:'fridge', photo:GSD_BASE+'/Packages/Sour-Cream/Arla-Sour-Cream/Arla-Sour-Cream_Iconic.jpg'},
+  {name:'Ряженка', emoji:'🍶', unit:'мл', defaultQty:500, shelfDays:7, compartment:'fridge', photo:GSD_BASE+'/Packages/Sour-Milk/Arla-Sour-Milk/Arla-Sour-Milk_Iconic.jpg'},
+  {name:'Овсяный йогурт', emoji:'🍶', unit:'г', defaultQty:400, shelfDays:10, compartment:'fridge', photo:GSD_BASE+'/Packages/Oatghurt/Oatly-Natural-Oatghurt/Oatly-Natural-Oatghurt_Iconic.jpg'},
+  {name:'Соевый йогурт', emoji:'🍶', unit:'г', defaultQty:400, shelfDays:10, compartment:'fridge', photo:GSD_BASE+'/Packages/Soyghurt/Alpro-Vanilla-Soyghurt/Alpro-Vanilla-Soyghurt_Iconic.jpg'},
 ];
 
 // ImageNet-класс (MobileNet) -> название в нашем каталоге; используется для реального
@@ -1038,6 +1069,7 @@ const IMAGENET_TO_CATALOG = {
   'strawberry': 'Клубника',
   'fig': 'Инжир',
   'head cabbage': 'Капуста',
+  'cauliflower': 'Цветная капуста',
   'broccoli': 'Брокколи',
   'zucchini, courgette': 'Кабачок',
   'cucumber, cucmber': 'Огурцы',
