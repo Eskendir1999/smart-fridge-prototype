@@ -197,6 +197,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .scan-frame{ position:absolute; inset:14%; border:2px solid rgba(255,255,255,0.55); border-radius:18px; pointer-events:none; }
 .scan-line{ position:absolute; left:14%; right:14%; top:14%; height:2px; background:var(--fresh); box-shadow:0 0 8px var(--fresh); animation:scan 1.8s ease-in-out infinite; }
 @keyframes scan{ 0%{top:14%;} 50%{top:82%;} 100%{top:14%;} }
+.detect-box{ position:absolute; display:none; border:3px solid var(--fresh); border-radius:12px; pointer-events:none; box-shadow:0 0 0 2000px rgba(0,0,0,0.15); transition:left 0.12s linear, top 0.12s linear, width 0.12s linear, height 0.12s linear; }
+.detect-box-label{ position:absolute; top:-1.75rem; left:-3px; background:var(--fresh); color:#fff; font-size:0.7188rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:999px; white-space:nowrap; }
 .vision-controls{ display:flex; align-items:center; gap:0.75rem; padding:0 1.25rem; }
 .vision-controls button:not(.capture-btn){ flex:1; }
 .ghost-btn{ min-height:50px; border-radius:var(--radius-sm); background:var(--surface); border:1px solid var(--line); color:var(--ink); font-weight:600; font-size:0.9062rem; font-family:'Inter',sans-serif; }
@@ -895,6 +897,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
 <script>
 /* ===================== SUPABASE ===================== */
 const SUPABASE_URL = '__SUPABASE_URL__';
@@ -1231,7 +1234,7 @@ function showScreen(name, push=true){
   fab.dataset.mode = name === 'home' ? 'meal' : 'product';
   document.querySelector('.main-col').scrollTop = 0;
   if(push) history.push(name);
-  if(name === 'vision'){ ensureModel(); }
+  if(name === 'vision'){ ensureModel(); } else { stopDetectLoop(); }
 }
 
 const topLevelScreens = new Set(['home','fridge','vision','diet','recipes','cart','profile']);
@@ -1750,11 +1753,11 @@ function setVisionState(state, message){
   } else if(state === 'nocamera'){
     stage.innerHTML = `<div class="vision-state"><div class="ic">❔</div><h3>Камера не найдена</h3><p>На этом устройстве не обнаружена камера. Загрузите фото из галереи.</p></div>`;
   } else if(state === 'live'){
-    stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-frame"></div><div class="scan-line"></div>`;
+    stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-line"></div><div class="detect-box" id="detect-box"><span class="detect-box-label" id="detect-box-label"></span></div>`;
     videoEl = document.getElementById('vision-video');
     videoEl.srcObject = stream;
   } else if(state === 'scanning'){
-    stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-frame"></div><div class="scan-line"></div><div class="vision-state" style="position:absolute; bottom:0; background:linear-gradient(to top, rgba(0,0,0,0.6), transparent); width:100%; padding-top:2.5rem"><p>Распознаём продукт…</p></div>`;
+    stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-line"></div><div class="detect-box" id="detect-box"><span class="detect-box-label" id="detect-box-label"></span></div><div class="vision-state" style="position:absolute; bottom:0; background:linear-gradient(to top, rgba(0,0,0,0.6), transparent); width:100%; padding-top:2.5rem"><p>Распознаём продукт…</p></div>`;
     videoEl = document.getElementById('vision-video');
     if(stream) videoEl.srcObject = stream;
   }
@@ -1768,6 +1771,7 @@ async function requestCamera(){
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     setVisionState('live');
     ensureModel();
+    startDetectLoop();
   }catch(err){
     if(err.name === 'NotFoundError' || err.name === 'OverconstrainedError'){
       setVisionState('nocamera');
@@ -1779,6 +1783,7 @@ async function requestCamera(){
 document.getElementById('request-camera-btn').addEventListener('click', requestCamera);
 document.getElementById('retry-camera-btn').addEventListener('click', requestCamera);
 document.getElementById('stop-camera-btn').addEventListener('click', ()=>{
+  stopDetectLoop();
   if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
   setVisionState('idle');
 });
@@ -1890,36 +1895,117 @@ async function runRecognition(imgEl){
     randomFallbackRecognition();
   }
 }
-function captureVideoFrame(){
-  // Захватываем кадр так же, как его видит пользователь (обрезка под рамку стадии),
-  // вместо того чтобы скармливать модели весь необработанный кадр камеры — тот
-  // обычно шире/другой пропорции, чем видно на экране, и при сжатии в квадрат
+function captureVideoFrame(bbox){
+  // Без bbox: захватываем кадр так же, как его видит пользователь (обрезка под
+  // рамку стадии) — иначе модели достаётся весь необработанный кадр камеры,
+  // обычно другой пропорции, чем видно на экране, и при сжатии в квадрат
   // 224×224 для MobileNet сильно искажается (отсюда путаница банан↔брокколи).
+  // С bbox (от live-детектора): вырезаем плотно вокруг найденного объекта —
+  // так MobileNet отдаётся чистый кадр без лишнего фона, точность выше.
   const videoEl = document.getElementById('vision-video');
   const stageEl = document.getElementById('vision-stage');
   if(!videoEl || !videoEl.videoWidth) return null;
+  const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+  let sx, sy, sw, sh;
+  if(bbox){
+    const [bx,by,bw,bh] = bbox;
+    const padW = bw*0.25, padH = bh*0.25;
+    sx = Math.max(0, bx-padW); sy = Math.max(0, by-padH);
+    sw = Math.min(vw-sx, bw+2*padW); sh = Math.min(vh-sy, bh+2*padH);
+  } else {
+    const stageAspect = (stageEl.clientWidth && stageEl.clientHeight) ? (stageEl.clientHeight/stageEl.clientWidth) : (4/3);
+    const targetAspect = 1/stageAspect;
+    const srcAspect = vw / vh;
+    if(srcAspect > targetAspect){ sh = vh; sw = vh * targetAspect; sx = (vw - sw)/2; sy = 0; }
+    else { sw = vw; sh = vw / targetAspect; sx = 0; sy = (vh - sh)/2; }
+  }
   const canvas = document.createElement('canvas');
   const targetW = 400;
-  const stageAspect = (stageEl.clientWidth && stageEl.clientHeight) ? (stageEl.clientHeight/stageEl.clientWidth) : (4/3);
-  const targetH = Math.round(targetW * stageAspect);
-  canvas.width = targetW; canvas.height = targetH;
+  canvas.width = targetW; canvas.height = Math.round(targetW * (sh/sw));
   const ctx = canvas.getContext('2d');
-  const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
-  const targetAspect = targetW / targetH;
-  const srcAspect = vw / vh;
-  let sx, sy, sw, sh;
-  if(srcAspect > targetAspect){ sh = vh; sw = vh * targetAspect; sx = (vw - sw)/2; sy = 0; }
-  else { sw = vw; sh = vw / targetAspect; sx = 0; sy = (vh - sh)/2; }
-  ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, targetW, targetH);
+  ctx.drawImage(videoEl, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
   return canvas;
 }
+
+/* ---- живая детекция объектов (COCO-SSD): рамка вокруг продукта + автосъёмка ---- */
+let cocoModel = null, cocoLoading = null;
+function ensureDetectorModel(){
+  if(cocoModel) return Promise.resolve(cocoModel);
+  if(cocoLoading) return cocoLoading;
+  cocoLoading = cocoSsd.load().then(m => { cocoModel = m; return m; }).catch(err => { console.error('COCO-SSD load failed', err); cocoLoading = null; return null; });
+  return cocoLoading;
+}
+const FOOD_COCO_CLASSES = {
+  banana:'банан', apple:'яблоко', orange:'апельсин', broccoli:'брокколи', carrot:'морковь',
+  sandwich:'сэндвич', 'hot dog':'хот-дог', pizza:'пицца', donut:'донат', cake:'торт',
+  bottle:'бутылка', cup:'стакан', 'wine glass':'бокал', bowl:'миска'
+};
+let detectTimer = null;
+let autoStreak = 0, autoLastClass = null;
+const AUTO_CAPTURE_STREAK = 3;
+
+function hideDetectBox(){
+  const box = document.getElementById('detect-box');
+  if(box) box.style.display = 'none';
+}
+function drawDetectBox(pred, videoEl){
+  const box = document.getElementById('detect-box');
+  const label = document.getElementById('detect-box-label');
+  if(!box) return;
+  if(!pred){ box.style.display = 'none'; return; }
+  const stageEl = document.getElementById('vision-stage');
+  const dispW = stageEl.clientWidth, dispH = stageEl.clientHeight;
+  const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+  const scale = Math.max(dispW/vw, dispH/vh);
+  const offsetX = (vw*scale - dispW)/2, offsetY = (vh*scale - dispH)/2;
+  const [x,y,w,h] = pred.bbox;
+  box.style.display = 'block';
+  box.style.left = Math.max(0, x*scale - offsetX) + 'px';
+  box.style.top = Math.max(0, y*scale - offsetY) + 'px';
+  box.style.width = (w*scale) + 'px';
+  box.style.height = (h*scale) + 'px';
+  label.textContent = FOOD_COCO_CLASSES[pred.class] || pred.class;
+}
+function stopDetectLoop(){
+  if(detectTimer){ clearInterval(detectTimer); detectTimer = null; }
+  autoStreak = 0; autoLastClass = null;
+  hideDetectBox();
+}
+async function startDetectLoop(){
+  stopDetectLoop();
+  const model = await ensureDetectorModel();
+  if(!model) return;
+  detectTimer = setInterval(async ()=>{
+    const videoEl = document.getElementById('vision-video');
+    if(!videoEl || !videoEl.videoWidth || visionResult.classList.contains('show')) return;
+    let preds;
+    try{ preds = await model.detect(videoEl); }catch(e){ return; }
+    const food = preds
+      .filter(p => FOOD_COCO_CLASSES[p.class] && p.score > 0.55)
+      .sort((a,b)=> b.score-a.score)[0];
+    drawDetectBox(food, videoEl);
+    if(food){
+      if(food.class === autoLastClass) autoStreak++; else { autoStreak = 1; autoLastClass = food.class; }
+      if(autoStreak >= AUTO_CAPTURE_STREAK){
+        autoStreak = 0;
+        const frame = captureVideoFrame(food.bbox);
+        stopDetectLoop();
+        runRecognition(frame || undefined);
+      }
+    } else {
+      autoStreak = 0; autoLastClass = null;
+    }
+  }, 400);
+}
+
 document.getElementById('capture-btn').addEventListener('click', ()=>{
+  stopDetectLoop();
   const frame = captureVideoFrame();
   runRecognition(frame || undefined);
 });
 document.getElementById('retake-btn').addEventListener('click', ()=>{
   visionResult.classList.remove('show');
-  if(stream) setVisionState('live'); else setVisionState('idle');
+  if(stream){ setVisionState('live'); startDetectLoop(); } else setVisionState('idle');
 });
 
 document.getElementById('gallery-btn-live').addEventListener('click', ()=> document.getElementById('gallery-input').click());
@@ -2824,6 +2910,7 @@ updateInstallButton();
 
   document.getElementById('logout-btn').addEventListener('click', async ()=>{
     if(barcodeStream){ stopBarcodeScan(); }
+    stopDetectLoop();
     if(stream){ stream.getTracks().forEach(t=>t.stop()); }
     await sb.auth.signOut();
     location.reload();
