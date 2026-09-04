@@ -1134,7 +1134,20 @@ const recipesData = [
 ];
 function computeCookable(){
   const inventoryNames = fridgeData.concat(freezerData).map(i => i.name.toLowerCase());
-  return recipesData.filter(r => r.match.some(kw => inventoryNames.some(n => n.includes(kw))));
+  // Морозилка не "истекает" в том же смысле (−18°C), поэтому срочность считаем только по холодильнику.
+  const expiryList = fridgeData.map(p => ({name: p.name, lower: p.name.toLowerCase(), days: daysUntil(p.expiresOn)}));
+  return recipesData
+    .filter(r => r.match.some(kw => inventoryNames.some(n => n.includes(kw))))
+    .map(r => {
+      let urgentDays = Infinity, urgentItem = null;
+      r.match.forEach(kw => {
+        expiryList.forEach(item => {
+          if(item.lower.includes(kw) && item.days < urgentDays){ urgentDays = item.days; urgentItem = item.name; }
+        });
+      });
+      return {...r, urgentDays, urgentItem};
+    })
+    .sort((a,b) => a.urgentDays - b.urgentDays);
 }
 
 // Диета по дням программы (базовые порции при весе 117.5 кг)
@@ -1356,6 +1369,10 @@ function recipePhotoHtml(r){
     ? `<img src="${r.photo}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${r.icon}'))">`
     : r.icon;
 }
+function urgencyBadgeHtml(r){
+  if(r.urgentDays == null || r.urgentDays > 4) return '';
+  return `<div style="font-size:0.6875rem; font-weight:700; color:var(--danger); margin-top:0.125rem;">🔥 Спасите: ${r.urgentItem} (${expiryLabel(r.urgentDays)})</div>`;
+}
 function renderSuggestRow(){
   const cookable = computeCookable();
   const list = cookable.length ? cookable : recipesData.slice(0,4);
@@ -1366,21 +1383,25 @@ function renderSuggestRow(){
         <div class="t">${r.title}</div>
         <div class="s">${r.time} · ${r.servings}</div>
         <span class="tag">${r.tags.join(' · ')}</span>
+        ${urgencyBadgeHtml(r)}
       </div>
     </div>`).join('');
   document.getElementById('home-meals-row').innerHTML = list.slice(0,3).map(r => `
     <div class="recipe-card" data-recipe="${r.id}">
       <div class="recipe-img">${recipePhotoHtml(r)}</div>
-      <div class="recipe-body"><div class="t">${r.title}</div><div class="s">${r.time} · ${r.servings}</div></div>
+      <div class="recipe-body"><div class="t">${r.title}</div><div class="s">${r.time} · ${r.servings}</div>${urgencyBadgeHtml(r)}</div>
     </div>`).join('');
 }
 renderSuggestRow();
 
 function renderRecipesList(){
-  document.getElementById('recipes-list').innerHTML = recipesData.map(r => `
+  const cookable = computeCookable();
+  const cookableIds = new Set(cookable.map(r => r.id));
+  const ordered = [...cookable, ...recipesData.filter(r => !cookableIds.has(r.id))];
+  document.getElementById('recipes-list').innerHTML = ordered.map(r => `
     <div class="product-row" data-recipe="${r.id}">
       <div class="product-thumb">${recipePhotoHtml(r)}</div>
-      <div class="product-info"><div class="n">${r.title}</div><div class="q">${r.time} · ${r.servings}</div></div>
+      <div class="product-info"><div class="n">${r.title}</div><div class="q">${r.time} · ${r.servings}</div>${urgencyBadgeHtml(r)}</div>
     </div>`).join('');
 }
 renderRecipesList();
