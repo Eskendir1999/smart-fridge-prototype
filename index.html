@@ -1682,7 +1682,12 @@ document.getElementById('save-custom-dish-btn').addEventListener('click', ()=>{
   checked.forEach(idx => {
     const [removed] = fridgeData.splice(idx, 1);
     dbDeleteItem(removed);
+    // Продукт ушёл в готовку до истечения срока — считается так же, как ручное «Использовано»
+    const kg = estimateKg(removed);
+    usedCount++; usedWeightKg += kg;
+    dbLogFoodEvent(removed, 'used', kg);
   });
+  if(checked.length) dbSaveStats();
   nameInput.value = '';
   closeSheet();
   renderFridgeList(currentCompartment);
