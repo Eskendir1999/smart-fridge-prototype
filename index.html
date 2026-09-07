@@ -141,6 +141,19 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 
 .sheet-overlay{ position:fixed; inset:0; background:rgba(20,24,20,0.4); opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:90; }
 .sheet-overlay.open{ opacity:1; pointer-events:auto; }
+.onboarding-overlay{ position:fixed; inset:0; background:rgba(20,24,20,0.5); z-index:200; display:none; align-items:center; justify-content:center; padding:1.5rem; }
+.onboarding-overlay.open{ display:flex; }
+.onboarding-card{ position:relative; width:100%; max-width:400px; background:var(--surface); border-radius:var(--radius-lg); padding:2.25rem 1.75rem 1.75rem; box-shadow:var(--shadow); text-align:center; opacity:0; transform:translateY(8px) scale(0.98); transition:opacity .22s ease, transform .22s ease; }
+.onboarding-overlay.open .onboarding-card{ opacity:1; transform:translateY(0) scale(1); }
+.onboarding-skip{ position:absolute; top:0.875rem; right:0.875rem; background:none; border:none; color:var(--ink-soft); font-size:0.8125rem; font-weight:600; font-family:'Inter',sans-serif; min-height:44px; padding:0 0.5rem; }
+.onboarding-emoji{ font-size:3rem; line-height:1; margin-bottom:1rem; }
+.onboarding-title{ font-size:1.25rem; margin-bottom:0.625rem; }
+.onboarding-text{ font-size:0.9375rem; color:var(--ink-soft); line-height:1.5; margin-bottom:1.5rem; }
+.onboarding-dots{ display:flex; justify-content:center; gap:0.375rem; margin-bottom:1.5rem; }
+.onboarding-dots span{ width:6px; height:6px; border-radius:50%; background:var(--line); transition:background .2s ease, width .2s ease; }
+.onboarding-dots span.active{ background:var(--fresh); width:16px; border-radius:3px; }
+.onboarding-nav{ display:flex; gap:0.625rem; }
+.onboarding-nav button{ flex:1; }
 .sheet{ position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,0.86); -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%); border-radius:24px 24px 0 0; padding:0.625rem 1.25rem calc(1.25rem + var(--safe-b)) 1.25rem; transform:translateY(105%); transition:transform .28s cubic-bezier(.32,.72,0,1); z-index:95; max-width:560px; margin:0 auto; box-shadow: 0 -8px 30px rgba(0,0,0,0.15); pointer-events:none; }
 .sheet.open{ transform:translateY(0); pointer-events:auto; }
 .sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:2px; margin:0.375rem auto 0.875rem auto; position:relative; touch-action:none; cursor:grab; }
@@ -815,6 +828,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         <button class="secondary-btn" id="open-family-btn">👪 Семья</button>
         <button class="secondary-btn" id="push-toggle-btn">🔔 Уведомления об истечении срока</button>
         <button class="secondary-btn" id="install-app-btn" style="display:none">📲 Установить приложение</button>
+        <button class="secondary-btn" id="show-onboarding-btn">❓ Как пользоваться приложением</button>
         <button class="secondary-btn" id="logout-btn" style="color:var(--danger); border-color:#F0D3D3">↪ Выйти</button>
       </div>
     </section>
@@ -832,6 +846,20 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 </nav>
 
 <button class="fab" id="fab" data-mode="meal" style="display:none">+</button>
+
+<div class="onboarding-overlay" id="onboarding-overlay">
+  <div class="onboarding-card">
+    <button class="onboarding-skip" id="onboarding-skip">Пропустить</button>
+    <div class="onboarding-emoji" id="onboarding-emoji">🧊</div>
+    <h2 class="onboarding-title" id="onboarding-title"></h2>
+    <p class="onboarding-text" id="onboarding-text"></p>
+    <div class="onboarding-dots" id="onboarding-dots"></div>
+    <div class="onboarding-nav">
+      <button class="secondary-btn" id="onboarding-back" style="margin-top:0; display:none">Назад</button>
+      <button class="primary-btn" id="onboarding-next" style="margin-top:0">Далее</button>
+    </div>
+  </div>
+</div>
 
 <div class="sheet-overlay" id="sheet-overlay"></div>
 <div class="sheet" id="add-sheet">
@@ -2808,7 +2836,54 @@ async function loadUserData(){
   renderSuggestRow();
   renderRecipesList();
   initPushUI();
+  maybeShowOnboarding();
 }
+
+/* ===================== ОНБОРДИНГ (первый заход) ===================== */
+const onboardingSlides = [
+  {emoji:'🧊', title:'Добро пожаловать в Smart Fridge', text:'Холодильник, диета и список покупок — в одном месте. Покажем главное за минуту.'},
+  {emoji:'📷', title:'Распознавание камерой', text:'Наведите камеру на продукт во вкладке Vision — приложение само определит, что это, и предложит добавить со сроком годности.'},
+  {emoji:'🥬', title:'Холодильник и морозилка', text:'Все продукты со сроками годности. Красным подсвечено то, что скоро испортится — не пропустите.'},
+  {emoji:'🥗', title:'Программа питания', text:'План на 7 дней с автоматическим расчётом порций под ваш вес и список того, чего не хватает на неделю.'},
+  {emoji:'📖', title:'Рецепты', text:'Сами подстраиваются под то, что скоро испортится — ищите значок 🔥 «Спасите».'},
+  {emoji:'👪', title:'Общий доступ для семьи', text:'В Профиле откройте «Семья» и поделитесь кодом — все члены семьи увидят один и тот же холодильник.'},
+  {emoji:'🔔', title:'Готово!', text:'В Профиле можно включить уведомления об истекающем сроке годности. Приятного пользования!'},
+];
+let onboardingStep = 0;
+function renderOnboardingStep(){
+  const s = onboardingSlides[onboardingStep];
+  document.getElementById('onboarding-emoji').textContent = s.emoji;
+  document.getElementById('onboarding-title').textContent = s.title;
+  document.getElementById('onboarding-text').textContent = s.text;
+  document.getElementById('onboarding-dots').innerHTML = onboardingSlides.map((_,i) =>
+    `<span class="${i===onboardingStep ? 'active' : ''}"></span>`).join('');
+  document.getElementById('onboarding-back').style.display = onboardingStep === 0 ? 'none' : '';
+  document.getElementById('onboarding-next').textContent = onboardingStep === onboardingSlides.length-1 ? 'Начать' : 'Далее';
+}
+function showOnboarding(){
+  onboardingStep = 0;
+  renderOnboardingStep();
+  document.getElementById('onboarding-overlay').classList.add('open');
+}
+function closeOnboarding(){
+  document.getElementById('onboarding-overlay').classList.remove('open');
+  if(currentUserId){ try{ localStorage.setItem('sf_onboarding_seen_'+currentUserId, '1'); }catch(e){} }
+}
+function maybeShowOnboarding(){
+  if(!currentUserId) return;
+  let seen = false;
+  try{ seen = localStorage.getItem('sf_onboarding_seen_'+currentUserId) === '1'; }catch(e){}
+  if(!seen) showOnboarding();
+}
+document.getElementById('onboarding-next').addEventListener('click', ()=>{
+  if(onboardingStep === onboardingSlides.length-1){ closeOnboarding(); return; }
+  onboardingStep++; renderOnboardingStep();
+});
+document.getElementById('onboarding-back').addEventListener('click', ()=>{
+  if(onboardingStep > 0){ onboardingStep--; renderOnboardingStep(); }
+});
+document.getElementById('onboarding-skip').addEventListener('click', closeOnboarding);
+document.getElementById('show-onboarding-btn').addEventListener('click', showOnboarding);
 
 /* ===================== PUSH-УВЕДОМЛЕНИЯ ОБ ИСТЕЧЕНИИ СРОКА ===================== */
 function urlBase64ToUint8Array(base64String){
