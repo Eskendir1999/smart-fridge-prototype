@@ -1926,7 +1926,14 @@ function randomFallbackRecognition(){
   const r = demoRecognitions[Math.floor(Math.random()*demoRecognitions.length)];
   showRecognitionResult(r.name, r.emoji, `Модель недоступна — показан случайный вариант, уточните вручную`, findCatalog(r.name));
 }
-async function runRecognition(imgEl){
+// Классы COCO-SSD -> каталог. Нужны как запасной вариант: ImageNet-1k (MobileNet)
+// вообще не знает морковь и ряд других продуктов, которые COCO-SSD прекрасно
+// находит на живом кадре (см. FOOD_COCO_CLASSES) — без этой подсказки автосъёмка
+// такого предмета уходила бы в MobileNet и получала мусорный результат.
+const COCO_CLASS_TO_CATALOG = {
+  carrot: 'Морковь', apple: 'Яблоки', orange: 'Апельсины', banana: 'Бананы', broccoli: 'Брокколи',
+};
+async function runRecognition(imgEl, cocoHint){
   setVisionState('scanning');
   const model = await ensureModel();
   const target = imgEl || document.getElementById('vision-video');
@@ -1938,6 +1945,7 @@ async function runRecognition(imgEl){
       const name = IMAGENET_TO_CATALOG[p.className];
       if(name){ mapped = {name, pred:p}; break; }
     }
+    const cocoName = cocoHint && COCO_CLASS_TO_CATALOG[cocoHint];
     if(mapped){
       const entry = findCatalog(mapped.name);
       const pct = Math.round(mapped.pred.probability*100);
@@ -1945,6 +1953,9 @@ async function runRecognition(imgEl){
         ? `Распознано моделью с точностью ${pct}%`
         : `Похоже на «${entry.name}», но уверенность всего ${pct}% — проверьте перед добавлением`;
       showRecognitionResult(entry.name, entry.emoji, confText, entry);
+    } else if(cocoName){
+      const entry = findCatalog(cocoName);
+      showRecognitionResult(entry.name, entry.emoji, `Определено по форме — «${entry.name}», проверьте перед добавлением`, entry);
     } else if(top){
       showRecognitionResult(top.className, '📷', `Похоже на «${top.className}» (${Math.round(top.probability*100)}%) — это не из нашего каталога, уточните название`, null);
     } else {
@@ -2049,8 +2060,9 @@ async function startDetectLoop(){
       if(autoStreak >= AUTO_CAPTURE_STREAK){
         autoStreak = 0;
         const frame = captureVideoFrame(food.bbox);
+        const hint = food.class;
         stopDetectLoop();
-        runRecognition(frame || undefined);
+        runRecognition(frame || undefined, hint);
       }
     } else {
       autoStreak = 0; autoLastClass = null;
@@ -2059,9 +2071,10 @@ async function startDetectLoop(){
 }
 
 document.getElementById('capture-btn').addEventListener('click', ()=>{
+  const hint = autoLastClass;
   stopDetectLoop();
   const frame = captureVideoFrame();
-  runRecognition(frame || undefined);
+  runRecognition(frame || undefined, hint);
 });
 document.getElementById('retake-btn').addEventListener('click', ()=>{
   visionResult.classList.remove('show');
