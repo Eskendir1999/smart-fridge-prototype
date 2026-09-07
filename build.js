@@ -15,6 +15,7 @@ fs.writeFileSync(path.join(distDir, 'index.html'), html);
 
 fs.copyFileSync(path.join(srcDir, 'manifest.json'), path.join(distDir, 'manifest.json'));
 fs.copyFileSync(path.join(srcDir, 'sw.js'), path.join(distDir, 'sw.js'));
+fs.copyFileSync(path.join(srcDir, 'privacy.html'), path.join(distDir, 'privacy.html'));
 fs.cpSync(path.join(srcDir, 'icons'), path.join(distDir, 'icons'), { recursive: true });
 
 console.log('Build complete ->', distDir);
