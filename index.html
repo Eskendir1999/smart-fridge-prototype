@@ -1757,6 +1757,8 @@ document.getElementById('save-edit-btn').addEventListener('click', ()=>{
 
   updateSummary();
   renderFridgeList(currentCompartment);
+  renderMissingAlert();
+  renderSuggestRow();
   showToast('Сохранено');
   history.pop();
   openProduct(currentProduct.list, currentProduct.idx, {push:false});
@@ -2281,6 +2283,7 @@ document.getElementById('confirm-add-btn').addEventListener('click', ()=>{
   updateSummary();
   renderFridgeList(currentCompartment);
   renderSuggestRow();
+  renderMissingAlert();
   showToast(`«${name}» добавлено в ${toFreezer?'морозилку':'холодильник'}`);
   visionResult.classList.remove('show');
 });
