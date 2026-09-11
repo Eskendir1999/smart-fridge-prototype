@@ -2918,13 +2918,26 @@ function urlBase64ToUint8Array(base64String){
   const raw = atob(base64);
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
+// В обёртке Capacitor (iOS) WKWebView не поддерживает Service Worker вовсе —
+// там используется нативный путь через APNs (Capacitor Push Notifications
+// plugin) вместо Web Push. Определяем окружение один раз и ветвим всю логику.
+function isNativeApp(){
+  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+}
 function pushSupported(){
+  if(isNativeApp()) return true;
   return 'serviceWorker' in navigator && 'PushManager' in window && VAPID_PUBLIC_KEY;
 }
 async function initPushUI(){
   const btn = document.getElementById('push-toggle-btn');
   if(!pushSupported()){ btn.style.display = 'none'; return; }
   try{
+    if(isNativeApp()){
+      const { PushNotifications } = window.Capacitor.Plugins;
+      const perm = await PushNotifications.checkPermissions();
+      btn.textContent = perm.receive === 'granted' ? '🔔 Уведомления включены' : '🔔 Уведомления об истечении срока';
+      return;
+    }
     const reg = await navigator.serviceWorker.register('/sw.js');
     const sub = await reg.pushManager.getSubscription();
     btn.textContent = sub ? '🔔 Уведомления включены (нажмите, чтобы отключить)' : '🔔 Уведомления об истечении срока';
@@ -2932,7 +2945,37 @@ async function initPushUI(){
     btn.style.display = 'none';
   }
 }
+async function saveApnsToken(token){
+  if(!currentUserId) return;
+  const { error } = await sb.from('apns_tokens').upsert({
+    user_id: currentUserId, token
+  }, { onConflict: 'token' });
+  if(error) console.error('saveApnsToken failed', error);
+}
+async function toggleNativePush(){
+  const btn = document.getElementById('push-toggle-btn');
+  const { PushNotifications } = window.Capacitor.Plugins;
+  let perm = await PushNotifications.checkPermissions();
+  if(perm.receive !== 'granted'){
+    perm = await PushNotifications.requestPermissions();
+  }
+  if(perm.receive !== 'granted'){
+    showToast('Разрешение на уведомления не дано', true);
+    return;
+  }
+  PushNotifications.addListener('registration', (token) => {
+    saveApnsToken(token.value);
+    btn.textContent = '🔔 Уведомления включены';
+    showToast('Уведомления включены');
+  });
+  PushNotifications.addListener('registrationError', (err) => {
+    console.error('APNs registration error', err);
+    showToast('Не удалось включить уведомления', true);
+  });
+  await PushNotifications.register();
+}
 async function togglePushSubscription(){
+  if(isNativeApp()){ await toggleNativePush(); return; }
   const btn = document.getElementById('push-toggle-btn');
   if(!pushSupported()) return;
   const reg = await navigator.serviceWorker.register('/sw.js');
