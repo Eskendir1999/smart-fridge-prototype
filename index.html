@@ -31,12 +31,12 @@
   --ink-soft:#5B655D;
   --muted:#8A8F87;
   --line:#EAE3D8;
-  --fresh:#3E8E5A;
+  --fresh:#2F7A4D;
   --fresh-soft:#E7F2EB;
-  --warn:#D97B4F;
+  --warn:#D46A2C;
   --warn-soft:#FBEBE1;
   --danger:#C24E4E;
-  --frost:#3E6E9E;
+  --frost:#3568A6;
   --frost-soft:#E7EEF6;
   --shadow: 0 8px 24px rgba(31,42,36,0.08);
   --radius-lg:22px;
@@ -111,7 +111,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 /* ===== Fridge ===== */
 .segmented{ display:flex; margin:0.25rem 1.25rem 1rem 1.25rem; background:var(--line); border-radius:999px; padding:0.25rem; }
 .segmented button{ flex:1; min-height:40px; border:none; background:none; border-radius:999px; font-family:'Inter',sans-serif; font-size:0.8438rem; font-weight:600; color:var(--ink-soft); }
-.segmented button.active{ background:var(--surface); color:var(--ink); box-shadow:0 2px 6px rgba(0,0,0,0.06); }
+.segmented button.active{ background:var(--surface); color:var(--ink); box-shadow:0 2px 6px rgba(0,0,0,0.06); transition:background .2s ease, color .2s ease; }
+.segmented button[data-compartment="freezer"].active{ background:var(--frost); color:#fff; box-shadow:0 2px 8px rgba(53,104,166,0.3); }
 
 .suggest-row{ display:flex; gap:0.75rem; overflow-x:auto; padding:0.125rem 1.25rem 0.375rem 1.25rem; margin:0 -1.25rem 0.375rem -1.25rem; -webkit-overflow-scrolling:touch; }
 .suggest-row::-webkit-scrollbar{ display:none; }
@@ -123,8 +124,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .suggest-card .s{ font-size:0.7188rem; color:var(--muted); line-height:1.4; }
 .suggest-card .tag{ display:inline-block; margin-top:0.5rem; font-size:0.6562rem; font-weight:700; color:var(--fresh); background:var(--fresh-soft); padding:0.1875rem 0.5rem; border-radius:999px; }
 
-.fridge-list{ padding:0.25rem 1.25rem 6.25rem 1.25rem; display:flex; flex-direction:column; gap:0.625rem; }
-.product-row{ display:flex; align-items:center; gap:0.75rem; background:var(--surface); border-radius:var(--radius-md); padding:0.625rem 0.75rem; box-shadow:var(--shadow); min-height:44px; cursor:pointer; }
+.fridge-list{ padding:0.25rem 1.25rem 6.25rem 1.25rem; display:flex; flex-direction:column; gap:0.5rem; }
+.product-row{ display:flex; align-items:center; gap:0.75rem; background:var(--surface); border-radius:var(--radius-md); padding:0.625rem 0.75rem; border:1px solid var(--line); min-height:44px; cursor:pointer; }
 .product-thumb{ width:48px; height:48px; border-radius:12px; flex-shrink:0; background:linear-gradient(135deg,#F0E6D2,#DCE8DD); display:flex; align-items:center; justify-content:center; font-size:1.25rem; overflow:hidden; }
 .product-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
 .product-info{ flex:1; min-width:0; }
@@ -178,7 +179,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .detail-block .sub{ font-size:0.8438rem; color:var(--muted); margin-bottom:1rem; }
 .info-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0.625rem; margin-bottom:1.125rem; }
 .info-tile{ background:var(--surface); border-radius:var(--radius-sm); padding:0.75rem; box-shadow:var(--shadow); }
-.info-tile .l{ font-size:0.6875rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+.info-tile .l{ font-size:0.75rem; color:var(--muted); font-weight:600; }
 .info-tile .v{ font-size:1rem; font-weight:600; margin-top:0.1875rem; }
 .primary-btn{ width:100%; min-height:50px; border-radius:var(--radius-sm); background:var(--ink); color:#fff; border:none; font-size:0.9375rem; font-weight:600; font-family:'Inter',sans-serif; }
 .secondary-btn{ width:100%; min-height:50px; border-radius:var(--radius-sm); background:var(--surface); color:var(--ink); border:1px solid var(--line); font-size:0.9375rem; font-weight:600; font-family:'Inter',sans-serif; margin-top:0.625rem; }
@@ -230,7 +231,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 
 /* ===== Diet tab ===== */
 .diet-hero{ margin:0.375rem 1.25rem 1.125rem 1.25rem; background:linear-gradient(135deg,#1F2A24,#2E3E33); border-radius:var(--radius-lg); padding:1.25rem; color:#fff; box-shadow:var(--shadow); }
-.diet-hero .k{ font-size:0.75rem; color:#A9C2AE; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+.diet-hero .k{ font-size:0.8125rem; color:#A9C2AE; font-weight:600; }
 .diet-hero .big{ font-family:'Fraunces',serif; font-size:1.875rem; font-weight:600; margin:0.25rem 0 0.625rem 0; letter-spacing:-0.02em; line-height:1.08; }
 .diet-hero .row{ display:flex; gap:1.125rem; }
 .diet-hero .row .item .n{ font-size:0.9375rem; font-weight:600; }
@@ -268,7 +269,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .meal-card-head{ padding:1rem; display:flex; gap:0.875rem; width:100%; background:none; border:none; text-align:left; font-family:'Inter',sans-serif; cursor:pointer; min-height:44px; }
 .meal-card .ic{ font-size:1.625rem; flex-shrink:0; width:36px; text-align:center; }
 .meal-card .body{ flex:1; min-width:0; }
-.meal-card .eyebrow{ font-size:0.6562rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+.meal-card .eyebrow{ font-size:0.75rem; font-weight:600; color:var(--muted); }
 .meal-card .t{ font-size:0.9062rem; font-weight:600; margin:0.1875rem 0 0.25rem 0; }
 .meal-card .s{ font-size:0.7812rem; color:var(--ink-soft); line-height:1.5; }
 .meal-card .portion{ display:inline-block; margin-top:0.5rem; font-size:0.7188rem; font-weight:700; color:var(--fresh); background:var(--fresh-soft); padding:0.1875rem 0.5625rem; border-radius:999px; }
@@ -479,7 +480,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       </div>
 
       <div class="section">
-        <div class="section-head"><h2>Скоро истекает</h2><button class="link" data-nav="fridge">Все →</button></div>
+        <div class="section-head"><h2>Скоро истекает</h2><button class="link" data-nav="fridge">Все</button></div>
         <div class="hscroll" id="expiring-row">
           <div class="skeleton sk-card"></div>
           <div class="skeleton sk-card"></div>
@@ -488,12 +489,12 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       </div>
 
       <div class="section" id="low-stock-section" style="display:none">
-        <div class="section-head"><h2>Заканчивается</h2><button class="link" id="low-stock-cart-btn">В корзину →</button></div>
+        <div class="section-head"><h2>Заканчивается</h2><button class="link" id="low-stock-cart-btn">В корзину</button></div>
         <div class="chip-row" id="low-stock-row"></div>
       </div>
 
       <div class="section">
-        <div class="section-head"><h2>Приём пищи по программе</h2><button class="link" data-nav="diet">Диета →</button></div>
+        <div class="section-head"><h2>Приём пищи по программе</h2><button class="link" data-nav="diet">Диета</button></div>
         <div class="hscroll" id="home-meals-row"></div>
       </div>
 
@@ -681,7 +682,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       </div>
 
       <div class="section" style="padding-bottom:0">
-        <div class="section-head"><h2>Ваши данные</h2><button class="link" id="open-history-btn">История →</button></div>
+        <div class="section-head"><h2>Ваши данные</h2><button class="link" id="open-history-btn">История</button></div>
       </div>
       <div class="slider-block">
         <div class="slider-row">
