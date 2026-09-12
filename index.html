@@ -228,6 +228,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .dest-row{ display:flex; gap:0.625rem; margin-bottom:0.75rem; }
 .dest-btn{ flex:1; min-height:44px; border-radius:var(--radius-sm); border:1.5px solid var(--line); background:var(--bg); font-family:'Inter',sans-serif; font-size:0.8125rem; font-weight:600; color:var(--ink-soft); }
 .dest-btn.active{ border-color:var(--fresh); color:var(--fresh); background:var(--fresh-soft); }
+.dest-btn.active[id*="freezer"]{ border-color:var(--frost); color:var(--frost); background:var(--frost-soft); }
 
 /* ===== Diet tab ===== */
 .diet-hero{ margin:0.375rem 1.25rem 1.125rem 1.25rem; background:linear-gradient(135deg,#1F2A24,#2E3E33); border-radius:var(--radius-lg); padding:1.25rem; color:#fff; box-shadow:var(--shadow); }
@@ -776,7 +777,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       <div class="detail-block" style="padding-top:0.375rem">
         <h2 style="margin-bottom:0.25rem">Журнал продуктов</h2>
         <div class="sub" style="margin-bottom:1rem">Что использовано вовремя, а что выброшено</div>
-        <div id="food-log-list" style="display:flex; flex-direction:column; gap:0.625rem;"></div>
+        <div id="food-log-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
       </div>
     </section>
 
