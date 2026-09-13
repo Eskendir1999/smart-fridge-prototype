@@ -3081,7 +3081,16 @@ updateInstallButton();
     if(error){
       const signUp = await sb.auth.signUp({ email, password });
       if(signUp.error || !signUp.data.session){
-        loginError.textContent = signUp.error ? ('Не удалось войти: ' + signUp.error.message) : 'Требуется подтверждение почты — отключите его в настройках Supabase Auth.';
+        // signInWithPassword ошибка одинакова и для "нет такого email", и для
+        // "неверный пароль" (защита от перебора email в Supabase Auth), поэтому
+        // сюда мы попадаем и для реально нового email, и для опечатки в пароле
+        // существующего аккаунта. Если signUp говорит "уже зарегистрирован" —
+        // значит email существовал с самого начала, и исходная ошибка была
+        // именно неверным паролем, а не поводом регистрировать заново.
+        const alreadyRegistered = /already registered|user_already_exists/i.test(signUp.error?.message || signUp.error?.code || '');
+        loginError.textContent = alreadyRegistered
+          ? 'Неверный email или пароль'
+          : (signUp.error ? ('Не удалось войти: ' + signUp.error.message) : 'Требуется подтверждение почты — отключите его в настройках Supabase Auth.');
         loginError.classList.add('show');
         submitBtn.disabled = false; submitBtn.textContent = 'Войти';
         return;
