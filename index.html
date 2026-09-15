@@ -388,7 +388,11 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .login-card .sub{ font-size:0.8125rem; color:var(--muted); text-align:center; margin-bottom:1.375rem; }
 .login-error{ font-size:0.7812rem; color:var(--danger); background:#FBEAEA; border-radius:var(--radius-sm); padding:0.625rem 0.75rem; margin-bottom:0.875rem; display:none; text-align:center; }
 .login-error.show{ display:block; }
+.login-info{ font-size:0.7812rem; color:var(--fresh); background:var(--fresh-soft); border-radius:var(--radius-sm); padding:0.625rem 0.75rem; margin-bottom:0.875rem; display:none; text-align:center; }
+.login-info.show{ display:block; }
 .login-submit{ margin-top:0.375rem; }
+.login-forgot{ display:block; width:100%; margin-top:1rem; background:none; border:none; color:var(--ink-soft); font-size:0.8125rem; font-family:'Inter',sans-serif; text-align:center; text-decoration:underline; }
+.login-forgot:disabled{ opacity:0.6; }
 
 /* ===== Press feedback: respond on down, not on release ===== */
 .primary-btn, .secondary-btn, .ghost-btn, .dest-btn, .qty-btn, .sheet-option, .sheet-cancel,
@@ -423,11 +427,12 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 <body>
 
 <div class="login-screen" id="login-screen">
-  <div class="login-card">
+  <div class="login-card" id="login-card">
     <div class="login-logo">🧊</div>
     <h1>Smart Fridge</h1>
     <div class="sub">Вход в приложение</div>
     <div class="login-error" id="login-error">Неверный email или пароль</div>
+    <div class="login-info" id="login-info"></div>
     <form id="login-form">
       <div class="form-field">
         <label>Email</label>
@@ -438,6 +443,20 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         <input type="password" id="login-password" autocomplete="current-password" required>
       </div>
       <button type="submit" class="primary-btn login-submit">Войти</button>
+    </form>
+    <button type="button" class="login-forgot" id="login-forgot-btn">Забыли пароль?</button>
+  </div>
+  <div class="login-card" id="recovery-card" style="display:none">
+    <div class="login-logo">🔑</div>
+    <h1>Новый пароль</h1>
+    <div class="sub">Придумайте новый пароль для входа</div>
+    <div class="login-error" id="recovery-error"></div>
+    <form id="recovery-form">
+      <div class="form-field" style="margin-bottom:0.375rem">
+        <label>Новый пароль</label>
+        <input type="password" id="recovery-password" autocomplete="new-password" minlength="6" required>
+      </div>
+      <button type="submit" class="primary-btn login-submit">Сохранить и войти</button>
     </form>
   </div>
 </div>
@@ -3053,8 +3072,15 @@ updateInstallButton();
   const loginScreen = document.getElementById('login-screen');
   const loginForm = document.getElementById('login-form');
   const loginError = document.getElementById('login-error');
+  const loginInfo = document.getElementById('login-info');
   const userInput = document.getElementById('login-username');
   const passInput = document.getElementById('login-password');
+  const forgotBtn = document.getElementById('login-forgot-btn');
+  const loginCard = document.getElementById('login-card');
+  const recoveryCard = document.getElementById('recovery-card');
+  const recoveryForm = document.getElementById('recovery-form');
+  const recoveryError = document.getElementById('recovery-error');
+  const recoveryPassInput = document.getElementById('recovery-password');
   const submitBtn = loginForm.querySelector('button[type=submit]');
 
   async function enterApp(){
@@ -3106,6 +3132,58 @@ updateInstallButton();
     if(stream){ stream.getTracks().forEach(t=>t.stop()); }
     await sb.auth.signOut();
     location.reload();
+  });
+
+  forgotBtn.addEventListener('click', async ()=>{
+    const email = userInput.value.trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      loginInfo.classList.remove('show');
+      loginError.textContent = 'Сначала введите ваш email выше';
+      loginError.classList.add('show');
+      return;
+    }
+    loginError.classList.remove('show');
+    forgotBtn.disabled = true; forgotBtn.textContent = 'Отправляем…';
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    forgotBtn.disabled = false; forgotBtn.textContent = 'Забыли пароль?';
+    if(error){
+      loginError.textContent = 'Не удалось отправить письмо: ' + error.message;
+      loginError.classList.add('show');
+      return;
+    }
+    loginInfo.textContent = 'Письмо со ссылкой для сброса пароля отправлено на ' + email;
+    loginInfo.classList.add('show');
+  });
+
+  // Ссылка из письма сброса пароля открывает приложение с токеном восстановления
+  // в URL — supabase-js подхватывает его сам (detectSessionInUrl) и шлёт это событие.
+  sb.auth.onAuthStateChange((event)=>{
+    if(event === 'PASSWORD_RECOVERY'){
+      loginCard.style.display = 'none';
+      recoveryCard.style.display = 'block';
+    }
+  });
+
+  recoveryForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const newPassword = recoveryPassInput.value;
+    if(newPassword.length < 6){
+      recoveryError.textContent = 'Пароль должен быть не короче 6 символов';
+      recoveryError.classList.add('show');
+      return;
+    }
+    const recoverySubmitBtn = recoveryForm.querySelector('button[type=submit]');
+    recoverySubmitBtn.disabled = true; recoverySubmitBtn.textContent = 'Сохраняем…';
+    recoveryError.classList.remove('show');
+    const { error } = await sb.auth.updateUser({ password: newPassword });
+    if(error){
+      recoveryError.textContent = 'Не удалось сохранить пароль: ' + error.message;
+      recoveryError.classList.add('show');
+      recoverySubmitBtn.disabled = false; recoverySubmitBtn.textContent = 'Сохранить и войти';
+      return;
+    }
+    history.replaceState(null, '', location.pathname + location.search);
+    await enterApp();
   });
 })();
 </script>
