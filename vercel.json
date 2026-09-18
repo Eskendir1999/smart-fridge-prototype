@@ -2,6 +2,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "crons": [
-    { "path": "/api/send-expiry-notifications", "schedule": "0 5 * * *" }
+    { "path": "/api/send-expiry-notifications", "schedule": "0 5 * * *" },
+    { "path": "/api/dietitian-weekly-summary", "schedule": "0 4 * * 1" }
   ]
 }

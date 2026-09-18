@@ -300,6 +300,25 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .tip-card .t{ font-size:0.8125rem; line-height:1.55; color:var(--ink); }
 .tip-card .who{ font-size:0.6875rem; color:var(--frost); font-weight:700; margin-top:0.375rem; }
 
+.dietitian-entry{ margin:0.375rem 1.25rem 1.125rem 1.25rem; width:calc(100% - 2.5rem); background:var(--fresh-soft); border-radius:var(--radius-lg); padding:1rem 1.125rem; display:flex; gap:0.75rem; align-items:center; border:none; font-family:'Inter',sans-serif; cursor:pointer; }
+.dietitian-entry .ic{ font-size:1.5rem; flex-shrink:0; }
+.dietitian-entry .t{ font-size:0.9375rem; font-weight:600; color:var(--ink); }
+.dietitian-entry .s{ font-size:0.75rem; color:var(--ink-soft); margin-top:0.125rem; }
+
+.dietitian-voice-toggle{ background:none; border:none; font-size:0.8125rem; font-weight:600; color:var(--ink-soft); font-family:'Inter',sans-serif; min-height:44px; padding:0 0.25rem; }
+.dietitian-voice-toggle[aria-pressed="true"]{ color:var(--fresh); }
+#dietitian-summaries-hint{ font-size:0.75rem; color:var(--muted); line-height:1.5; }
+.dietitian-messages{ display:flex; flex-direction:column; gap:0.625rem; padding:0.5rem 1.25rem 1.125rem 1.25rem; }
+.dietitian-msg{ max-width:84%; padding:0.625rem 0.875rem; border-radius:var(--radius-md); font-size:0.875rem; line-height:1.5; }
+.dietitian-msg.user{ align-self:flex-end; background:var(--ink); color:#fff; border-bottom-right-radius:4px; }
+.dietitian-msg.assistant{ align-self:flex-start; background:var(--fresh-soft); color:var(--ink); border-bottom-left-radius:4px; }
+.dietitian-msg.pending{ color:var(--muted); }
+.dietitian-msg .speak-btn{ display:block; margin-top:0.5rem; background:none; border:none; padding:0; font-size:0.75rem; color:var(--fresh); font-weight:600; font-family:'Inter',sans-serif; }
+.dietitian-input-row{ display:flex; gap:0.5rem; padding:0.5rem 1.25rem calc(1rem + var(--safe-b)) 1.25rem; }
+.dietitian-input-row input{ flex:1; min-height:44px; border-radius:999px; border:1px solid var(--line); background:var(--surface); padding:0 1rem; font-size:0.9375rem; font-family:'Inter',sans-serif; color:var(--ink); }
+.dietitian-input-row button{ width:44px; height:44px; border-radius:50%; background:var(--ink); color:#fff; border:none; font-size:1.125rem; flex-shrink:0; }
+.dietitian-input-row button:disabled{ opacity:0.5; }
+
 /* ===== Quantity stepper ===== */
 .qty-stepper{ display:flex; align-items:center; gap:0.5rem; }
 .qty-btn{ width:44px; height:48px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); font-size:1.25rem; font-weight:600; color:var(--ink); flex-shrink:0; font-family:'Inter',sans-serif; }
@@ -692,6 +711,14 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         </div>
       </div>
 
+      <button type="button" class="dietitian-entry" id="open-dietitian-btn">
+        <div class="ic">💬</div>
+        <div style="flex:1; min-width:0; text-align:left">
+          <div class="t">Диетолог</div>
+          <div class="s">Расскажите, что съели — подскажет калории и порцию</div>
+        </div>
+      </button>
+
       <div class="reminder-card">
         <div class="ic">📏</div>
         <div>
@@ -764,6 +791,23 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
           <div class="who" id="tip-who">Подсказано человеком</div>
         </div>
         <button id="tip-close-btn" aria-label="Закрыть совет" style="flex-shrink:0; background:none; border:none; font-size:0.9375rem; color:var(--muted); align-self:flex-start; min-height:24px; min-width:24px;">✕</button>
+      </div>
+    </section>
+
+    <!-- ===== DIETITIAN CHAT ===== -->
+    <section class="screen" id="screen-dietitian">
+      <div class="back-row">
+        <button class="back-btn" data-back="diet">← Назад</button>
+        <button type="button" class="dietitian-voice-toggle" id="dietitian-voice-toggle" aria-pressed="true">🔊 Голос: вкл</button>
+      </div>
+      <div class="detail-block" style="padding-top:0.375rem; padding-bottom:0.25rem">
+        <h2 style="margin-bottom:0.25rem">Диетолог</h2>
+        <div class="sub" id="dietitian-summaries-hint"></div>
+      </div>
+      <div id="dietitian-messages" class="dietitian-messages"></div>
+      <div class="dietitian-input-row">
+        <input type="text" id="dietitian-input" placeholder="Например: съел 200г гречки с курицей" autocomplete="off">
+        <button type="button" id="dietitian-send-btn" aria-label="Отправить">➤</button>
       </div>
     </section>
 
@@ -2716,6 +2760,131 @@ document.getElementById('save-banner-btn').addEventListener('click', ()=>{
   history.push('food-log');
   showScreen('food-log', false);
 });
+
+/* ===================== DIETITIAN CHAT ===================== */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let dietitianVoiceOn = true;
+try{ dietitianVoiceOn = localStorage.getItem('sf_dietitian_voice') !== '0'; }catch(e){}
+
+function speakText(text){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ru-RU';
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+function dietitianProfile(){
+  const w = parseFloat(document.getElementById('slider-weight').value);
+  return { weightKg: w, targetWeightKg: 74, kcalPerDay: Math.round(baseKcal * (w/startWeight)) };
+}
+
+function dietitianMsgHtml(role, content, pending){
+  const cls = role === 'user' ? 'user' : 'assistant';
+  const speakBtn = (role === 'assistant' && !pending) ? `<button type="button" class="speak-btn" data-speak="${escapeHtml(content)}">🔊 Озвучить</button>` : '';
+  return `<div class="dietitian-msg ${cls}${pending?' pending':''}">${escapeHtml(content)}${speakBtn}</div>`;
+}
+
+let dietitianHistory = [];
+
+async function loadDietitianScreen(){
+  const listEl = document.getElementById('dietitian-messages');
+  const hintEl = document.getElementById('dietitian-summaries-hint');
+  hintEl.textContent = '';
+  if(!currentUserId){ listEl.innerHTML = ''; return; }
+  listEl.innerHTML = `<div style="font-size:0.7812rem; color:var(--muted); text-align:center; padding:1rem 0;">Загрузка…</div>`;
+
+  const [{ data: messages }, { data: summaries }] = await Promise.all([
+    sb.from('dietitian_messages').select('role, content, created_at').eq('user_id', currentUserId).order('created_at', {ascending:true}),
+    sb.from('dietitian_summaries').select('week_start, summary').eq('user_id', currentUserId).order('week_start', {ascending:false}).limit(1),
+  ]);
+
+  dietitianHistory = (messages || []).map(m => ({role: m.role, content: m.content}));
+
+  if(summaries && summaries.length){
+    hintEl.textContent = `За прошлую неделю: ${summaries[0].summary}`;
+  }
+
+  listEl.innerHTML = dietitianHistory.length
+    ? dietitianHistory.map(m => dietitianMsgHtml(m.role, m.content, false)).join('')
+    : dietitianMsgHtml('assistant', 'Привет! Расскажите, что сегодня съели или что планируете — подскажу калории и сколько можно съесть.', false);
+  const mainCol = document.querySelector('.main-col');
+  mainCol.scrollTop = mainCol.scrollHeight;
+}
+
+document.getElementById('open-dietitian-btn').addEventListener('click', ()=>{
+  history.push('dietitian');
+  showScreen('dietitian', false);
+  loadDietitianScreen();
+});
+
+const dietitianVoiceBtn = document.getElementById('dietitian-voice-toggle');
+function updateDietitianVoiceBtn(){
+  dietitianVoiceBtn.textContent = dietitianVoiceOn ? '🔊 Голос: вкл' : '🔇 Голос: выкл';
+  dietitianVoiceBtn.setAttribute('aria-pressed', dietitianVoiceOn ? 'true' : 'false');
+}
+updateDietitianVoiceBtn();
+dietitianVoiceBtn.addEventListener('click', ()=>{
+  dietitianVoiceOn = !dietitianVoiceOn;
+  try{ localStorage.setItem('sf_dietitian_voice', dietitianVoiceOn ? '1' : '0'); }catch(e){}
+  if(!dietitianVoiceOn && window.speechSynthesis) window.speechSynthesis.cancel();
+  updateDietitianVoiceBtn();
+});
+
+const dietitianInput = document.getElementById('dietitian-input');
+const dietitianSendBtn = document.getElementById('dietitian-send-btn');
+const dietitianMessagesEl = document.getElementById('dietitian-messages');
+
+dietitianMessagesEl.addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-speak]');
+  if(btn) speakText(btn.dataset.speak);
+});
+
+async function sendDietitianMessage(){
+  const text = dietitianInput.value.trim();
+  if(!text || !currentUserId) return;
+  dietitianInput.value = '';
+  dietitianSendBtn.disabled = true;
+  const mainCol = document.querySelector('.main-col');
+  dietitianMessagesEl.insertAdjacentHTML('beforeend', dietitianMsgHtml('user', text, false));
+  dietitianMessagesEl.insertAdjacentHTML('beforeend', `<div class="dietitian-msg assistant pending" id="dietitian-pending">Диетолог печатает…</div>`);
+  mainCol.scrollTop = mainCol.scrollHeight;
+
+  const historyForApi = dietitianHistory.slice(-20);
+  dietitianHistory.push({role:'user', content:text});
+  sb.from('dietitian_messages').insert({user_id: currentUserId, role:'user', content:text});
+
+  try{
+    const resp = await fetch('/api/dietitian-chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message: text, history: historyForApi, profile: dietitianProfile() }),
+    });
+    const data = await resp.json();
+    const pendingEl = document.getElementById('dietitian-pending');
+    if(!resp.ok || !data.reply){
+      if(pendingEl) pendingEl.outerHTML = dietitianMsgHtml('assistant', data.error || 'Не удалось получить ответ, попробуйте ещё раз.', false);
+      return;
+    }
+    if(pendingEl) pendingEl.outerHTML = dietitianMsgHtml('assistant', data.reply, false);
+    dietitianHistory.push({role:'assistant', content:data.reply});
+    sb.from('dietitian_messages').insert({user_id: currentUserId, role:'assistant', content:data.reply});
+    if(dietitianVoiceOn) speakText(data.reply);
+  }catch(e){
+    const pendingEl = document.getElementById('dietitian-pending');
+    if(pendingEl) pendingEl.outerHTML = dietitianMsgHtml('assistant', 'Не удалось связаться с диетологом.', false);
+  }finally{
+    dietitianSendBtn.disabled = false;
+    mainCol.scrollTop = mainCol.scrollHeight;
+  }
+}
+dietitianSendBtn.addEventListener('click', sendDietitianMessage);
+dietitianInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); sendDietitianMessage(); } });
 
 showScreen('home', false);
 
