@@ -49,7 +49,7 @@ module.exports = async (req, res) => {
               parts: [{ text: 'Сожми переписку пользователя с диетологом за неделю в 2-4 предложения по-русски: о чём говорили, какие решения/советы дал диетолог, как менялся вес/поведение, если упоминалось. Без markdown, только текст.' }],
             },
             contents: [{ role: 'user', parts: [{ text: transcript }] }],
-            generationConfig: { temperature: 0.5, maxOutputTokens: 200 },
+            generationConfig: { temperature: 0.5, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } },
           }),
         }
       );

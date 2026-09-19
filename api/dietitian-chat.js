@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_PROMPT + (profileLine ? '\n\n' + profileLine : '') }] },
           contents,
-          generationConfig: { temperature: 0.8, maxOutputTokens: 400 },
+          generationConfig: { temperature: 0.8, maxOutputTokens: 500, thinkingConfig: { thinkingBudget: 0 } },
         }),
       }
     );
