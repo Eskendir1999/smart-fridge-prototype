@@ -641,6 +641,9 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         <button class="capture-btn" id="capture-btn"></button>
         <button class="ghost-btn" id="stop-camera-btn">✕ Стоп</button>
       </div>
+      <div class="section" style="padding-top:0.5rem; padding-bottom:0; display:none" id="vision-flip-row">
+        <button id="flip-camera-btn" style="min-height:2.5rem; font-size:0.8125rem; font-weight:600; color:var(--ink-soft); background:none; border:none; font-family:'Inter',sans-serif; display:flex; align-items:center; gap:0.375rem; margin:0 auto;">🔄 Переключить камеру</button>
+      </div>
       <div class="vision-controls" id="vision-controls-denied" style="display:none">
         <button class="ghost-btn" id="upload-gallery-btn">🖼️ Загрузить из галереи</button>
         <button class="primary-btn" id="retry-camera-btn">Повторить</button>
@@ -1879,11 +1882,13 @@ const ctrlDenied = document.getElementById('vision-controls-denied');
 const visionResult = document.getElementById('vision-result');
 let stream = null;
 let videoEl = null;
+let currentFacingMode = 'environment';
 
 function setVisionState(state, message){
   ctrlIdle.style.display = state==='idle' ? 'flex' : 'none';
   ctrlLive.style.display = state==='live' ? 'flex' : 'none';
   ctrlDenied.style.display = (state==='denied'||state==='nocamera') ? 'flex' : 'none';
+  document.getElementById('vision-flip-row').style.display = (state==='live'||state==='scanning') ? 'block' : 'none';
 
   if(state === 'idle'){
     stage.innerHTML = `<div class="vision-state" id="vision-idle"><div class="ic">📷</div><h3>Доступ к камере</h3><p>Разрешите доступ к камере, чтобы распознавать продукты автоматически.</p></div>`;
@@ -1894,10 +1899,12 @@ function setVisionState(state, message){
   } else if(state === 'live'){
     stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-line"></div><div class="detect-box" id="detect-box"><span class="detect-box-label" id="detect-box-label"></span></div>`;
     videoEl = document.getElementById('vision-video');
+    videoEl.style.transform = currentFacingMode === 'user' ? 'scaleX(-1)' : 'none';
     videoEl.srcObject = stream;
   } else if(state === 'scanning'){
     stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-line"></div><div class="detect-box" id="detect-box"><span class="detect-box-label" id="detect-box-label"></span></div><div class="vision-state" style="position:absolute; bottom:0; background:linear-gradient(to top, rgba(0,0,0,0.6), transparent); width:100%; padding-top:2.5rem"><p>Распознаём продукт…</p></div>`;
     videoEl = document.getElementById('vision-video');
+    videoEl.style.transform = currentFacingMode === 'user' ? 'scaleX(-1)' : 'none';
     if(stream) videoEl.srcObject = stream;
   }
   visionResult.classList.remove('show');
@@ -1906,8 +1913,9 @@ function setVisionState(state, message){
 async function requestCamera(){
   setVisionState('idle');
   stage.querySelector('.vision-state h3').textContent = 'Запрашиваем доступ…';
+  currentFacingMode = 'environment';
   try{
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
     setVisionState('live');
     ensureModel();
     startDetectLoop();
@@ -1925,6 +1933,23 @@ document.getElementById('stop-camera-btn').addEventListener('click', ()=>{
   stopDetectLoop();
   if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
   setVisionState('idle');
+});
+document.getElementById('flip-camera-btn').addEventListener('click', async ()=>{
+  stopDetectLoop();
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
+    setVisionState('live');
+    startDetectLoop();
+  }catch(err){
+    currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
+      setVisionState('live');
+      startDetectLoop();
+    }catch(e2){ setVisionState('denied'); }
+  }
 });
 
 /* ---- on-device распознавание: MobileNet (TensorFlow.js), без бэкенда и без ключей ---- */
