@@ -213,6 +213,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 @keyframes scan{ 0%{top:14%;} 50%{top:82%;} 100%{top:14%;} }
 .detect-box{ position:absolute; display:none; border:3px solid var(--fresh); border-radius:12px; pointer-events:none; box-shadow:0 0 0 2000px rgba(0,0,0,0.15); transition:left 0.12s linear, top 0.12s linear, width 0.12s linear, height 0.12s linear; }
 .detect-box-label{ position:absolute; top:-1.75rem; left:-3px; background:var(--fresh); color:#fff; font-size:0.7188rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:999px; white-space:nowrap; }
+.mobile-badge{ position:absolute; top:0.875rem; left:50%; transform:translateX(-50%); display:none; align-items:center; gap:0.375rem; background:var(--frost); color:#fff; font-size:0.75rem; font-weight:700; padding:0.375rem 0.75rem; border-radius:999px; white-space:nowrap; pointer-events:none; }
 .vision-controls{ display:flex; align-items:center; gap:0.75rem; padding:0 1.25rem; }
 .vision-controls button:not(.capture-btn){ flex:1; }
 .ghost-btn{ min-height:50px; border-radius:var(--radius-sm); background:var(--surface); border:1px solid var(--line); color:var(--ink); font-weight:600; font-size:0.9062rem; font-family:'Inter',sans-serif; }
@@ -1173,6 +1174,9 @@ const IMAGENET_TO_CATALOG = {
   'bell pepper': 'Болгарский перец',
   'mushroom': 'Грибы',
   'Granny Smith': 'Яблоки',
+  'acorn squash': 'Тыква',
+  'butternut squash': 'Тыква',
+  'spaghetti squash': 'Тыква',
 };
 function findCatalog(name){
   const q = (name||'').trim().toLowerCase();
@@ -1897,7 +1901,7 @@ function setVisionState(state, message){
   } else if(state === 'nocamera'){
     stage.innerHTML = `<div class="vision-state"><div class="ic">❔</div><h3>Камера не найдена</h3><p>На этом устройстве не обнаружена камера. Загрузите фото из галереи.</p></div>`;
   } else if(state === 'live'){
-    stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-line"></div><div class="detect-box" id="detect-box"><span class="detect-box-label" id="detect-box-label"></span></div>`;
+    stage.innerHTML = `<video id="vision-video" autoplay playsinline muted></video><div class="scan-line"></div><div class="detect-box" id="detect-box"><span class="detect-box-label" id="detect-box-label"></span></div><div class="mobile-badge" id="mobile-badge"></div>`;
     videoEl = document.getElementById('vision-video');
     videoEl.style.transform = currentFacingMode === 'user' ? 'scaleX(-1)' : 'none';
     videoEl.srcObject = stream;
@@ -2117,11 +2121,22 @@ const FOOD_COCO_CLASSES = {
 };
 let detectTimer = null;
 let autoStreak = 0, autoLastClass = null;
-const AUTO_CAPTURE_STREAK = 3;
+let detectTick = 0;
+const AUTO_CAPTURE_STREAK = 2;
 
 function hideDetectBox(){
   const box = document.getElementById('detect-box');
   if(box) box.style.display = 'none';
+}
+function showMobileBadge(name, pct){
+  const badge = document.getElementById('mobile-badge');
+  if(!badge) return;
+  badge.style.display = 'flex';
+  badge.textContent = `${name} · ${pct}%`;
+}
+function hideMobileBadge(){
+  const badge = document.getElementById('mobile-badge');
+  if(badge) badge.style.display = 'none';
 }
 function drawDetectBox(pred, videoEl){
   const box = document.getElementById('detect-box');
@@ -2143,23 +2158,27 @@ function drawDetectBox(pred, videoEl){
 }
 function stopDetectLoop(){
   if(detectTimer){ clearInterval(detectTimer); detectTimer = null; }
-  autoStreak = 0; autoLastClass = null;
+  autoStreak = 0; autoLastClass = null; detectTick = 0;
   hideDetectBox();
+  hideMobileBadge();
 }
 async function startDetectLoop(){
   stopDetectLoop();
   const model = await ensureDetectorModel();
   if(!model) return;
+  const mobileModelPromise = ensureModel(); // грузим параллельно, не блокируем COCO
   detectTimer = setInterval(async ()=>{
     const videoEl = document.getElementById('vision-video');
     if(!videoEl || !videoEl.videoWidth || visionResult.classList.contains('show')) return;
     let preds;
     try{ preds = await model.detect(videoEl); }catch(e){ return; }
     const food = preds
-      .filter(p => FOOD_COCO_CLASSES[p.class] && p.score > 0.55)
+      .filter(p => FOOD_COCO_CLASSES[p.class] && p.score > 0.45)
       .sort((a,b)=> b.score-a.score)[0];
     drawDetectBox(food, videoEl);
+
     if(food){
+      hideMobileBadge();
       if(food.class === autoLastClass) autoStreak++; else { autoStreak = 1; autoLastClass = food.class; }
       if(autoStreak >= AUTO_CAPTURE_STREAK){
         autoStreak = 0;
@@ -2168,7 +2187,36 @@ async function startDetectLoop(){
         stopDetectLoop();
         runRecognition(frame || undefined, hint);
       }
+      return;
+    }
+
+    // COCO-SSD знает только 14 видов еды (см. FOOD_COCO_CLASSES) — для остального
+    // раз в ~1.2с (каждый 3-й тик, чтобы не грузить телефон) пробуем более широкий
+    // MobileNet прямо на живом кадре, без рамки (он не умеет локализацию, только
+    // "что на кадре в целом"), но с бейджем сверху — тот же список, что при ручной
+    // съёмке (см. IMAGENET_TO_CATALOG).
+    detectTick++;
+    if(detectTick % 3 !== 0) return;
+    const mobileModel = await mobileModelPromise;
+    if(!mobileModel){ autoStreak = 0; autoLastClass = null; hideMobileBadge(); return; }
+    let mpreds;
+    try{ mpreds = await mobileModel.classify(videoEl, 3); }catch(e){ return; }
+    let matched = null;
+    for(const p of mpreds){
+      const name = IMAGENET_TO_CATALOG[p.className];
+      if(name && p.probability > 0.5){ matched = {name, prob:p.probability}; break; }
+    }
+    if(matched){
+      showMobileBadge(matched.name, Math.round(matched.prob*100));
+      if(matched.name === autoLastClass) autoStreak++; else { autoStreak = 1; autoLastClass = matched.name; }
+      if(autoStreak >= AUTO_CAPTURE_STREAK){
+        autoStreak = 0;
+        const frame = captureVideoFrame();
+        stopDetectLoop();
+        runRecognition(frame || undefined);
+      }
     } else {
+      hideMobileBadge();
       autoStreak = 0; autoLastClass = null;
     }
   }, 400);
