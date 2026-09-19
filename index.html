@@ -239,6 +239,17 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .diet-hero .row .item .n{ font-size:0.9375rem; font-weight:600; }
 .diet-hero .row .item .l{ font-size:0.6875rem; color:#A9C2AE; }
 
+.family-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:0.75rem; padding:0.25rem 1.25rem 1.25rem 1.25rem; }
+.family-tile{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg); padding:1.125rem 0.875rem; text-align:left; display:flex; flex-direction:column; gap:0.625rem; min-height:132px; }
+.family-tile .avatar-lg{ width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,var(--fresh),#2E6E45); color:#fff; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:1.0625rem; flex-shrink:0; }
+.family-tile .name{ font-size:0.9375rem; font-weight:600; color:var(--ink); }
+.family-tile .meta{ font-size:0.75rem; color:var(--muted); margin-top:0.0625rem; }
+.family-tile .kcal{ font-size:0.75rem; font-weight:600; color:var(--fresh); margin-top:auto; }
+.family-tile-add{ background:none; border:1.5px dashed var(--line); border-radius:var(--radius-lg); min-height:132px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.5rem; color:var(--ink-soft); font-family:'Inter',sans-serif; }
+.family-tile-add .plus{ width:38px; height:38px; border-radius:50%; background:var(--fresh-soft); color:var(--fresh); display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:600; }
+.family-tile-add .lbl{ font-size:0.8125rem; font-weight:600; }
+.goal-note{ font-size:0.75rem; color:var(--warn); background:var(--warn-soft); border-radius:var(--radius-sm); padding:0.625rem 0.75rem; margin:-0.375rem 0 1rem 0; line-height:1.45; }
+
 .reminder-card{ margin:0 1.25rem 1.125rem 1.25rem; background:var(--warn-soft); border-radius:var(--radius-lg); padding:0.9375rem 1rem; display:flex; align-items:center; gap:0.75rem; }
 .reminder-card .ic{ font-size:1.375rem; }
 .reminder-card .t{ font-size:0.8438rem; font-weight:600; }
@@ -704,17 +715,26 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       </div>
     </section>
 
-    <!-- ===== DIET / NUTRITIONIST ===== -->
+    <!-- ===== DIET / FAMILY PICKER ===== -->
     <section class="screen" id="screen-diet">
       <div class="topbar"><h1>Диета</h1></div>
+      <div class="family-grid" id="family-grid"></div>
+    </section>
+
+    <!-- ===== DIET / MEMBER DETAIL ===== -->
+    <section class="screen" id="screen-diet-member">
+      <div class="back-row">
+        <button class="back-btn" data-back="diet">← Назад</button>
+        <button type="button" class="dietitian-voice-toggle" id="edit-family-member-btn">✎ Изменить</button>
+      </div>
 
       <div class="diet-hero">
-        <div class="k">Программа снижения веса · 2-й месяц</div>
-        <div class="big">117,5 кг → 74 кг</div>
+        <div class="k" id="member-hero-k">Программа снижения веса</div>
+        <div class="big" id="member-hero-big">117,5 кг → 74 кг</div>
         <div class="row">
           <div class="item"><div class="n" id="hero-imt">39,3</div><div class="l">ИМТ</div></div>
           <div class="item"><div class="n" id="hero-kcal">2130</div><div class="l">ккал/день</div></div>
-          <div class="item"><div class="n" id="hero-lost">−8,5 кг</div><div class="l">с начала программы</div></div>
+          <div class="item"><div class="n" id="hero-lost">−8,5 кг</div><div class="l">с начала</div></div>
         </div>
       </div>
 
@@ -736,30 +756,30 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       </div>
 
       <div class="section" style="padding-bottom:0">
-        <div class="section-head"><h2>Ваши данные</h2><button class="link" id="open-history-btn">История</button></div>
+        <div class="section-head"><h2>Данные</h2><button class="link" id="open-history-btn">История</button></div>
       </div>
       <div class="slider-block">
         <div class="slider-row">
           <div class="top"><label>Вес</label><span class="val" id="val-weight">117.5 кг</span></div>
-          <input type="range" min="40" max="200" step="0.5" value="117.5" id="slider-weight">
+          <input type="range" min="20" max="200" step="0.5" value="117.5" id="slider-weight">
         </div>
         <button type="button" id="toggle-measurements-btn" style="min-height:2.5rem; font-size:0.8125rem; font-weight:600; color:var(--fresh); background:none; border:none; font-family:'Inter',sans-serif; padding:0.125rem 0 0.75rem 0; text-align:left;">+ Добавить замеры за сегодня (шея, грудь, живот, бёдра)</button>
         <div id="extra-measurements" style="display:none">
           <div class="slider-row">
             <div class="top"><label>Шея</label><span class="val" id="val-neck">42 см</span></div>
-            <input type="range" min="30" max="55" step="0.5" value="42" id="slider-neck">
+            <input type="range" min="15" max="55" step="0.5" value="42" id="slider-neck">
           </div>
           <div class="slider-row">
             <div class="top"><label>Грудь</label><span class="val" id="val-chest">128 см</span></div>
-            <input type="range" min="80" max="150" step="0.5" value="128" id="slider-chest">
+            <input type="range" min="40" max="150" step="0.5" value="128" id="slider-chest">
           </div>
           <div class="slider-row">
             <div class="top"><label>Живот</label><span class="val" id="val-belly">135 см</span></div>
-            <input type="range" min="70" max="160" step="0.5" value="135" id="slider-belly">
+            <input type="range" min="35" max="160" step="0.5" value="135" id="slider-belly">
           </div>
           <div class="slider-row">
             <div class="top"><label>Бёдра</label><span class="val" id="val-hips">128 см</span></div>
-            <input type="range" min="80" max="160" step="0.5" value="128" id="slider-hips">
+            <input type="range" min="35" max="160" step="0.5" value="128" id="slider-hips">
           </div>
           <button class="secondary-btn" id="save-measurement-btn" style="margin-top:0">Сохранить замеры за сегодня</button>
         </div>
@@ -798,6 +818,59 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
           <div class="who" id="tip-who">Подсказано человеком</div>
         </div>
         <button id="tip-close-btn" aria-label="Закрыть совет" style="flex-shrink:0; background:none; border:none; font-size:0.9375rem; color:var(--muted); align-self:flex-start; min-height:24px; min-width:24px;">✕</button>
+      </div>
+    </section>
+
+    <!-- ===== DIET / ADD-EDIT FAMILY MEMBER ===== -->
+    <section class="screen" id="screen-family-form">
+      <div class="back-row"><button class="back-btn" data-back="diet">← Назад</button></div>
+      <div class="detail-block" style="padding-top:0.375rem">
+        <h2 id="family-form-title" style="margin-bottom:1rem">Добавить члена семьи</h2>
+        <div class="form-field">
+          <label>Имя</label>
+          <input type="text" id="ff-name" placeholder="Например: Мама">
+        </div>
+        <div class="form-field">
+          <label>Пол</label>
+          <div class="dest-row" style="margin-bottom:0">
+            <button type="button" class="dest-btn active" id="ff-sex-male" style="flex:1">Мужчина</button>
+            <button type="button" class="dest-btn" id="ff-sex-female" style="flex:1">Женщина</button>
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Возраст, лет</label>
+          <input type="number" id="ff-age" inputmode="numeric" min="1" max="119" placeholder="30">
+        </div>
+        <div class="form-field">
+          <label>Рост, см</label>
+          <input type="number" id="ff-height" inputmode="decimal" min="1" placeholder="170">
+        </div>
+        <div class="form-field">
+          <label>Текущий вес, кг</label>
+          <input type="number" id="ff-weight" inputmode="decimal" min="1" placeholder="70">
+        </div>
+        <div class="form-field">
+          <label>Цель</label>
+          <div class="dest-row" style="margin-bottom:0">
+            <button type="button" class="dest-btn active" id="ff-goal-lose" style="flex:1">Снижение веса</button>
+            <button type="button" class="dest-btn" id="ff-goal-maintain" style="flex:1">Поддержание нормы</button>
+          </div>
+        </div>
+        <div class="form-field" id="ff-target-field">
+          <label>Целевой вес, кг</label>
+          <input type="number" id="ff-target" inputmode="decimal" min="1" placeholder="60">
+        </div>
+        <div class="goal-note" id="ff-child-note" style="display:none">Для профиля младше 18 лет расчёт калорий ориентируется на возрастную норму — при выборе «Снижение веса» посоветуйтесь с педиатром перед тем, как следовать плану.</div>
+        <div class="form-field">
+          <label>Уровень активности</label>
+          <div class="dest-row" style="margin-bottom:0">
+            <button type="button" class="dest-btn" id="ff-act-low" style="flex:1">Низкий</button>
+            <button type="button" class="dest-btn active" id="ff-act-moderate" style="flex:1">Средний</button>
+            <button type="button" class="dest-btn" id="ff-act-high" style="flex:1">Высокий</button>
+          </div>
+        </div>
+        <button class="primary-btn" id="ff-save-btn" style="width:100%; margin-top:0.5rem">Сохранить</button>
+        <button class="ghost-btn" id="ff-delete-btn" style="width:100%; margin-top:0.75rem; display:none; color:var(--danger)">Удалить профиль</button>
       </div>
     </section>
 
@@ -1347,12 +1420,9 @@ const tips = [
   {text:'Разрешайте себе немного любимой, не самой полезной еды — постоянные жёсткие запреты чаще заканчиваются срывом, чем умеренность.', source:'human'},
 ];
 
-// История замеров по датам — для экрана "История" (шея/грудь/живот/бёдра/вес)
-let measurementHistory = [
-  {date:'2026-07-28', weight:126, neck:44, chest:132, belly:142, hips:131},
-  {date:'2026-08-11', weight:121.5, neck:43, chest:130, belly:138, hips:129.5},
-  {date:'2026-08-20', weight:117.5, neck:42, chest:128, belly:135, hips:128},
-];
+// История замеров текущего открытого члена семьи (шея/грудь/живот/бёдра/вес) —
+// заполняется в openFamilyMember() из family_measurements при открытии профиля.
+let measurementHistory = [];
 function formatRuDate(iso){
   const [y,m,d] = iso.split('-');
   const months = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
@@ -2433,29 +2503,61 @@ document.getElementById('confirm-add-btn').addEventListener('click', ()=>{
   visionResult.classList.remove('show');
 });
 
-/* ===================== DIET TAB ===================== */
-const baseWeight = 117.5;
-const startWeight = 117.5; // вес на старте программы — фиксированная точка отсчёта
-const baseImt = 39.3; // ИМТ на старте — используется, чтобы вывести рост и держать ИМТ согласованным с весом
-const heightM = Math.sqrt(startWeight / baseImt);
-const baseKcal = 2130; // дневная норма ккал на старте — масштабируется вместе с весом, как и порции
+/* ===================== DIET TAB — FAMILY PROFILES ===================== */
+let familyProfiles = [];
+let currentProfileId = null;
+let currentProfileMeasurements = [];
+
+function getCurrentProfile(){
+  return familyProfiles.find(p => p.id === currentProfileId) || null;
+}
+// Митчелл-Сент-Джор (Mifflin-St Jeor) — формула базового обмена веществ (BMR),
+// отдельная для мужчин и женщин (у женщин ниже мышечная масса в среднем при
+// том же весе/росте, отсюда поправка −161 вместо +5). Для детей формула та же,
+// но без урезания калорий ниже безопасного порога (см. calcKcalTarget).
+function calcBMR(sex, weightKg, heightCm, age){
+  const base = 10*weightKg + 6.25*heightCm - 5*age;
+  return sex === 'male' ? base + 5 : base - 161;
+}
+function activityMultiplier(level){
+  return {low:1.2, moderate:1.375, high:1.55}[level] || 1.375;
+}
+function calcKcalTarget(profile, currentWeightKg){
+  const bmr = calcBMR(profile.sex, currentWeightKg, Number(profile.height_cm), profile.age);
+  const tdee = bmr * activityMultiplier(profile.activity_level);
+  if(profile.goal !== 'lose') return Math.round(tdee);
+  // безопасный минимум ккал/день даже при выбранном дефиците — не даём уйти
+  // ниже общепринятого порога, особенно для растущего организма
+  const floor = profile.age < 18 ? 1400 : (profile.sex === 'male' ? 1500 : 1200);
+  return Math.max(Math.round(tdee - 500), floor);
+}
 
 function updatePortions(){
+  const profile = getCurrentProfile();
+  if(!profile) return;
   const w = parseFloat(document.getElementById('slider-weight').value);
-  const ratio = w / baseWeight;
+  const ratio = w / Number(profile.start_weight_kg);
   document.getElementById('port-breakfast').textContent = Math.round(55*ratio) + ' г';
   document.getElementById('port-lunch').textContent = Math.round(200*ratio) + ' г';
   document.getElementById('port-dinner').textContent = Math.round(220*ratio) + ' мл';
 }
 function updateDietHero(){
+  const profile = getCurrentProfile();
+  if(!profile) return;
   const w = parseFloat(document.getElementById('slider-weight').value);
+  const heightM = Number(profile.height_cm) / 100;
   const imt = w / (heightM*heightM);
-  const kcal = Math.round(baseKcal * (w/startWeight));
-  const lost = startWeight - w;
+  const kcal = calcKcalTarget(profile, w);
+  const start = Number(profile.start_weight_kg);
+  const lost = start - w;
   document.getElementById('hero-imt').textContent = imt.toFixed(1).replace('.', ',');
   document.getElementById('hero-kcal').textContent = kcal;
   const lostSign = lost > 0 ? '−' : lost < 0 ? '+' : '';
   document.getElementById('hero-lost').textContent = lostSign + Math.abs(lost).toFixed(1).replace('.0','').replace('.', ',') + ' кг';
+  document.getElementById('member-hero-k').textContent = profile.goal === 'lose' ? 'Снижение веса' : 'Поддержание нормы';
+  document.getElementById('member-hero-big').textContent = (profile.goal === 'lose' && profile.target_weight_kg)
+    ? `${fmtKg(w)} кг → ${fmtKg(Number(profile.target_weight_kg))} кг`
+    : `${fmtKg(w)} кг`;
 }
 ['weight','neck','chest','belly','hips'].forEach(key=>{
   const slider = document.getElementById('slider-'+key);
@@ -2466,7 +2568,6 @@ function updateDietHero(){
     if(key==='weight'){ updatePortions(); updateDietHero(); renderDay(daySelected); }
   });
 });
-updateDietHero();
 
 // масштабирует числовые "г"/"мл" количества пропорционально текущему весу; остальное (шт, ч.л., ст.л.) не трогает
 function scaleQty(qty, ratio){
@@ -2500,8 +2601,10 @@ function mealCardHtml(id, icon, eyebrow, title, desc, portionLabel, items, ratio
 
 let daySelected = 1;
 function renderDay(d){
+  const profile = getCurrentProfile();
+  if(!profile) return;
   const day = dietDays.find(x=>x.d===d);
-  const ratio = parseFloat(document.getElementById('slider-weight').value) / baseWeight;
+  const ratio = parseFloat(document.getElementById('slider-weight').value) / Number(profile.start_weight_kg);
   const container = document.getElementById('meals-container');
   const openIds = Array.from(container.querySelectorAll('.meal-card.open')).map(el => el.id);
   if(day.d === 7){
@@ -2519,6 +2622,159 @@ function renderDay(d){
     });
   });
 }
+
+/* ===================== FAMILY PROFILES ===================== */
+function profileInitial(name){ return (name||'?').trim().charAt(0).toUpperCase() || '?'; }
+
+async function loadFamilyProfiles(){
+  if(!currentHouseholdId) return;
+  const { data, error } = await sb.from('family_profiles').select('*').eq('household_id', currentHouseholdId).order('created_at');
+  if(!error && data) familyProfiles = data;
+  renderFamilyGrid();
+}
+
+function familyTileHtml(p){
+  const goalLine = (p.goal === 'lose' && p.target_weight_kg)
+    ? `${fmtKg(Number(p.start_weight_kg))} → ${fmtKg(Number(p.target_weight_kg))} кг`
+    : `${fmtKg(Number(p.start_weight_kg))} кг · норма`;
+  return `
+    <button type="button" class="family-tile" data-profile="${p.id}">
+      <div class="avatar-lg">${profileInitial(p.name)}</div>
+      <div><div class="name">${p.name}</div><div class="meta">${p.age} лет · ${p.sex === 'male' ? 'муж.' : 'жен.'}</div></div>
+      <div class="kcal">${goalLine}</div>
+    </button>`;
+}
+function renderFamilyGrid(){
+  const grid = document.getElementById('family-grid');
+  grid.innerHTML = familyProfiles.map(familyTileHtml).join('') + `
+    <button type="button" class="family-tile-add" id="family-add-tile">
+      <div class="plus">+</div>
+      <div class="lbl">Добавить члена семьи</div>
+    </button>`;
+  grid.querySelectorAll('[data-profile]').forEach(tile=>{
+    tile.addEventListener('click', ()=> openFamilyMember(tile.dataset.profile));
+  });
+  document.getElementById('family-add-tile').addEventListener('click', ()=> openFamilyForm(null));
+}
+
+async function openFamilyMember(profileId){
+  currentProfileId = profileId;
+  const profile = getCurrentProfile();
+  if(!profile) return;
+
+  const { data } = await sb.from('family_measurements').select('*').eq('profile_id', profileId).order('log_date');
+  currentProfileMeasurements = data || [];
+  measurementHistory = currentProfileMeasurements.map(r => ({date:r.log_date, weight:Number(r.weight), neck:Number(r.neck), chest:Number(r.chest), belly:Number(r.belly), hips:Number(r.hips)}));
+
+  const latest = measurementHistory.length ? measurementHistory[measurementHistory.length-1] : null;
+  const w = latest ? latest.weight : Number(profile.start_weight_kg);
+  const sliderW = document.getElementById('slider-weight');
+  sliderW.value = w;
+  document.getElementById('val-weight').textContent = fmtKg(w) + ' кг';
+  ['neck','chest','belly','hips'].forEach(k=>{
+    const v = latest ? latest[k] : null;
+    if(v){ document.getElementById('slider-'+k).value = v; document.getElementById('val-'+k).textContent = fmtKg(v) + ' см'; }
+  });
+
+  updateDietHero();
+  updatePortions();
+  daySelected = 1;
+  document.querySelectorAll('.day-pill').forEach((b,i)=>b.classList.toggle('active', i===0));
+  renderDay(1);
+
+  history.push('diet-member');
+  showScreen('diet-member', false);
+}
+
+function setSegmented(activeId, ids){
+  ids.forEach(id => document.getElementById(id).classList.toggle('active', id===activeId));
+}
+let editingProfileId = null;
+function openFamilyForm(profile){
+  editingProfileId = profile ? profile.id : null;
+  document.getElementById('family-form-title').textContent = profile ? 'Изменить профиль' : 'Добавить члена семьи';
+  document.getElementById('ff-name').value = profile ? profile.name : '';
+  document.getElementById('ff-age').value = profile ? profile.age : '';
+  document.getElementById('ff-height').value = profile ? profile.height_cm : '';
+  document.getElementById('ff-weight').value = profile ? profile.start_weight_kg : '';
+  document.getElementById('ff-target').value = profile && profile.target_weight_kg ? profile.target_weight_kg : '';
+  setSegmented(profile && profile.sex === 'female' ? 'ff-sex-female' : 'ff-sex-male', ['ff-sex-male','ff-sex-female']);
+  setSegmented(profile && profile.goal === 'maintain' ? 'ff-goal-maintain' : 'ff-goal-lose', ['ff-goal-lose','ff-goal-maintain']);
+  setSegmented('ff-act-'+((profile && profile.activity_level) || 'moderate'), ['ff-act-low','ff-act-moderate','ff-act-high']);
+  document.getElementById('ff-delete-btn').style.display = profile ? 'block' : 'none';
+  updateFamilyFormVisibility();
+  history.push('family-form');
+  showScreen('family-form', false);
+}
+function updateFamilyFormVisibility(){
+  const isLose = document.getElementById('ff-goal-lose').classList.contains('active');
+  document.getElementById('ff-target-field').style.display = isLose ? 'block' : 'none';
+  const age = parseInt(document.getElementById('ff-age').value, 10);
+  document.getElementById('ff-child-note').style.display = (isLose && age && age < 18) ? 'block' : 'none';
+}
+document.getElementById('ff-sex-male').addEventListener('click', ()=> setSegmented('ff-sex-male', ['ff-sex-male','ff-sex-female']));
+document.getElementById('ff-sex-female').addEventListener('click', ()=> setSegmented('ff-sex-female', ['ff-sex-male','ff-sex-female']));
+document.getElementById('ff-goal-lose').addEventListener('click', ()=>{ setSegmented('ff-goal-lose', ['ff-goal-lose','ff-goal-maintain']); updateFamilyFormVisibility(); });
+document.getElementById('ff-goal-maintain').addEventListener('click', ()=>{ setSegmented('ff-goal-maintain', ['ff-goal-lose','ff-goal-maintain']); updateFamilyFormVisibility(); });
+document.getElementById('ff-act-low').addEventListener('click', ()=> setSegmented('ff-act-low', ['ff-act-low','ff-act-moderate','ff-act-high']));
+document.getElementById('ff-act-moderate').addEventListener('click', ()=> setSegmented('ff-act-moderate', ['ff-act-low','ff-act-moderate','ff-act-high']));
+document.getElementById('ff-act-high').addEventListener('click', ()=> setSegmented('ff-act-high', ['ff-act-low','ff-act-moderate','ff-act-high']));
+document.getElementById('ff-age').addEventListener('input', updateFamilyFormVisibility);
+document.getElementById('edit-family-member-btn').addEventListener('click', ()=>{
+  const profile = getCurrentProfile();
+  if(profile) openFamilyForm(profile);
+});
+
+document.getElementById('ff-save-btn').addEventListener('click', async ()=>{
+  const name = document.getElementById('ff-name').value.trim();
+  const age = parseInt(document.getElementById('ff-age').value, 10);
+  const height = parseFloat(document.getElementById('ff-height').value);
+  const weight = parseFloat(document.getElementById('ff-weight').value);
+  const goal = document.getElementById('ff-goal-lose').classList.contains('active') ? 'lose' : 'maintain';
+  const target = goal === 'lose' ? parseFloat(document.getElementById('ff-target').value) : null;
+  if(!name || !age || !height || !weight || (goal==='lose' && !target)){
+    showToast('Заполните все поля');
+    return;
+  }
+  const payload = {
+    household_id: currentHouseholdId,
+    created_by: currentUserId,
+    name,
+    sex: document.getElementById('ff-sex-female').classList.contains('active') ? 'female' : 'male',
+    age,
+    height_cm: height,
+    target_weight_kg: target,
+    goal,
+    activity_level: document.getElementById('ff-act-low').classList.contains('active') ? 'low'
+      : document.getElementById('ff-act-high').classList.contains('active') ? 'high' : 'moderate',
+  };
+  if(editingProfileId){
+    await sb.from('family_profiles').update(payload).eq('id', editingProfileId);
+    await loadFamilyProfiles();
+    showToast('Профиль обновлён');
+    history.pop();
+    openFamilyMember(editingProfileId);
+  } else {
+    payload.start_weight_kg = weight;
+    const { data, error } = await sb.from('family_profiles').insert(payload).select().single();
+    if(error || !data){ showToast('Не удалось сохранить профиль'); return; }
+    await sb.from('family_measurements').insert({profile_id: data.id, log_date: isoDate(TODAY), weight});
+    await loadFamilyProfiles();
+    showToast(`Профиль «${name}» добавлен`);
+    history.pop();
+    openFamilyMember(data.id);
+  }
+});
+document.getElementById('ff-delete-btn').addEventListener('click', async ()=>{
+  if(!editingProfileId) return;
+  await sb.from('family_profiles').delete().eq('id', editingProfileId);
+  showToast('Профиль удалён');
+  editingProfileId = null;
+  currentProfileId = null;
+  history = ['diet'];
+  showScreen('diet', false);
+  await loadFamilyProfiles();
+});
 
 /* ===================== WEEKLY MISSING-INGREDIENTS ALERT ===================== */
 function addMissingToCart(name){
@@ -2856,8 +3112,14 @@ function speakText(text){
 }
 
 function dietitianProfile(){
+  const profile = getCurrentProfile();
   const w = parseFloat(document.getElementById('slider-weight').value);
-  return { weightKg: w, targetWeightKg: 74, kcalPerDay: Math.round(baseKcal * (w/startWeight)) };
+  if(!profile) return { weightKg: w, targetWeightKg: w, kcalPerDay: 2000 };
+  return {
+    weightKg: w,
+    targetWeightKg: profile.target_weight_kg ? Number(profile.target_weight_kg) : w,
+    kcalPerDay: calcKcalTarget(profile, w),
+  };
 }
 
 function dietitianMsgHtml(role, content, pending){
@@ -3004,10 +3266,10 @@ async function dbLogFoodEvent(item, action, qtyKg){
   });
 }
 async function dbSaveMeasurement(entry){
-  if(!currentUserId) return;
-  await sb.from('measurement_logs').upsert(
-    {user_id: currentUserId, log_date: entry.date, weight: entry.weight, neck: entry.neck, chest: entry.chest, belly: entry.belly, hips: entry.hips},
-    {onConflict:'user_id,log_date'}
+  if(!currentProfileId) return;
+  await sb.from('family_measurements').upsert(
+    {profile_id: currentProfileId, log_date: entry.date, weight: entry.weight, neck: entry.neck, chest: entry.chest, belly: entry.belly, hips: entry.hips},
+    {onConflict:'profile_id,log_date'}
   );
 }
 
@@ -3093,10 +3355,9 @@ async function loadUserData(){
     await initEmptyAccount(user.id);
   }
 
-  const [fridgeRes, cartRes, measureRes, statsRes] = await Promise.all([
+  const [fridgeRes, cartRes, statsRes] = await Promise.all([
     sb.from('fridge_items').select('*').eq('household_id', currentHouseholdId).order('created_at'),
     sb.from('cart_items').select('*').eq('household_id', currentHouseholdId).order('created_at'),
-    sb.from('measurement_logs').select('*').eq('user_id', user.id).order('log_date'),
     sb.from('food_stats').select('*').eq('user_id', user.id).maybeSingle()
   ]);
 
@@ -3111,11 +3372,6 @@ async function loadUserData(){
   if(!cartRes.error && cartRes.data){
     cartRes.data.forEach(r => cartData.push({name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, note:r.note, _id:r.id}));
   }
-  if(!measureRes.error && measureRes.data && measureRes.data.length){
-    measurementHistory = measureRes.data.map(r => ({date:r.log_date, weight:Number(r.weight), neck:Number(r.neck), chest:Number(r.chest), belly:Number(r.belly), hips:Number(r.hips)}));
-  } else {
-    measurementHistory = [];
-  }
   if(!statsRes.error && statsRes.data){
     usedCount = statsRes.data.used_count; usedWeightKg = Number(statsRes.data.used_weight_kg); wastedCount = statsRes.data.wasted_count;
   }
@@ -3128,6 +3384,7 @@ async function loadUserData(){
   renderSuggestRow();
   renderRecipesList();
   initPushUI();
+  loadFamilyProfiles();
   maybeShowOnboarding();
 }
 
