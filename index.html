@@ -493,6 +493,14 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       <button type="submit" class="primary-btn login-submit">Сохранить и войти</button>
     </form>
   </div>
+  <div class="login-card" id="biometric-card" style="display:none">
+    <div class="login-logo">🔒</div>
+    <h1>С возвращением</h1>
+    <div class="sub" id="biometric-lock-sub">Разблокируйте Face ID или отпечатком</div>
+    <div class="login-error" id="biometric-error"></div>
+    <button type="button" class="primary-btn login-submit" id="biometric-unlock-btn">Разблокировать</button>
+    <button type="button" class="login-forgot" id="biometric-use-password-btn">Войти по паролю</button>
+  </div>
 </div>
 
 <div id="app">
@@ -976,6 +984,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         <button class="secondary-btn" data-nav="vision">📷 Распознать продукт</button>
         <button class="secondary-btn" id="open-family-btn">👪 Семья</button>
         <button class="secondary-btn" id="push-toggle-btn">🔔 Уведомления об истечении срока</button>
+        <button class="secondary-btn" id="biometric-toggle-btn" style="display:none">🔒 Вход по Face ID</button>
         <button class="secondary-btn" id="install-app-btn" style="display:none">📲 Установить приложение</button>
         <button class="secondary-btn" id="show-onboarding-btn">❓ Как пользоваться приложением</button>
         <button class="secondary-btn" id="logout-btn" style="color:var(--danger); border-color:#F0D3D3">↪ Выйти</button>
@@ -1066,6 +1075,17 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
   <div class="login-error" id="family-join-error"></div>
   <button class="primary-btn" id="family-join-btn">Присоединиться</button>
   <button class="sheet-cancel" id="family-sheet-cancel">Готово</button>
+</div>
+
+<div class="sheet" id="biometric-sheet">
+  <div class="sheet-handle"></div>
+  <div style="text-align:center; padding-top:0.25rem">
+    <div style="font-size:2.5rem; margin-bottom:0.5rem">🔓</div>
+    <h3 style="margin-bottom:0.375rem">Вход по Face ID?</h3>
+    <div style="font-size:0.8125rem; color:var(--ink-soft); margin-bottom:1.25rem; line-height:1.5">В следующий раз сможете открыть Smart Fridge по Face ID или отпечатку — без ввода пароля.</div>
+  </div>
+  <button class="primary-btn" id="biometric-enable-btn">Включить</button>
+  <button class="sheet-cancel" id="biometric-skip-btn">Не сейчас</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1679,7 +1699,8 @@ const addSheet = document.getElementById('add-sheet');
 const mealSheet = document.getElementById('meal-sheet');
 const manualSheet = document.getElementById('manual-sheet');
 const familySheet = document.getElementById('family-sheet');
-const allSheets = [addSheet, mealSheet, manualSheet, familySheet];
+const biometricSheet = document.getElementById('biometric-sheet');
+const allSheets = [addSheet, mealSheet, manualSheet, familySheet, biometricSheet];
 const sheetSprings = new Map();
 
 function isMobileSheet(){ return !window.matchMedia('(min-width:768px)').matches; }
@@ -3399,6 +3420,7 @@ async function loadUserData(){
   renderSuggestRow();
   renderRecipesList();
   initPushUI();
+  initBiometricUI();
   loadFamilyProfiles();
   maybeShowOnboarding();
 }
@@ -3584,6 +3606,83 @@ document.getElementById('install-app-btn').addEventListener('click', async ()=>{
 });
 updateInstallButton();
 
+/* ===================== BIOMETRIC LOGIN (Face ID / отпечаток) =====================
+   Локальный "замок" поверх уже сохранённой сессии Supabase: биометрия не
+   заменяет сам вход (сессию и так хранит supabase-js в localStorage), а
+   разблокирует доступ к ней на этом устройстве через платформенный
+   WebAuthn-аутентификатор (Face ID/Touch ID/отпечаток на Android). Сервер
+   подпись не проверяет — это не полноценный passwordless-вход, а удобный
+   локальный экран блокировки. */
+async function biometricAvailable(){
+  if(!window.PublicKeyCredential || !navigator.credentials) return false;
+  try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }catch(e){ return false; }
+}
+function biometricEnabledFor(userId){
+  try{ return localStorage.getItem('sf_biometric_enabled_'+userId) === '1'; }catch(e){ return false; }
+}
+function biometricAskedFor(userId){
+  try{ return localStorage.getItem('sf_biometric_asked_'+userId) === '1'; }catch(e){ return false; }
+}
+function markBiometricAsked(userId){
+  try{ localStorage.setItem('sf_biometric_asked_'+userId, '1'); }catch(e){}
+}
+async function enrollBiometric(userId, email){
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const userIdBytes = new TextEncoder().encode(userId);
+  const cred = await navigator.credentials.create({
+    publicKey: {
+      challenge,
+      rp: { name: 'Smart Fridge' },
+      user: { id: userIdBytes, name: email, displayName: email },
+      pubKeyCredParams: [{alg:-7, type:'public-key'}, {alg:-257, type:'public-key'}],
+      authenticatorSelection: { authenticatorAttachment:'platform', userVerification:'required', residentKey:'preferred' },
+      timeout: 60000,
+    }
+  });
+  const credId = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
+  localStorage.setItem('sf_biometric_cred_'+userId, credId);
+  localStorage.setItem('sf_biometric_enabled_'+userId, '1');
+}
+async function verifyBiometric(userId){
+  const credIdB64 = localStorage.getItem('sf_biometric_cred_'+userId);
+  if(!credIdB64) return false;
+  const credId = Uint8Array.from(atob(credIdB64), c=>c.charCodeAt(0));
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  await navigator.credentials.get({
+    publicKey: { challenge, allowCredentials:[{id:credId, type:'public-key'}], userVerification:'required', timeout:60000 }
+  });
+  return true; // navigator.credentials.get выбрасывает исключение, если проверка не прошла/отменена
+}
+function disableBiometric(userId){
+  try{
+    localStorage.removeItem('sf_biometric_enabled_'+userId);
+    localStorage.removeItem('sf_biometric_cred_'+userId);
+  }catch(e){}
+}
+async function initBiometricUI(){
+  const btn = document.getElementById('biometric-toggle-btn');
+  if(!currentUserId || !(await biometricAvailable())){ btn.style.display = 'none'; return; }
+  btn.style.display = 'block';
+  btn.textContent = biometricEnabledFor(currentUserId) ? '🔒 Вход по Face ID: включён' : '🔒 Включить вход по Face ID';
+}
+document.getElementById('biometric-toggle-btn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('biometric-toggle-btn');
+  if(!currentUserId) return;
+  if(biometricEnabledFor(currentUserId)){
+    disableBiometric(currentUserId);
+    showToast('Вход по Face ID отключён');
+  } else {
+    try{
+      const { data } = await sb.auth.getUser();
+      await enrollBiometric(currentUserId, data?.user?.email || '');
+      showToast('Вход по Face ID включён');
+    }catch(err){
+      showToast('Не удалось включить Face ID', true);
+    }
+  }
+  initBiometricUI();
+});
+
 /* ===================== LOGIN GATE (Supabase Auth) ===================== */
 (function(){
   const loginScreen = document.getElementById('login-screen');
@@ -3599,14 +3698,45 @@ updateInstallButton();
   const recoveryError = document.getElementById('recovery-error');
   const recoveryPassInput = document.getElementById('recovery-password');
   const submitBtn = loginForm.querySelector('button[type=submit]');
+  const biometricCard = document.getElementById('biometric-card');
+  const biometricError = document.getElementById('biometric-error');
+  const biometricLockSub = document.getElementById('biometric-lock-sub');
+  let lockedUserId = null;
 
   async function enterApp(){
     loginScreen.style.display = 'none';
     await loadUserData();
   }
 
+  function showBiometricLock(userId, email){
+    lockedUserId = userId;
+    loginCard.style.display = 'none';
+    recoveryCard.style.display = 'none';
+    biometricCard.style.display = 'block';
+    biometricLockSub.textContent = email ? `Разблокируйте вход для ${email}` : 'Разблокируйте Face ID или отпечатком';
+  }
+
   sb.auth.getSession().then(({data})=>{
-    if(data && data.session) enterApp();
+    if(!data || !data.session) return;
+    const user = data.session.user;
+    if(biometricEnabledFor(user.id)){ showBiometricLock(user.id, user.email); }
+    else { enterApp(); }
+  });
+
+  document.getElementById('biometric-unlock-btn').addEventListener('click', async ()=>{
+    biometricError.classList.remove('show');
+    try{
+      await verifyBiometric(lockedUserId);
+      await enterApp();
+    }catch(err){
+      biometricError.textContent = 'Не удалось подтвердить — попробуйте ещё раз или войдите по паролю';
+      biometricError.classList.add('show');
+    }
+  });
+  document.getElementById('biometric-use-password-btn').addEventListener('click', async ()=>{
+    await sb.auth.signOut();
+    biometricCard.style.display = 'none';
+    loginCard.style.display = 'block';
   });
 
   loginForm.addEventListener('submit', async (e)=>{
@@ -3620,7 +3750,9 @@ updateInstallButton();
     }
     submitBtn.disabled = true; submitBtn.textContent = 'Входим…';
     loginError.classList.remove('show');
-    let { error } = await sb.auth.signInWithPassword({ email, password });
+    let { error, data: signInData } = await sb.auth.signInWithPassword({ email, password });
+    let isNewSignup = false;
+    let userForBiometric = signInData?.user || null;
     if(error){
       const signUp = await sb.auth.signUp({ email, password });
       if(signUp.error || !signUp.data.session){
@@ -3638,9 +3770,31 @@ updateInstallButton();
         submitBtn.disabled = false; submitBtn.textContent = 'Войти';
         return;
       }
+      isNewSignup = true;
+      userForBiometric = signUp.data.user;
     }
     submitBtn.disabled = false; submitBtn.textContent = 'Войти';
     await enterApp();
+    // Спрашиваем про Face ID/отпечаток только сразу после регистрации нового
+    // аккаунта — не при каждом обычном входе, чтобы не надоедать.
+    if(isNewSignup && userForBiometric){
+      const uid = userForBiometric.id, uemail = userForBiometric.email;
+      if(!biometricAskedFor(uid) && await biometricAvailable()){
+        markBiometricAsked(uid);
+        openSheet(biometricSheet);
+        document.getElementById('biometric-enable-btn').onclick = async ()=>{
+          try{
+            await enrollBiometric(uid, uemail);
+            closeSheet();
+            showToast('Вход по Face ID включён');
+          }catch(err){
+            closeSheet();
+            showToast('Не удалось включить Face ID', true);
+          }
+        };
+        document.getElementById('biometric-skip-btn').onclick = closeSheet;
+      }
+    }
   });
 
   document.getElementById('logout-btn').addEventListener('click', async ()=>{
