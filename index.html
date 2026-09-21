@@ -464,7 +464,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
   <div class="login-card" id="login-card">
     <div class="login-logo">🧊</div>
     <h1>Smart Fridge</h1>
-    <div class="sub">Вход в приложение</div>
+    <div class="sub">Нет аккаунта? Просто введите email и пароль — создадим его автоматически</div>
     <div class="login-error" id="login-error">Неверный email или пароль</div>
     <div class="login-info" id="login-info"></div>
     <form id="login-form">
@@ -1509,7 +1509,10 @@ function openProduct(listName, idx, opts={}){
     ? `${compartmentLabel} · ${p.location}`
     : compartmentLabel;
   document.getElementById('product-qty').textContent = formatQty(p);
-  document.getElementById('product-exp').textContent = listName==='freezer' ? '−18°C' : (days<=0?'срок истёк': `через ${expiryLabel(days)}`);
+  const expEl = document.getElementById('product-exp');
+  const isExpired = listName!=='freezer' && days<=0;
+  expEl.textContent = listName==='freezer' ? '−18°C' : (isExpired?'срок истёк': `через ${expiryLabel(days)}`);
+  expEl.style.color = isExpired ? 'var(--danger)' : '';
   if(push) history.push('product');
   showScreen('product', false);
 }
