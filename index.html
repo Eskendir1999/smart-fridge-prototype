@@ -67,6 +67,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .screen{ flex:1; overflow-y:auto; padding-bottom:calc(var(--nav-h) + 1.75rem + var(--safe-b)); display:none; }
 .screen.active{ display:block; animation:fadein .18s ease; }
 @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+@keyframes imgFadeIn{ from{opacity:0;} to{opacity:1;} }
+img{ animation:imgFadeIn .25s ease; }
 
 .section{ padding:0.375rem 1.25rem 1.375rem 1.25rem; }
 .section-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:0.75rem; }
@@ -80,6 +82,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 
 .hscroll{ display:flex; gap:0.75rem; overflow-x:auto; padding:0.125rem 1.25rem 0.375rem 1.25rem; margin:0 -1.25rem; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; }
 .hscroll::-webkit-scrollbar{ display:none; }
+.hscroll-wrap{ position:relative; }
+.hscroll-wrap::after{ content:''; position:absolute; top:0; right:0; bottom:0.375rem; width:2.25rem; background:linear-gradient(to right, transparent, var(--bg)); pointer-events:none; }
 .hscroll > *{ scroll-snap-align:start; flex-shrink:0; }
 
 .expire-card{ width:132px; background:var(--surface); border-radius:var(--radius-md); padding:0.75rem; box-shadow:var(--shadow); cursor:pointer; }
@@ -188,6 +192,9 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .form-field > label{ display:block; font-size:0.7812rem; font-weight:600; color:var(--ink-soft); margin-bottom:0.375rem; }
 .form-field input, .form-field select{ width:100%; min-height:48px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); padding:0 0.875rem; font-size:1rem; font-family:'Inter',sans-serif; color:var(--ink); }
 .form-field input:focus, .form-field select:focus{ outline:2px solid var(--fresh); outline-offset:1px; }
+.password-field{ position:relative; }
+.password-field input{ padding-right:2.75rem; }
+.password-toggle{ position:absolute; right:0.625rem; top:0; bottom:0; width:2.25rem; background:none; border:none; color:var(--muted); font-size:1.0625rem; display:flex; align-items:center; justify-content:center; }
 .sticky-save{ position:sticky; bottom:0; background:linear-gradient(to top, var(--bg) 60%, transparent); padding:1rem 1.25rem calc(1rem + var(--safe-b)) 1.25rem; margin:0.5rem -1.25rem -1.25rem -1.25rem; }
 
 .skeleton{ background:linear-gradient(90deg,#EFEAE0 25%,#F6F2EA 37%,#EFEAE0 63%); background-size:400% 100%; animation:shimmer 1.4s infinite; border-radius:var(--radius-md); }
@@ -410,6 +417,8 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
   .topbar{ padding-left:2rem; padding-right:2rem; }
   .back-row{ padding-left:2rem; }
   .fridge-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); align-content:start; gap:0.625rem; }
+  .suggest-row{ display:grid; grid-template-columns:repeat(auto-fill, minmax(210px,1fr)); gap:0.75rem; overflow-x:visible; }
+  .suggest-card{ width:auto; }
   .detail-block{ max-width:640px; margin-left:auto; margin-right:auto; }
   .vision-stage{ max-width:520px; margin-left:auto; margin-right:auto; }
 }
@@ -425,7 +434,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 .login-info{ font-size:0.7812rem; color:var(--fresh); background:var(--fresh-soft); border-radius:var(--radius-sm); padding:0.625rem 0.75rem; margin-bottom:0.875rem; display:none; text-align:center; }
 .login-info.show{ display:block; }
 .login-submit{ margin-top:0.375rem; }
-.login-forgot{ display:block; width:100%; margin-top:1rem; background:none; border:none; color:var(--ink-soft); font-size:0.8125rem; font-family:'Inter',sans-serif; text-align:center; text-decoration:underline; }
+.login-forgot{ display:block; width:100%; margin-top:1rem; background:none; border:none; color:var(--ink); font-weight:600; font-size:0.8125rem; font-family:'Inter',sans-serif; text-align:center; text-decoration:underline; }
 .login-forgot:disabled{ opacity:0.6; }
 
 /* ===== Press feedback: respond on down, not on release ===== */
@@ -450,6 +459,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
   .sheet-overlay{ transition: opacity 150ms ease; }
   .scan-line{ animation: none !important; }
   .skeleton{ animation: none !important; }
+  img{ animation: none !important; }
   *{ scroll-behavior: auto !important; }
 }
 @media (prefers-reduced-transparency: reduce){
@@ -474,7 +484,10 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
       </div>
       <div class="form-field" style="margin-bottom:0.375rem">
         <label>Пароль</label>
-        <input type="password" id="login-password" autocomplete="current-password" required>
+        <div class="password-field">
+          <input type="password" id="login-password" autocomplete="current-password" required>
+          <button type="button" class="password-toggle" id="login-password-toggle" aria-label="Показать пароль">👁</button>
+        </div>
       </div>
       <button type="submit" class="primary-btn login-submit">Войти</button>
     </form>
@@ -488,7 +501,10 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
     <form id="recovery-form">
       <div class="form-field" style="margin-bottom:0.375rem">
         <label>Новый пароль</label>
-        <input type="password" id="recovery-password" autocomplete="new-password" minlength="6" required>
+        <div class="password-field">
+          <input type="password" id="recovery-password" autocomplete="new-password" minlength="6" required>
+          <button type="button" class="password-toggle" id="recovery-password-toggle" aria-label="Показать пароль">👁</button>
+        </div>
       </div>
       <button type="submit" class="primary-btn login-submit">Сохранить и войти</button>
     </form>
@@ -543,10 +559,12 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 
       <div class="section">
         <div class="section-head"><h2>Скоро истекает</h2><button class="link" data-nav="fridge">Все</button></div>
+        <div class="hscroll-wrap">
         <div class="hscroll" id="expiring-row">
           <div class="skeleton sk-card"></div>
           <div class="skeleton sk-card"></div>
           <div class="skeleton sk-card"></div>
+        </div>
         </div>
       </div>
 
@@ -557,7 +575,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
 
       <div class="section">
         <div class="section-head"><h2>Приём пищи по программе</h2><button class="link" data-nav="diet">Диета</button></div>
-        <div class="hscroll" id="home-meals-row"></div>
+        <div class="hscroll-wrap"><div class="hscroll" id="home-meals-row"></div></div>
       </div>
 
       <div class="section" style="padding-bottom:0.5rem">
@@ -642,7 +660,15 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
     <section class="screen" id="screen-vision">
       <div class="topbar"><h1>Компьютерное зрение</h1></div>
       <div class="section" style="padding-top:0; padding-bottom:0.625rem">
-        <div class="section-head" style="margin-bottom:0.125rem; display:block"><h2 style="font-size:0.875rem; color:var(--ink-soft); font-weight:500">Наведите камеру на продукт — распознаем и добавим в холодильник или морозилку.</h2><p style="font-size:0.7188rem; color:var(--muted); margin-top:0.25rem; line-height:1.4">Модель работает прямо на устройстве и лучше всего узнаёт: банан, лимон, апельсин, ананас, гранат, клубника, инжир, капуста, цветная капуста, брокколи, кабачок, огурец, перец, гриб, яблоко. Камера также сама подсвечивает рамкой банан, яблоко, апельсин, брокколи, морковь и ещё пару видов еды. Для остальных продуктов (помидор, картофель, лук и т.п.) — впишите название сами или отсканируйте штрихкод.</p></div>
+        <h2 style="font-size:0.875rem; color:var(--ink-soft); font-weight:500; margin-bottom:0.5rem">Наведите камеру на продукт — распознаем и добавим в холодильник или морозилку.</h2>
+        <button type="button" id="vision-info-toggle" style="display:flex; align-items:center; gap:0.3125rem; background:none; border:none; padding:0; font-size:0.75rem; font-weight:600; color:var(--frost); font-family:'Inter',sans-serif;">
+          Что именно умеет распознавать <span id="vision-info-chevron">▾</span>
+        </button>
+        <div id="vision-info-detail" style="display:none; margin-top:0.625rem; background:var(--frost-soft); border-radius:var(--radius-md); padding:0.875rem 1rem; font-size:0.75rem; color:var(--ink-soft); line-height:1.55;">
+          <strong style="color:var(--ink)">Распознаёт по фото:</strong> банан, лимон, апельсин, ананас, гранат, клубника, инжир, капуста, цветная капуста, брокколи, кабачок, огурец, перец, гриб, яблоко.<br><br>
+          <strong style="color:var(--ink)">Подсвечивает рамкой прямо на видео</strong> (можно не нажимать кнопку — снимет само): банан, яблоко, апельсин, брокколи, морковь и ещё пара видов.<br><br>
+          Остальное (помидор, картофель, лук и т.п.) — впишите название сами или отсканируйте штрихкод.
+        </div>
       </div>
 
       <div class="vision-stage" id="vision-stage">
@@ -775,7 +801,10 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
           <div class="top"><label>Вес</label><span class="val" id="val-weight">117.5 кг</span></div>
           <input type="range" min="20" max="200" step="0.5" value="117.5" id="slider-weight">
         </div>
-        <button type="button" id="toggle-measurements-btn" style="min-height:2.5rem; font-size:0.8125rem; font-weight:600; color:var(--fresh); background:none; border:none; font-family:'Inter',sans-serif; padding:0.125rem 0 0.75rem 0; text-align:left;">+ Добавить замеры за сегодня (шея, грудь, живот, бёдра)</button>
+        <button type="button" id="toggle-measurements-btn" style="display:flex; align-items:center; justify-content:space-between; gap:0.625rem; width:100%; min-height:2.5rem; font-size:0.8125rem; font-weight:600; color:var(--fresh); background:none; border:none; font-family:'Inter',sans-serif; padding:0.125rem 0 0.75rem 0; text-align:left;">
+          <span id="toggle-measurements-label">Добавить замеры за сегодня (шея, грудь, живот, бёдра)</span>
+          <span id="toggle-measurements-chevron" style="flex-shrink:0; transition:transform .2s ease; font-size:0.75rem;">▾</span>
+        </button>
         <div id="extra-measurements" style="display:none">
           <div class="slider-row">
             <div class="top"><label>Шея</label><span class="val" id="val-neck">42 см</span></div>
@@ -984,9 +1013,9 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         <button class="secondary-btn" data-nav="vision">📷 Распознать продукт</button>
         <button class="secondary-btn" id="open-family-btn">👪 Семья</button>
         <button class="secondary-btn" id="push-toggle-btn">🔔 Уведомления об истечении срока</button>
-        <button class="secondary-btn" id="biometric-toggle-btn" style="display:none">🔒 Вход по Face ID</button>
         <button class="secondary-btn" id="install-app-btn" style="display:none">📲 Установить приложение</button>
         <button class="secondary-btn" id="show-onboarding-btn">❓ Как пользоваться приложением</button>
+        <button class="secondary-btn" id="biometric-toggle-btn" style="display:none">🔒 Вход по Face ID</button>
         <button class="secondary-btn" id="logout-btn" style="color:var(--danger); border-color:#F0D3D3">↪ Выйти</button>
       </div>
     </section>
@@ -1026,6 +1055,7 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
   <button class="sheet-option" id="sheet-photo-opt"><span class="ic">📷</span>Сфотографировать</button>
   <button class="sheet-option" id="sheet-barcode-opt"><span class="ic">▣</span>Сканировать штрихкод</button>
   <button class="sheet-option" id="sheet-manual-opt"><span class="ic">✎</span>Добавить вручную</button>
+  <button class="sheet-option" id="sheet-meal-opt"><span class="ic">🍽️</span>Записать блюдо (вне диеты)</button>
   <button class="sheet-cancel" id="sheet-cancel">Отмена</button>
 </div>
 
@@ -1464,7 +1494,6 @@ function showScreen(name, push=true){
   document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
   document.querySelectorAll('.side-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
   fab.style.display = (name === 'fridge' || name === 'home') ? 'flex' : 'none';
-  fab.dataset.mode = name === 'home' ? 'meal' : 'product';
   document.querySelector('.main-col').scrollTop = 0;
   if(push) history.push(name);
   if(name === 'vision'){ ensureModel(); } else { stopDetectLoop(); }
@@ -1810,14 +1839,7 @@ function makeSheetDraggable(sheetEl){
   handle.addEventListener('pointercancel', endDrag);
 }
 allSheets.forEach(makeSheetDraggable);
-fab.addEventListener('click', ()=>{
-  if(fab.dataset.mode === 'meal'){
-    populateCustomDishIngredients();
-    openSheet(mealSheet);
-  } else {
-    openSheet(addSheet);
-  }
-});
+fab.addEventListener('click', ()=> openSheet(addSheet));
 overlay.addEventListener('click', closeSheet);
 document.getElementById('sheet-cancel').addEventListener('click', closeSheet);
 document.getElementById('meal-sheet-cancel').addEventListener('click', closeSheet);
@@ -1831,6 +1853,10 @@ document.getElementById('sheet-photo-opt').addEventListener('click', ()=>{
 document.getElementById('sheet-manual-opt').addEventListener('click', ()=>{
   populateManualChecklist();
   openSheet(manualSheet);
+});
+document.getElementById('sheet-meal-opt').addEventListener('click', ()=>{
+  populateCustomDishIngredients();
+  openSheet(mealSheet);
 });
 
 /* ---- custom off-diet dish: pick fridge items to spend ---- */
@@ -2029,6 +2055,13 @@ async function requestCamera(){
     }
   }
 }
+document.getElementById('vision-info-toggle').addEventListener('click', ()=>{
+  const detail = document.getElementById('vision-info-detail');
+  const chevron = document.getElementById('vision-info-chevron');
+  const open = detail.style.display !== 'none';
+  detail.style.display = open ? 'none' : 'block';
+  chevron.textContent = open ? '▾' : '▴';
+});
 document.getElementById('request-camera-btn').addEventListener('click', requestCamera);
 document.getElementById('retry-camera-btn').addEventListener('click', requestCamera);
 document.getElementById('stop-camera-btn').addEventListener('click', ()=>{
@@ -2591,9 +2624,9 @@ function updateDietHero(){
   const noteEl = document.getElementById('member-child-note');
   if(profile.age < 18){
     noteWrap.style.display = 'block';
-    noteEl.textContent = profile.goal === 'lose'
-      ? 'Профиль младше 18 лет: ИМТ и калораж рассчитаны по взрослой формуле и не заменяют возрастные нормы роста — перед тем как следовать плану снижения веса, посоветуйтесь с педиатром.'
-      : 'Профиль младше 18 лет: показана ориентировочная норма для поддержания, без цели по весу — она не заменяет консультацию педиатра.';
+    noteEl.textContent = (profile.goal === 'lose'
+      ? '⚕️ Профиль младше 18 лет: ИМТ и калораж рассчитаны по взрослой формуле и не заменяют возрастные нормы роста — перед тем как следовать плану снижения веса, посоветуйтесь с педиатром.'
+      : '⚕️ Профиль младше 18 лет: показана ориентировочная норма для поддержания, без цели по весу — она не заменяет консультацию педиатра.');
   } else {
     noteWrap.style.display = 'none';
   }
@@ -2987,9 +3020,10 @@ document.getElementById('toggle-measurements-btn').addEventListener('click', ()=
   const box = document.getElementById('extra-measurements');
   const isOpen = box.style.display !== 'none';
   box.style.display = isOpen ? 'none' : 'block';
-  document.getElementById('toggle-measurements-btn').textContent = isOpen
-    ? '+ Добавить замеры за сегодня (шея, грудь, живот, бёдра)'
-    : '− Скрыть замеры';
+  document.getElementById('toggle-measurements-label').textContent = isOpen
+    ? 'Добавить замеры за сегодня (шея, грудь, живот, бёдра)'
+    : 'Скрыть замеры';
+  document.getElementById('toggle-measurements-chevron').style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 });
 document.getElementById('save-measurement-btn').addEventListener('click', ()=>{
   const entry = {
@@ -3187,9 +3221,13 @@ async function loadDietitianScreen(){
     hintEl.textContent = `За прошлую неделю: ${summaries[0].summary}`;
   }
 
+  const suggestions = ['Съел бургер и картошку фри', 'Что приготовить на ужин из холодильника?', 'Сколько белка мне нужно сегодня?', 'Итоги этой недели'];
+  const suggestionsHtml = `<div class="chip-row" id="dietitian-suggestions" style="padding:0 0 0.25rem 0; margin:0">${
+    suggestions.map(s => `<button type="button" class="chip" data-suggest="${escapeHtml(s)}">${s}</button>`).join('')
+  }</div>`;
   listEl.innerHTML = dietitianHistory.length
     ? dietitianHistory.map(m => dietitianMsgHtml(m.role, m.content, false)).join('')
-    : dietitianMsgHtml('assistant', 'Привет! Расскажите, что сегодня съели или что планируете — подскажу калории и сколько можно съесть.', false);
+    : dietitianMsgHtml('assistant', 'Привет! Расскажите, что сегодня съели или что планируете — подскажу калории и сколько можно съесть.', false) + suggestionsHtml;
   const mainCol = document.querySelector('.main-col');
   mainCol.scrollTop = mainCol.scrollHeight;
 }
@@ -3218,8 +3256,10 @@ const dietitianSendBtn = document.getElementById('dietitian-send-btn');
 const dietitianMessagesEl = document.getElementById('dietitian-messages');
 
 dietitianMessagesEl.addEventListener('click', (e)=>{
-  const btn = e.target.closest('[data-speak]');
-  if(btn) speakText(btn.dataset.speak);
+  const speakBtn = e.target.closest('[data-speak]');
+  if(speakBtn){ speakText(speakBtn.dataset.speak); return; }
+  const suggestBtn = e.target.closest('[data-suggest]');
+  if(suggestBtn){ dietitianInput.value = suggestBtn.dataset.suggest; dietitianInput.focus(); }
 });
 
 async function sendDietitianMessage(){
@@ -3706,6 +3746,17 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
   const biometricLockSub = document.getElementById('biometric-lock-sub');
   let lockedUserId = null;
 
+  function wirePasswordToggle(inputEl, btnEl){
+    btnEl.addEventListener('click', ()=>{
+      const show = inputEl.type === 'password';
+      inputEl.type = show ? 'text' : 'password';
+      btnEl.textContent = show ? '🙈' : '👁';
+      btnEl.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
+    });
+  }
+  wirePasswordToggle(passInput, document.getElementById('login-password-toggle'));
+  wirePasswordToggle(recoveryPassInput, document.getElementById('recovery-password-toggle'));
+
   async function enterApp(){
     loginScreen.style.display = 'none';
     await loadUserData();
@@ -3767,7 +3818,7 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
         // именно неверным паролем, а не поводом регистрировать заново.
         const alreadyRegistered = /already registered|user_already_exists/i.test(signUp.error?.message || signUp.error?.code || '');
         loginError.textContent = alreadyRegistered
-          ? 'Неверный email или пароль'
+          ? 'Неверный email или пароль. Если забыли пароль — восстановите его ниже.'
           : (signUp.error ? ('Не удалось войти: ' + signUp.error.message) : 'Требуется подтверждение почты — отключите его в настройках Supabase Auth.');
         loginError.classList.add('show');
         submitBtn.disabled = false; submitBtn.textContent = 'Войти';
