@@ -738,6 +738,10 @@ h1,h2,h3,.display{ font-family:'Fraunces', serif; letter-spacing:-0.015em; line-
         </div>
       </div>
 
+      <div class="section" id="member-child-note-wrap" style="display:none; padding-top:0.75rem; padding-bottom:0">
+        <div class="goal-note" id="member-child-note" style="margin:0"></div>
+      </div>
+
       <button type="button" class="dietitian-entry" id="open-dietitian-btn">
         <div class="ic">💬</div>
         <div style="flex:1; min-width:0; text-align:left">
@@ -2558,6 +2562,17 @@ function updateDietHero(){
   document.getElementById('member-hero-big').textContent = (profile.goal === 'lose' && profile.target_weight_kg)
     ? `${fmtKg(w)} кг → ${fmtKg(Number(profile.target_weight_kg))} кг`
     : `${fmtKg(w)} кг`;
+
+  const noteWrap = document.getElementById('member-child-note-wrap');
+  const noteEl = document.getElementById('member-child-note');
+  if(profile.age < 18){
+    noteWrap.style.display = 'block';
+    noteEl.textContent = profile.goal === 'lose'
+      ? 'Профиль младше 18 лет: ИМТ и калораж рассчитаны по взрослой формуле и не заменяют возрастные нормы роста — перед тем как следовать плану снижения веса, посоветуйтесь с педиатром.'
+      : 'Профиль младше 18 лет: показана ориентировочная норма для поддержания, без цели по весу — она не заменяет консультацию педиатра.';
+  } else {
+    noteWrap.style.display = 'none';
+  }
 }
 ['weight','neck','chest','belly','hips'].forEach(key=>{
   const slider = document.getElementById('slider-'+key);
