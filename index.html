@@ -3121,15 +3121,16 @@ function renderHistory(){
   const sortedDesc = [...sortedAsc].reverse();
   document.getElementById('history-chart-card').innerHTML = buildWeightChartSvg(sortedAsc);
   document.getElementById('history-insight-text').textContent = generateHistoryInsight(sortedAsc);
+  const mv = (v) => v ? v : '—'; // 0/NaN/null трактуем как "не измеряли", а не как настоящий 0
   document.getElementById('history-list').innerHTML = sortedDesc.length ? sortedDesc.map(m => `
     <div class="history-row">
       <div class="d">${formatRuDate(m.date)}</div>
       <div class="grid">
-        <div><div class="v">${m.weight}</div><div class="l">кг</div></div>
-        <div><div class="v">${m.neck}</div><div class="l">шея</div></div>
-        <div><div class="v">${m.chest}</div><div class="l">грудь</div></div>
-        <div><div class="v">${m.belly}</div><div class="l">живот</div></div>
-        <div><div class="v">${m.hips}</div><div class="l">бёдра</div></div>
+        <div><div class="v">${mv(m.weight)}</div><div class="l">кг</div></div>
+        <div><div class="v">${mv(m.neck)}</div><div class="l">шея</div></div>
+        <div><div class="v">${mv(m.chest)}</div><div class="l">грудь</div></div>
+        <div><div class="v">${mv(m.belly)}</div><div class="l">живот</div></div>
+        <div><div class="v">${mv(m.hips)}</div><div class="l">бёдра</div></div>
       </div>
     </div>`).join('') : `<div style="font-size:0.7812rem; color:var(--muted)">Замеров пока нет</div>`;
 }
