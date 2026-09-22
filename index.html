@@ -330,9 +330,9 @@ img{ animation:imgFadeIn .25s ease; }
 .dietitian-messages{ display:flex; flex-direction:column; gap:0.625rem; padding:0.5rem 1.25rem 1.125rem 1.25rem; }
 .dietitian-msg{ max-width:84%; padding:0.625rem 0.875rem; border-radius:var(--radius-md); font-size:0.875rem; line-height:1.5; }
 .dietitian-msg.user{ align-self:flex-end; background:var(--ink); color:#fff; border-bottom-right-radius:4px; }
-.dietitian-msg.assistant{ align-self:flex-start; background:var(--fresh-soft); color:var(--ink); border-bottom-left-radius:4px; }
+.dietitian-msg.assistant{ align-self:stretch; max-width:100%; background:none; color:var(--ink); padding:0.125rem 0 0 0; }
 .dietitian-msg.pending{ color:var(--muted); }
-.dietitian-msg .speak-btn{ display:block; margin-top:0.5rem; background:none; border:none; padding:0; font-size:0.75rem; color:var(--fresh); font-weight:600; font-family:'Inter',sans-serif; }
+.dietitian-msg .speak-btn{ display:inline-flex; align-items:center; justify-content:center; margin-top:0.5rem; width:1.75rem; height:1.75rem; background:var(--surface); border:1px solid var(--line); border-radius:50%; padding:0; font-size:0.8125rem; color:var(--ink-soft); }
 .dietitian-input-row{ display:flex; gap:0.5rem; padding:0.5rem 1.25rem calc(1rem + var(--safe-b)) 1.25rem; }
 .dietitian-input-row input{ flex:1; min-height:44px; border-radius:999px; border:1px solid var(--line); background:var(--surface); padding:0 1rem; font-size:0.9375rem; font-family:'Inter',sans-serif; color:var(--ink); }
 .dietitian-input-row button{ width:44px; height:44px; border-radius:50%; background:var(--ink); color:#fff; border:none; font-size:1.125rem; flex-shrink:0; }
@@ -774,6 +774,11 @@ img{ animation:imgFadeIn .25s ease; }
 
       <div class="section" id="member-child-note-wrap" style="display:none; padding-top:0.75rem; padding-bottom:0">
         <div class="goal-note" id="member-child-note" style="margin:0"></div>
+      </div>
+
+      <div class="section" id="member-trend-wrap" style="display:none; padding-top:0.75rem; padding-bottom:0.25rem">
+        <div class="history-chart-card" id="member-trend-chart" style="margin-bottom:0.5rem"></div>
+        <div id="member-trend-projection" style="font-size:0.8125rem; font-weight:600; color:var(--frost); text-align:center; display:none"></div>
       </div>
 
       <button type="button" class="dietitian-entry" id="open-dietitian-btn">
@@ -2750,6 +2755,7 @@ async function openFamilyMember(profileId){
 
   updateDietHero();
   updatePortions();
+  renderMemberTrend();
   daySelected = 1;
   document.querySelectorAll('.day-pill').forEach((b,i)=>b.classList.toggle('active', i===0));
   renderDay(1);
@@ -3037,6 +3043,7 @@ document.getElementById('save-measurement-btn').addEventListener('click', ()=>{
   const existingIdx = measurementHistory.findIndex(m => m.date === entry.date);
   if(existingIdx >= 0) measurementHistory[existingIdx] = entry; else measurementHistory.push(entry);
   dbSaveMeasurement(entry);
+  renderMemberTrend();
   showToast('Замеры за сегодня сохранены');
 });
 function fmtKg(n){ return n.toFixed(1).replace('.0','').replace('.', ','); }
@@ -3132,6 +3139,44 @@ document.getElementById('open-history-btn').addEventListener('click', ()=>{
   showScreen('measure-history', false);
 });
 
+// Прогноз даты достижения цели по текущему темпу похудения — считаем
+// среднюю скорость изменения веса между первым и последним замером и
+// линейно экстраполируем до целевого веса. Показываем только если реально
+// худеет и дистанция до цели ещё не пройдена (иначе прогноз вводит в
+// заблуждение).
+function projectGoalDate(sortedAsc, targetWeight){
+  if(sortedAsc.length < 2 || !targetWeight) return null;
+  const first = sortedAsc[0], last = sortedAsc[sortedAsc.length-1];
+  const daysElapsed = (new Date(last.date) - new Date(first.date)) / 86400000;
+  if(daysElapsed <= 0) return null;
+  const ratePerDay = (last.weight - first.weight) / daysElapsed;
+  if(ratePerDay >= -0.01) return null;
+  const remaining = last.weight - targetWeight;
+  if(remaining <= 0) return null;
+  const daysNeeded = remaining / Math.abs(ratePerDay);
+  if(daysNeeded > 3 * 365) return null; // слишком далёкий прогноз — не показываем, чтобы не демотивировать
+  const targetDate = new Date(last.date);
+  targetDate.setDate(targetDate.getDate() + Math.round(daysNeeded));
+  return targetDate;
+}
+function renderMemberTrend(){
+  const profile = getCurrentProfile();
+  const wrap = document.getElementById('member-trend-wrap');
+  if(!profile || measurementHistory.length < 2){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const sortedAsc = [...measurementHistory].sort((a,b)=> a.date.localeCompare(b.date));
+  document.getElementById('member-trend-chart').innerHTML = buildWeightChartSvg(sortedAsc);
+
+  const projEl = document.getElementById('member-trend-projection');
+  const targetDate = profile.goal === 'lose' ? projectGoalDate(sortedAsc, Number(profile.target_weight_kg)) : null;
+  if(targetDate){
+    projEl.style.display = 'block';
+    projEl.textContent = `📈 При таком темпе — цель примерно к ${formatRuDate(isoDate(targetDate))}`;
+  } else {
+    projEl.style.display = 'none';
+  }
+}
+
 function foodLogDayLabel(iso){
   const days = Math.round((TODAY - parseLocalDate(iso)) / 86400000);
   if(days === 0) return 'Сегодня';
@@ -3197,7 +3242,7 @@ function dietitianProfile(){
 
 function dietitianMsgHtml(role, content, pending){
   const cls = role === 'user' ? 'user' : 'assistant';
-  const speakBtn = (role === 'assistant' && !pending) ? `<button type="button" class="speak-btn" data-speak="${escapeHtml(content)}">🔊 Озвучить</button>` : '';
+  const speakBtn = (role === 'assistant' && !pending) ? `<button type="button" class="speak-btn" data-speak="${escapeHtml(content)}" aria-label="Озвучить">🔊</button>` : '';
   return `<div class="dietitian-msg ${cls}${pending?' pending':''}">${escapeHtml(content)}${speakBtn}</div>`;
 }
 
