@@ -1738,18 +1738,23 @@ function openRecipe(id){
   showScreen('recipe-detail', false);
 }
 (function setupRecipeHeroParallax(){
+  // На мобильном скроллится window/html (.main-col без фиксированной высоты),
+  // на десктопе (>=768px) — сам .screen внутри .main-col с height:100dvh.
+  // Слушаем оба источника и берём максимум, чтобы работало в обоих layout'ах.
   const scroller = document.getElementById('screen-recipe-detail');
   const heroMedia = document.getElementById('recipe-hero-media');
   let ticking = false;
-  scroller.addEventListener('scroll', () => {
+  function onScroll(){
     if(prefersReducedMotion() || ticking) return;
     ticking = true;
     requestAnimationFrame(() => {
-      const y = Math.max(0, scroller.scrollTop);
+      const y = Math.max(0, scroller.scrollTop, window.scrollY || document.documentElement.scrollTop || 0);
       heroMedia.style.transform = y < 280 ? `translateY(${y * 0.35}px) scale(1.15)` : '';
       ticking = false;
     });
-  }, { passive:true });
+  }
+  scroller.addEventListener('scroll', onScroll, { passive:true });
+  window.addEventListener('scroll', onScroll, { passive:true });
 })();
 
 /* ===================== MOTION: springs, rubber-band, momentum projection ===================== */
