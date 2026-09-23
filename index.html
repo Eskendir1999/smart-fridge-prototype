@@ -187,8 +187,9 @@ img{ animation:imgFadeIn .25s ease; }
 .ingredient-check .label{ font-size:0.8438rem; font-weight:600; flex:1; }
 .ingredient-check .qty{ font-size:0.7188rem; color:var(--muted); }
 
-.hero-photo{ width:100%; aspect-ratio:1/1; max-height:280px; background:linear-gradient(135deg,#F0E6D2,#DCE8DD); border-radius:0 0 28px 28px; display:flex; align-items:center; justify-content:center; font-size:4rem; overflow:hidden; }
-.hero-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+.hero-photo{ width:100%; aspect-ratio:1/1; max-height:280px; background:linear-gradient(135deg,#F0E6D2,#DCE8DD); border-radius:0 0 28px 28px; overflow:hidden; }
+.hero-photo-media{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:4rem; will-change:transform; }
+.hero-photo-media img{ width:100%; height:100%; object-fit:cover; display:block; }
 .detail-block{ padding:1.125rem 1.25rem; }
 .detail-block h2{ font-size:1.375rem; font-weight:600; margin-bottom:0.25rem; }
 .detail-block .sub{ font-size:0.8438rem; color:var(--muted); margin-bottom:1rem; }
@@ -483,6 +484,7 @@ img{ animation:imgFadeIn .25s ease; }
   .cart-check{ animation:none !important; }
   .collapse-wrap{ transition:none !important; }
   #onboarding-slide-content{ transition:none !important; opacity:1 !important; transform:none !important; }
+  .hero-photo-media{ transform:none !important; }
   *{ scroll-behavior: auto !important; }
 }
 @media (prefers-reduced-transparency: reduce){
@@ -981,7 +983,7 @@ img{ animation:imgFadeIn .25s ease; }
     <!-- ===== RECIPE DETAIL ===== -->
     <section class="screen" id="screen-recipe-detail">
       <div class="back-row"><button class="back-btn" data-back="recipes">← Назад</button></div>
-      <div class="hero-photo" id="recipe-hero">🍗</div>
+      <div class="hero-photo" id="recipe-hero"><div class="hero-photo-media" id="recipe-hero-media">🍗</div></div>
       <div class="detail-block">
         <h2 id="recipe-title">Название блюда</h2>
         <div class="sub" id="recipe-meta">25 мин · 2 порции</div>
@@ -1724,8 +1726,9 @@ renderRecipesList();
 function openRecipe(id){
   const r = recipesData.find(x=>x.id===id);
   if(!r) return;
-  const hero = document.getElementById('recipe-hero');
-  hero.innerHTML = recipePhotoHtml(r);
+  const heroMedia = document.getElementById('recipe-hero-media');
+  heroMedia.innerHTML = recipePhotoHtml(r);
+  heroMedia.style.transform = '';
   document.getElementById('recipe-title').textContent = r.title;
   document.getElementById('recipe-meta').textContent = `${r.time} · ${r.servings}`;
   document.getElementById('recipe-ingredients').innerHTML = r.ingredients.map(i=>`<li><span class="iname">${i.name}</span><span class="iqty">${i.qty}</span></li>`).join('');
@@ -1734,6 +1737,20 @@ function openRecipe(id){
   history.push('recipe-detail');
   showScreen('recipe-detail', false);
 }
+(function setupRecipeHeroParallax(){
+  const scroller = document.getElementById('screen-recipe-detail');
+  const heroMedia = document.getElementById('recipe-hero-media');
+  let ticking = false;
+  scroller.addEventListener('scroll', () => {
+    if(prefersReducedMotion() || ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const y = Math.max(0, scroller.scrollTop);
+      heroMedia.style.transform = y < 280 ? `translateY(${y * 0.35}px) scale(1.15)` : '';
+      ticking = false;
+    });
+  }, { passive:true });
+})();
 
 /* ===================== MOTION: springs, rubber-band, momentum projection ===================== */
 function prefersReducedMotion(){ return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
@@ -2900,7 +2917,7 @@ function addMissingToCart(name){
   const already = cartData.some(c => c.name === name);
   if(!already){
     const entry = findCatalog(name);
-    const newCartItem = {name, emoji:'🛒', qtyNum: entry?entry.defaultQty:1, unit: entry?entry.unit:'шт', note:'нужно докупить'};
+    const newCartItem = {name, emoji: entry ? entry.emoji : '🛒', qtyNum: entry?entry.defaultQty:1, unit: entry?entry.unit:'шт', note:'нужно докупить'};
     cartData.push(newCartItem);
     dbInsertCart(newCartItem);
   }
