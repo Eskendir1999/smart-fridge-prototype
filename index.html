@@ -189,6 +189,9 @@ img{ animation:imgFadeIn .25s ease; }
 .secondary-btn{ width:100%; min-height:50px; border-radius:var(--radius-sm); background:var(--surface); color:var(--ink); border:1px solid var(--line); font-size:0.9375rem; font-weight:600; font-family:'Inter',sans-serif; margin-top:0.625rem; }
 
 .form-field{ margin-bottom:1rem; }
+.collapse-wrap{ display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows 0.25s ease, opacity 0.2s ease; margin-bottom:0; }
+.collapse-wrap > *{ overflow:hidden; min-height:0; }
+.collapse-wrap.open{ grid-template-rows:1fr; opacity:1; margin-bottom:1rem; }
 .form-field > label{ display:block; font-size:0.7812rem; font-weight:600; color:var(--ink-soft); margin-bottom:0.375rem; }
 .form-field input, .form-field select{ width:100%; min-height:48px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); padding:0 0.875rem; font-size:1rem; font-family:'Inter',sans-serif; color:var(--ink); }
 .form-field input:focus, .form-field select:focus{ outline:2px solid var(--fresh); outline-offset:1px; }
@@ -377,6 +380,9 @@ img{ animation:imgFadeIn .25s ease; }
 .history-chart-point{ cursor:pointer; }
 .history-chart-label{ font-size:9px; fill:var(--muted); font-family:'Inter',sans-serif; }
 .history-chart-value{ font-size:9px; fill:var(--ink); font-weight:600; font-family:'Inter',sans-serif; }
+.history-chart-path{ stroke-dasharray:1; stroke-dashoffset:1; animation:drawChartLine 0.7s ease-out forwards; }
+.history-chart-dots{ opacity:0; animation:imgFadeIn 0.35s ease-out 0.55s forwards; }
+@keyframes drawChartLine{ to{ stroke-dashoffset:0; } }
 
 /* ===== Bottom nav ===== */
 .bottom-nav{ position:fixed; left:0; right:0; bottom:0; background:rgba(251,247,242,0.92); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; padding:0.625rem calc(0.375rem + var(--safe-l)) calc(0.625rem + var(--safe-b)) calc(0.375rem + var(--safe-r)); z-index:50; max-width:1400px; margin:0 auto; }
@@ -460,6 +466,8 @@ img{ animation:imgFadeIn .25s ease; }
   .scan-line{ animation: none !important; }
   .skeleton{ animation: none !important; }
   img{ animation: none !important; }
+  .history-chart-path{ animation:none !important; stroke-dashoffset:0 !important; }
+  .history-chart-dots{ animation:none !important; opacity:1 !important; }
   *{ scroll-behavior: auto !important; }
 }
 @media (prefers-reduced-transparency: reduce){
@@ -747,6 +755,11 @@ img{ animation:imgFadeIn .25s ease; }
       <div class="vision-controls">
         <button class="ghost-btn" id="barcode-stop-btn">✕ Стоп</button>
       </div>
+      <div class="section" style="padding-top:1.25rem">
+        <div style="font-size:0.8125rem; color:var(--ink-soft); text-align:center; line-height:1.5;">
+          💡 Держите штрихкод ровно и на расстоянии 10–15 см от камеры — при бликах слегка наклоните упаковку.
+        </div>
+      </div>
     </section>
 
     <!-- ===== DIET / FAMILY PICKER ===== -->
@@ -902,11 +915,15 @@ img{ animation:imgFadeIn .25s ease; }
             <button type="button" class="dest-btn" id="ff-goal-maintain" style="flex:1">Поддержание нормы</button>
           </div>
         </div>
-        <div class="form-field" id="ff-target-field">
-          <label>Целевой вес, кг</label>
-          <input type="number" id="ff-target" inputmode="decimal" min="1" placeholder="60">
+        <div class="collapse-wrap" id="ff-target-field">
+          <div class="form-field" style="margin-bottom:0">
+            <label>Целевой вес, кг</label>
+            <input type="number" id="ff-target" inputmode="decimal" min="1" placeholder="60">
+          </div>
         </div>
-        <div class="goal-note" id="ff-child-note" style="display:none">Для профиля младше 18 лет расчёт калорий ориентируется на возрастную норму — при выборе «Снижение веса» посоветуйтесь с педиатром перед тем, как следовать плану.</div>
+        <div class="collapse-wrap" id="ff-child-note-wrap">
+          <div class="goal-note" style="margin-bottom:0">Для профиля младше 18 лет расчёт калорий ориентируется на возрастную норму — при выборе «Снижение веса» посоветуйтесь с педиатром перед тем, как следовать плану.</div>
+        </div>
         <div class="form-field">
           <label>Уровень активности</label>
           <div class="dest-row" style="margin-bottom:0">
@@ -966,6 +983,13 @@ img{ animation:imgFadeIn .25s ease; }
       <div class="detail-block" style="padding-top:0.375rem">
         <h2 style="margin-bottom:0.25rem">Журнал продуктов</h2>
         <div class="sub" style="margin-bottom:1rem">Что использовано вовремя, а что выброшено</div>
+        <div class="summary-card" style="margin-bottom:1.125rem">
+          <div><div class="num" id="foodlog-used-num">0</div><div class="label">использовано</div></div>
+          <div class="summary-divider"></div>
+          <div><div class="num" id="foodlog-wasted-num">0</div><div class="label">выброшено</div></div>
+          <div class="summary-divider"></div>
+          <div><div class="num" id="foodlog-kg-num">0</div><div class="label">кг спасено</div></div>
+        </div>
         <div id="food-log-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
       </div>
     </section>
@@ -2786,9 +2810,9 @@ function openFamilyForm(profile){
 }
 function updateFamilyFormVisibility(){
   const isLose = document.getElementById('ff-goal-lose').classList.contains('active');
-  document.getElementById('ff-target-field').style.display = isLose ? 'block' : 'none';
+  document.getElementById('ff-target-field').classList.toggle('open', isLose);
   const age = parseInt(document.getElementById('ff-age').value, 10);
-  document.getElementById('ff-child-note').style.display = (isLose && age && age < 18) ? 'block' : 'none';
+  document.getElementById('ff-child-note-wrap').classList.toggle('open', !!(isLose && age && age < 18));
 }
 document.getElementById('ff-sex-male').addEventListener('click', ()=> setSegmented('ff-sex-male', ['ff-sex-male','ff-sex-female']));
 document.getElementById('ff-sex-female').addEventListener('click', ()=> setSegmented('ff-sex-female', ['ff-sex-male','ff-sex-female']));
@@ -3078,9 +3102,8 @@ function buildWeightChartSvg(sortedAsc){
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="var(--line)" stroke-width="1"/>
     <line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="var(--line)" stroke-width="1"/>
-    <path d="${pathD}" fill="none" stroke="var(--fresh)" stroke-width="2"/>
-    ${circles}
-    ${valueLabels}
+    <path class="history-chart-path" d="${pathD}" pathLength="1" fill="none" stroke="var(--fresh)" stroke-width="2"/>
+    <g class="history-chart-dots">${circles}${valueLabels}</g>
     ${dateLabels}
   </svg>`;
 }
@@ -3189,6 +3212,12 @@ async function renderFoodLog(){
   listEl.innerHTML = `<div style="font-size:0.7812rem; color:var(--muted)">Загрузка…</div>`;
   if(!currentHouseholdId){ listEl.innerHTML = `<div style="font-size:0.7812rem; color:var(--muted)">Журнал пуст</div>`; return; }
   const { data, error } = await sb.from('food_events').select('*').eq('household_id', currentHouseholdId).order('created_at', {ascending:false}).limit(100);
+  const usedN = (data||[]).filter(e=>e.action==='used').length;
+  const wastedN = (data||[]).filter(e=>e.action==='wasted').length;
+  const kg = (data||[]).filter(e=>e.action==='used').reduce((s,e)=>s+(Number(e.qty_kg)||0),0);
+  document.getElementById('foodlog-used-num').textContent = usedN;
+  document.getElementById('foodlog-wasted-num').textContent = wastedN;
+  document.getElementById('foodlog-kg-num').textContent = kg.toFixed(1).replace('.0','').replace('.',',');
   if(error || !data || !data.length){ listEl.innerHTML = `<div style="font-size:0.7812rem; color:var(--muted)">Пока ничего не отмечено — используйте кнопки «Использовано»/«Выброшено» на карточке продукта.</div>`; return; }
   listEl.innerHTML = data.map(e => {
     const isUsed = e.action === 'used';
