@@ -1543,6 +1543,7 @@ function showScreen(name, push=true){
   document.querySelectorAll('.side-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
   fab.style.display = (name === 'fridge' || name === 'home') ? 'flex' : 'none';
   document.querySelector('.main-col').scrollTop = 0;
+  window.scrollTo(0, 0);
   if(push) history.push(name);
   if(name === 'vision'){ ensureModel(); } else { stopDetectLoop(); }
 }
