@@ -3086,7 +3086,13 @@ function updateCartBadge(){
   if(cartData.length > 0){ badge.style.display='flex'; badge.textContent = cartData.length; }
   else { badge.style.display='none'; }
 }
-document.getElementById('day-pills').innerHTML = dietDays.map(day => `<button class="day-pill ${day.d===1?'active':''}" data-day="${day.d}">День ${day.d}${day.d===7?' 🔄':''}</button>`).join('');
+// Пилюли плана питания раньше были абстрактными "День 1"/"День 2" — план
+// 7-дневный и всё равно повторяется по кругу (день 7 с 🔄 зацикливается на
+// день 1), так что имеет смысл показывать реальные дни недели начиная с
+// сегодняшнего, а не голый счётчик.
+const RU_WEEKDAY_SHORT = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+function dayPillLabel(d){ return RU_WEEKDAY_SHORT[addDays(TODAY, d-1).getDay()]; }
+document.getElementById('day-pills').innerHTML = dietDays.map(day => `<button class="day-pill ${day.d===1?'active':''}" data-day="${day.d}">${dayPillLabel(day.d)}${day.d===7?' 🔄':''}</button>`).join('');
 document.querySelectorAll('.day-pill').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.day-pill').forEach(b=>b.classList.remove('active'));
@@ -3124,7 +3130,7 @@ document.getElementById('tip-close-btn').addEventListener('click', showRandomTip
 // шея/грудь/живот/бёдра), плюс отдельная ручная отметка "Готово" на случай, если
 // человек измерился сантиметром вне приложения и просто хочет сбросить таймер.
 const WEIGHT_REMINDER_DAYS = 2;
-const FULL_REMINDER_DAYS = 14;
+const FULL_REMINDER_DAYS = 5;
 function ruDays(n){
   const mod100 = n % 100;
   if(mod100 >= 11 && mod100 <= 14) return 'дней';
