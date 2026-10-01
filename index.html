@@ -3125,6 +3125,14 @@ document.getElementById('tip-close-btn').addEventListener('click', showRandomTip
 // человек измерился сантиметром вне приложения и просто хочет сбросить таймер.
 const WEIGHT_REMINDER_DAYS = 2;
 const FULL_REMINDER_DAYS = 14;
+function ruDays(n){
+  const mod100 = n % 100;
+  if(mod100 >= 11 && mod100 <= 14) return 'дней';
+  const mod10 = n % 10;
+  if(mod10 === 1) return 'день';
+  if(mod10 >= 2 && mod10 <= 4) return 'дня';
+  return 'дней';
+}
 function fullMeasureResetKey(){ return 'sf_fullmeasure_' + currentProfileId; }
 function lastFullMeasureDate(){
   let manual = null;
@@ -3140,7 +3148,7 @@ function renderReminders(){
     weightTitle.textContent = 'Взвеситесь, чтобы начать отслеживать вес';
   } else {
     const daysLeft = WEIGHT_REMINDER_DAYS - Math.round((TODAY - parseLocalDate(lastWeightDate)) / 86400000);
-    weightTitle.textContent = daysLeft <= 0 ? 'Пора взвеситься сегодня' : `Взвешивание через ${daysLeft} ${daysLeft===1?'день':'дня'}`;
+    weightTitle.textContent = daysLeft <= 0 ? 'Пора взвеситься сегодня' : `Взвешивание через ${daysLeft} ${ruDays(daysLeft)}`;
   }
 
   const lastFull = lastFullMeasureDate();
@@ -3149,7 +3157,7 @@ function renderReminders(){
     fullTitle.textContent = 'Сделайте первый замер объёмов';
   } else {
     const daysLeft = FULL_REMINDER_DAYS - Math.round((TODAY - parseLocalDate(lastFull)) / 86400000);
-    fullTitle.textContent = daysLeft <= 0 ? 'Пора сделать замеры объёмов сегодня' : `Замер объёмов через ${daysLeft} ${daysLeft===1?'день':'дня'}`;
+    fullTitle.textContent = daysLeft <= 0 ? 'Пора сделать замеры объёмов сегодня' : `Замер объёмов через ${daysLeft} ${ruDays(daysLeft)}`;
   }
 }
 document.getElementById('mark-measured-btn').addEventListener('click', ()=>{
