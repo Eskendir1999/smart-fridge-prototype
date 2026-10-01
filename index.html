@@ -384,8 +384,9 @@ img{ animation:imgFadeIn .25s ease; }
 .step-num{ flex-shrink:0; width:24px; height:24px; border-radius:50%; background:var(--fresh-soft); color:var(--fresh); font-weight:700; font-size:0.75rem; display:flex; align-items:center; justify-content:center; }
 
 /* ===== Measurement history ===== */
-.history-row{ background:var(--surface); border-radius:var(--radius-md); padding:0.75rem 0.875rem; box-shadow:var(--shadow); }
-.history-row .d{ font-size:0.75rem; font-weight:700; color:var(--muted); margin-bottom:0.5rem; }
+.history-row{ background:var(--surface); border-radius:var(--radius-md); padding:0.75rem 0.875rem; box-shadow:var(--shadow); cursor:pointer; }
+.history-row .d{ font-size:0.75rem; font-weight:700; color:var(--muted); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.375rem; }
+.history-row .d::after{ content:'✎'; font-size:0.6875rem; color:var(--muted); opacity:0.6; }
 .history-row .grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:0.25rem; text-align:center; }
 .history-row .grid .v{ font-size:0.8438rem; font-weight:700; font-family:'Fraunces',serif; }
 .history-row .grid .l{ font-size:0.5938rem; color:var(--muted); margin-top:0.125rem; }
@@ -463,14 +464,14 @@ img{ animation:imgFadeIn .25s ease; }
 .primary-btn, .secondary-btn, .ghost-btn, .dest-btn, .qty-btn, .sheet-option, .sheet-cancel,
 .day-pill, .chip, .product-row, .expire-card, .suggest-card, .recipe-card,
 .nav-item, .side-item, .meal-card-head, .autocomplete-item, .missing-item button,
-.back-btn, .avatar[data-nav]{
+.back-btn, .avatar[data-nav], .history-row{
   transition: transform 100ms ease-out;
 }
 .primary-btn:active, .secondary-btn:active, .ghost-btn:active, .dest-btn:active, .qty-btn:active,
 .sheet-option:active, .sheet-cancel:active, .day-pill:active, .chip:active, .product-row:active,
 .expire-card:active, .suggest-card:active, .recipe-card:active, .nav-item:active, .side-item:active,
 .meal-card-head:active, .autocomplete-item:active, .missing-item button:active, .back-btn:active,
-.avatar[data-nav]:active{
+.avatar[data-nav]:active, .history-row:active{
   transform: scale(0.97);
 }
 
@@ -1028,7 +1029,8 @@ img{ animation:imgFadeIn .25s ease; }
       <div class="back-row"><button class="back-btn" data-back="diet">← Назад</button></div>
       <div class="detail-block" style="padding-top:0.375rem">
         <h2 style="margin-bottom:0.25rem">История замеров</h2>
-        <div class="sub" style="margin-bottom:1rem">Вес, шея, грудь, живот, бёдра по датам</div>
+        <div class="sub" style="margin-bottom:0.75rem">Вес, шея, грудь, живот, бёдра по датам</div>
+        <button class="secondary-btn" id="add-past-measurement-btn" style="margin-top:0; margin-bottom:1rem">+ Добавить запись за другую дату</button>
         <div class="history-chart-card" id="history-chart-card"></div>
         <div class="tip-card" id="history-insight-card" style="margin:0 0 1.125rem 0">
           <div class="ic">💬</div>
@@ -1166,6 +1168,29 @@ img{ animation:imgFadeIn .25s ease; }
   <div class="login-error" id="family-join-error"></div>
   <button class="primary-btn" id="family-join-btn">Присоединиться</button>
   <button class="sheet-cancel" id="family-sheet-cancel">Готово</button>
+</div>
+
+<div class="sheet" id="measurement-sheet">
+  <div class="sheet-handle"></div>
+  <h3 id="measurement-sheet-title">Добавить запись за другую дату</h3>
+  <div class="form-field">
+    <label>Дата</label>
+    <input type="date" id="ms-date">
+  </div>
+  <div class="form-field">
+    <label>Вес, кг</label>
+    <input type="number" inputmode="decimal" step="0.1" id="ms-weight" placeholder="Например: 95.4">
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.625rem 0.75rem;">
+    <div class="form-field"><label>Шея, см</label><input type="number" inputmode="decimal" step="0.5" id="ms-neck"></div>
+    <div class="form-field"><label>Грудь, см</label><input type="number" inputmode="decimal" step="0.5" id="ms-chest"></div>
+    <div class="form-field"><label>Живот, см</label><input type="number" inputmode="decimal" step="0.5" id="ms-belly"></div>
+    <div class="form-field"><label>Бёдра, см</label><input type="number" inputmode="decimal" step="0.5" id="ms-hips"></div>
+  </div>
+  <div style="font-size:0.75rem; color:var(--muted); margin:-0.375rem 0 0.875rem 0">Шею/грудь/живот/бёдра можно оставить пустыми, если в этот день мерили только вес.</div>
+  <button class="primary-btn" id="ms-save-btn">Сохранить</button>
+  <button class="secondary-btn" id="ms-delete-btn" style="color:var(--danger)">Удалить запись</button>
+  <button class="sheet-cancel" id="ms-sheet-cancel">Отмена</button>
 </div>
 
 <div class="sheet" id="biometric-sheet">
@@ -1814,7 +1839,8 @@ const mealSheet = document.getElementById('meal-sheet');
 const manualSheet = document.getElementById('manual-sheet');
 const familySheet = document.getElementById('family-sheet');
 const biometricSheet = document.getElementById('biometric-sheet');
-const allSheets = [addSheet, mealSheet, manualSheet, familySheet, biometricSheet];
+const measurementSheet = document.getElementById('measurement-sheet');
+const allSheets = [addSheet, mealSheet, manualSheet, familySheet, biometricSheet, measurementSheet];
 const sheetSprings = new Map();
 
 function isMobileSheet(){ return !window.matchMedia('(min-width:768px)').matches; }
@@ -3304,7 +3330,7 @@ function renderHistory(){
   document.getElementById('history-insight-text').textContent = generateHistoryInsight(sortedAsc);
   const mv = (v) => v ? v : '—'; // 0/NaN/null трактуем как "не измеряли", а не как настоящий 0
   document.getElementById('history-list').innerHTML = sortedDesc.length ? sortedDesc.map(m => `
-    <div class="history-row">
+    <div class="history-row" data-date="${m.date}">
       <div class="d">${formatRuDate(m.date)}</div>
       <div class="grid">
         <div><div class="v">${mv(m.weight)}</div><div class="l">кг</div></div>
@@ -3319,6 +3345,75 @@ document.getElementById('open-history-btn').addEventListener('click', ()=>{
   renderHistory();
   history.push('measure-history');
   showScreen('measure-history', false);
+});
+
+/* ===================== ADD/EDIT A PAST MEASUREMENT ===================== */
+// В отличие от быстрых кнопок на экране "Диета" (которые мержат и не трогают
+// нетронутые поля, чтобы одно нажатие не стирало другое), это полноценная форма
+// редактирования: пустое поле здесь — осознанный сброс значения, а не "не трогать".
+let editingMeasurementDate = null;
+function openMeasurementSheet(existingDate){
+  editingMeasurementDate = existingDate || null;
+  const entry = existingDate ? measurementHistory.find(m => m.date === existingDate) : null;
+  document.getElementById('measurement-sheet-title').textContent = existingDate ? 'Изменить запись' : 'Добавить запись за другую дату';
+  const dateInput = document.getElementById('ms-date');
+  dateInput.value = existingDate || isoDate(TODAY);
+  dateInput.max = isoDate(TODAY);
+  document.getElementById('ms-weight').value = entry ? entry.weight : '';
+  ['neck','chest','belly','hips'].forEach(k=>{
+    document.getElementById('ms-'+k).value = (entry && entry[k] > 0) ? entry[k] : '';
+  });
+  document.getElementById('ms-delete-btn').style.display = existingDate ? 'block' : 'none';
+  openSheet(measurementSheet);
+}
+document.getElementById('add-past-measurement-btn').addEventListener('click', ()=> openMeasurementSheet(null));
+document.getElementById('history-list').addEventListener('click', (e)=>{
+  const row = e.target.closest('.history-row');
+  if(row) openMeasurementSheet(row.dataset.date);
+});
+document.getElementById('ms-sheet-cancel').addEventListener('click', closeSheet);
+document.getElementById('ms-save-btn').addEventListener('click', async ()=>{
+  const date = document.getElementById('ms-date').value;
+  if(!date){ showToast('Укажите дату'); return; }
+  if(date > isoDate(TODAY)){ showToast('Дата не может быть в будущем'); return; }
+  const weight = parseFloat(document.getElementById('ms-weight').value);
+  if(isNaN(weight)){ showToast('Укажите вес'); return; }
+  const partial = { date, weight };
+  ['neck','chest','belly','hips'].forEach(k=>{
+    const v = parseFloat(document.getElementById('ms-'+k).value);
+    if(!isNaN(v)) partial[k] = v;
+  });
+
+  // Дату в форме поменяли на другую (перенос записи) — старую строку удаляем,
+  // чтобы не остались задвоенные/осиротевшие данные под прежней датой.
+  if(editingMeasurementDate && editingMeasurementDate !== date){
+    await sb.from('family_measurements').delete().eq('profile_id', currentProfileId).eq('log_date', editingMeasurementDate);
+    const oldIdx = measurementHistory.findIndex(m => m.date === editingMeasurementDate);
+    if(oldIdx >= 0) measurementHistory.splice(oldIdx, 1);
+  }
+
+  const existingIdx = measurementHistory.findIndex(m => m.date === date);
+  if(existingIdx >= 0) measurementHistory[existingIdx] = partial; else measurementHistory.push(partial);
+  await sb.from('family_measurements').upsert(
+    {profile_id: currentProfileId, log_date: date, weight: partial.weight, neck: partial.neck ?? null, chest: partial.chest ?? null, belly: partial.belly ?? null, hips: partial.hips ?? null},
+    {onConflict:'profile_id,log_date'}
+  );
+  closeSheet();
+  renderHistory();
+  renderMemberTrend();
+  renderReminders();
+  showToast(editingMeasurementDate ? 'Запись обновлена' : 'Запись добавлена');
+});
+document.getElementById('ms-delete-btn').addEventListener('click', async ()=>{
+  if(!editingMeasurementDate) return;
+  await sb.from('family_measurements').delete().eq('profile_id', currentProfileId).eq('log_date', editingMeasurementDate);
+  const idx = measurementHistory.findIndex(m => m.date === editingMeasurementDate);
+  if(idx >= 0) measurementHistory.splice(idx, 1);
+  closeSheet();
+  renderHistory();
+  renderMemberTrend();
+  renderReminders();
+  showToast('Запись удалена');
 });
 
 // Прогноз даты достижения цели по текущему темпу похудения — считаем
