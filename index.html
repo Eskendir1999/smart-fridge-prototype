@@ -283,6 +283,10 @@ img{ animation:imgFadeIn .25s ease; }
 .slider-row .top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.5rem; }
 .slider-row label{ font-size:0.8438rem; font-weight:600; }
 .slider-row .val{ font-size:0.875rem; font-weight:700; color:var(--fresh); font-family:'Fraunces',serif; }
+.slider-row .val-input-wrap{ display:flex; align-items:baseline; gap:0.3125rem; font-size:0.875rem; font-weight:700; color:var(--fresh); font-family:'Fraunces',serif; }
+.slider-row .val-input-wrap input{ width:4.25rem; font:inherit; font-weight:700; color:var(--fresh); text-align:right; border:1px solid var(--line); border-radius:0.5rem; padding:0.1875rem 0.5rem; background:var(--surface); -moz-appearance:textfield; }
+.slider-row .val-input-wrap input:focus{ outline:2px solid var(--fresh); outline-offset:1px; border-color:var(--fresh); }
+.slider-row .val-input-wrap input::-webkit-outer-spin-button, .slider-row .val-input-wrap input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
 .slider-row input[type=range]{ width:100%; -webkit-appearance:none; height:6px; border-radius:3px; background:var(--line); }
 .slider-row input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:var(--fresh); border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.25); margin-top:-0.5625rem; }
 .slider-row input[type=range]::-webkit-slider-runnable-track{ height:6px; border-radius:3px; }
@@ -820,10 +824,18 @@ img{ animation:imgFadeIn .25s ease; }
       </button>
 
       <div class="reminder-card">
+        <div class="ic">⚖️</div>
+        <div>
+          <div class="t" id="weight-reminder-title">Взвешивание через 2 дня</div>
+          <div class="s">Быстрый замер — только вес, без сантиметров</div>
+        </div>
+      </div>
+
+      <div class="reminder-card">
         <div class="ic">📏</div>
         <div>
           <div class="t" id="reminder-title">Замер объёмов через 5 дней</div>
-          <div class="s">Шея · Грудь · Живот · Бёдра · Вес</div>
+          <div class="s">Шея · Грудь · Живот · Бёдра</div>
         </div>
         <button id="mark-measured-btn">Готово</button>
       </div>
@@ -833,11 +845,12 @@ img{ animation:imgFadeIn .25s ease; }
       </div>
       <div class="slider-block">
         <div class="slider-row">
-          <div class="top"><label>Вес</label><span class="val" id="val-weight">117.5 кг</span></div>
-          <input type="range" min="20" max="200" step="0.5" value="117.5" id="slider-weight">
+          <div class="top"><label>Вес</label><span class="val-input-wrap"><input type="number" inputmode="decimal" step="0.1" min="20" max="250" id="val-weight" value="117.5" aria-label="Вес, кг">кг</span></div>
+          <input type="range" min="20" max="200" step="0.1" value="117.5" id="slider-weight">
         </div>
-        <button type="button" id="toggle-measurements-btn" style="display:flex; align-items:center; justify-content:space-between; gap:0.625rem; width:100%; min-height:2.5rem; font-size:0.8125rem; font-weight:600; color:var(--fresh); background:none; border:none; font-family:'Inter',sans-serif; padding:0.125rem 0 0.75rem 0; text-align:left;">
-          <span id="toggle-measurements-label">Добавить замеры за сегодня (шея, грудь, живот, бёдра)</span>
+        <button class="secondary-btn" id="save-weight-btn" style="margin-top:0">Сохранить вес</button>
+        <button type="button" id="toggle-measurements-btn" style="display:flex; align-items:center; justify-content:space-between; gap:0.625rem; width:100%; min-height:2.5rem; font-size:0.8125rem; font-weight:600; color:var(--fresh); background:none; border:none; font-family:'Inter',sans-serif; padding:0.625rem 0 0.75rem 0; text-align:left;">
+          <span id="toggle-measurements-label">Добавить объёмы за сегодня (шея, грудь, живот, бёдра)</span>
           <span id="toggle-measurements-chevron" style="flex-shrink:0; transition:transform .2s ease; font-size:0.75rem;">▾</span>
         </button>
         <div id="extra-measurements" style="display:none">
@@ -2704,10 +2717,32 @@ function updateDietHero(){
   const slider = document.getElementById('slider-'+key);
   const val = document.getElementById('val-'+key);
   slider.addEventListener('input', ()=>{
-    const unit = key==='weight' ? ' кг' : ' см';
-    val.textContent = parseFloat(slider.value).toFixed(1).replace('.0','') + unit;
-    if(key==='weight'){ updatePortions(); updateDietHero(); renderDay(daySelected); }
+    const formatted = parseFloat(slider.value).toFixed(1).replace(/\.0$/,'');
+    if(key==='weight'){ val.value = formatted; updatePortions(); updateDietHero(); renderDay(daySelected); }
+    else { val.textContent = formatted + ' см'; }
   });
+});
+// Вес также можно вписать точным числом (ползунок с шагом 0.1 всё равно неудобно
+// дотягивать до конкретного значения вроде 116.7) — поле синхронизируется со
+// слайдером в обе стороны. 'input' — живая синхронизация во время печати (не
+// трогает то, что пользователь ещё набирает); 'change' — клэмп/нормализация
+// после того, как он закончил (blur/Enter).
+document.getElementById('val-weight').addEventListener('input', ()=>{
+  const input = document.getElementById('val-weight');
+  const slider = document.getElementById('slider-weight');
+  const v = parseFloat(input.value);
+  if(isNaN(v)) return;
+  slider.value = Math.min(Math.max(v, parseFloat(slider.min)), parseFloat(slider.max));
+  updatePortions(); updateDietHero(); renderDay(daySelected);
+});
+document.getElementById('val-weight').addEventListener('change', ()=>{
+  const input = document.getElementById('val-weight');
+  const slider = document.getElementById('slider-weight');
+  let v = parseFloat(input.value);
+  if(isNaN(v)) v = parseFloat(slider.value);
+  v = Math.min(Math.max(v, parseFloat(slider.min)), parseFloat(slider.max));
+  input.value = v.toFixed(1).replace(/\.0$/,'');
+  slider.value = v;
 });
 
 // масштабирует числовые "г"/"мл" количества пропорционально текущему весу; остальное (шт, ч.л., ст.л.) не трогает
@@ -2811,7 +2846,7 @@ async function openFamilyMember(profileId){
   const w = latest ? latest.weight : Number(profile.start_weight_kg);
   const sliderW = document.getElementById('slider-weight');
   sliderW.value = w;
-  document.getElementById('val-weight').textContent = fmtKg(w) + ' кг';
+  document.getElementById('val-weight').value = fmtKg(w);
   ['neck','chest','belly','hips'].forEach(k=>{
     const v = latest ? latest[k] : null;
     if(v){ document.getElementById('slider-'+k).value = v; document.getElementById('val-'+k).textContent = fmtKg(v) + ' см'; }
@@ -2820,6 +2855,7 @@ async function openFamilyMember(profileId){
   updateDietHero();
   updatePortions();
   renderMemberTrend();
+  renderReminders();
   daySelected = 1;
   document.querySelectorAll('.day-pill').forEach((b,i)=>b.classList.toggle('active', i===0));
   renderDay(1);
@@ -3080,19 +3116,71 @@ function showRandomTip(){
 showRandomTip();
 document.getElementById('tip-close-btn').addEventListener('click', showRandomTip);
 
-/* ===================== MEASUREMENT REMINDER ===================== */
-let daysUntilMeasurement = 5;
-function renderReminder(){
-  document.getElementById('reminder-title').textContent = daysUntilMeasurement <= 0
-    ? 'Пора сделать замеры сегодня'
-    : `Замер объёмов через ${daysUntilMeasurement} ${daysUntilMeasurement===1?'день':'дня'}`;
+/* ===================== MEASUREMENT REMINDERS (вес + объёмы) ===================== */
+// Раньше оба напоминания были одним хардкодным счётчиком (daysUntilMeasurement),
+// который не был привязан к реальным датам — отсюда "дни не меняются". Теперь
+// каждое напоминание считается от настоящей последней записи в measurementHistory
+// (вес — от любой записи, объёмы — от последней записи, где реально заполнены
+// шея/грудь/живот/бёдра), плюс отдельная ручная отметка "Готово" на случай, если
+// человек измерился сантиметром вне приложения и просто хочет сбросить таймер.
+const WEIGHT_REMINDER_DAYS = 2;
+const FULL_REMINDER_DAYS = 14;
+function fullMeasureResetKey(){ return 'sf_fullmeasure_' + currentProfileId; }
+function lastFullMeasureDate(){
+  let manual = null;
+  try { manual = localStorage.getItem(fullMeasureResetKey()); } catch(e){}
+  const lastRow = [...measurementHistory].reverse().find(m => m.neck > 0 && m.chest > 0 && m.belly > 0 && m.hips > 0);
+  if(lastRow && (!manual || lastRow.date > manual)) return lastRow.date;
+  return manual;
+}
+function renderReminders(){
+  const lastWeightDate = measurementHistory.length ? measurementHistory[measurementHistory.length-1].date : null;
+  const weightTitle = document.getElementById('weight-reminder-title');
+  if(!lastWeightDate){
+    weightTitle.textContent = 'Взвеситесь, чтобы начать отслеживать вес';
+  } else {
+    const daysLeft = WEIGHT_REMINDER_DAYS - Math.round((TODAY - parseLocalDate(lastWeightDate)) / 86400000);
+    weightTitle.textContent = daysLeft <= 0 ? 'Пора взвеситься сегодня' : `Взвешивание через ${daysLeft} ${daysLeft===1?'день':'дня'}`;
+  }
+
+  const lastFull = lastFullMeasureDate();
+  const fullTitle = document.getElementById('reminder-title');
+  if(!lastFull){
+    fullTitle.textContent = 'Сделайте первый замер объёмов';
+  } else {
+    const daysLeft = FULL_REMINDER_DAYS - Math.round((TODAY - parseLocalDate(lastFull)) / 86400000);
+    fullTitle.textContent = daysLeft <= 0 ? 'Пора сделать замеры объёмов сегодня' : `Замер объёмов через ${daysLeft} ${daysLeft===1?'день':'дня'}`;
+  }
 }
 document.getElementById('mark-measured-btn').addEventListener('click', ()=>{
-  daysUntilMeasurement = 14;
-  renderReminder();
-  showToast('Замеры отмечены. Следующее напоминание через 14 дней');
+  try { localStorage.setItem(fullMeasureResetKey(), isoDate(TODAY)); } catch(e){}
+  renderReminders();
+  showToast(`Отмечено. Следующее напоминание через ${FULL_REMINDER_DAYS} дней`);
 });
-renderReminder();
+
+// Сохраняет одну запись в measurementHistory (сливая с уже существующей записью
+// за эту дату, а не затирая её целиком) и в БД — upsert пропускает undefined-поля,
+// так что запись только веса не обнулит ранее сохранённые шею/грудь/живот/бёдра
+// за тот же день, и наоборот.
+function mergeMeasurementEntry(partial){
+  const existingIdx = measurementHistory.findIndex(m => m.date === partial.date);
+  const merged = existingIdx >= 0 ? {...measurementHistory[existingIdx], ...partial} : partial;
+  if(existingIdx >= 0) measurementHistory[existingIdx] = merged; else measurementHistory.push(merged);
+  dbSaveMeasurement(partial);
+  return merged;
+}
+function congratsMessage(weight, isFullMeasurement){
+  // measurementHistory already includes today's just-saved entry at this point
+  // (mergeMeasurementEntry ran first) — the entry before it is the real "previous".
+  const sorted = [...measurementHistory].sort((a,b)=>a.date.localeCompare(b.date));
+  const prev = sorted.length >= 2 ? sorted[sorted.length-2] : null;
+  const prefix = isFullMeasurement ? '🎉 Замеры объёмов сохранены' : '🎉 Вес сохранён';
+  if(!prev) return `${prefix} — это первая запись, дальше будет виден прогресс!`;
+  const diff = +(weight - prev.weight).toFixed(1);
+  if(diff < -0.05) return `${prefix} — минус ${fmtKg(Math.abs(diff))} кг с прошлого раза, отличная динамика!`;
+  if(diff > 0.05) return `${prefix}. С прошлого раза +${fmtKg(diff)} кг — бывает, главное не останавливаться.`;
+  return `${prefix} — вес держится стабильно, так и продолжайте!`;
+}
 
 /* ===================== MEASUREMENT HISTORY ===================== */
 document.getElementById('toggle-measurements-btn').addEventListener('click', ()=>{
@@ -3100,24 +3188,31 @@ document.getElementById('toggle-measurements-btn').addEventListener('click', ()=
   const isOpen = box.style.display !== 'none';
   box.style.display = isOpen ? 'none' : 'block';
   document.getElementById('toggle-measurements-label').textContent = isOpen
-    ? 'Добавить замеры за сегодня (шея, грудь, живот, бёдра)'
-    : 'Скрыть замеры';
+    ? 'Добавить объёмы за сегодня (шея, грудь, живот, бёдра)'
+    : 'Скрыть объёмы';
   document.getElementById('toggle-measurements-chevron').style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+});
+document.getElementById('save-weight-btn').addEventListener('click', ()=>{
+  const weight = parseFloat(document.getElementById('val-weight').value);
+  if(isNaN(weight)){ showToast('Укажите вес'); return; }
+  const merged = mergeMeasurementEntry({ date: isoDate(TODAY), weight });
+  renderMemberTrend();
+  renderReminders();
+  showToast(congratsMessage(merged.weight, false));
 });
 document.getElementById('save-measurement-btn').addEventListener('click', ()=>{
   const entry = {
     date: isoDate(TODAY),
-    weight: parseFloat(document.getElementById('slider-weight').value),
+    weight: parseFloat(document.getElementById('val-weight').value),
     neck: parseFloat(document.getElementById('slider-neck').value),
     chest: parseFloat(document.getElementById('slider-chest').value),
     belly: parseFloat(document.getElementById('slider-belly').value),
     hips: parseFloat(document.getElementById('slider-hips').value),
   };
-  const existingIdx = measurementHistory.findIndex(m => m.date === entry.date);
-  if(existingIdx >= 0) measurementHistory[existingIdx] = entry; else measurementHistory.push(entry);
-  dbSaveMeasurement(entry);
+  const merged = mergeMeasurementEntry(entry);
   renderMemberTrend();
-  showToast('Замеры за сегодня сохранены');
+  renderReminders();
+  showToast(congratsMessage(merged.weight, true));
 });
 function fmtKg(n){ return n.toFixed(1).replace('.0','').replace('.', ','); }
 
