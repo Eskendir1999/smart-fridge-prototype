@@ -3737,16 +3737,19 @@ function dtUpdateSendBtn(){ dietitianSendBtn.classList.toggle('ready', !!dietiti
 dietitianInput.addEventListener('input', dtUpdateSendBtn);
 
 // Ответ приходит целиком одним куском — показываем его по словам, как будто диетолог печатает.
+// Прогресс считается по времени, а не по числу тиков: если вкладку свернули и браузер
+// притормозил таймеры, первый же тик догонит и допечатает остаток.
 function dtReveal(bubble, text, onDone){
   if(prefersReducedMotion()){ bubble.textContent = text; onDone(); return; }
-  const parts = text.split(/(\s+)/), n = parts.length, delay = Math.max(16, Math.min(45, 2200 / (n / 2)));
-  let i = 0;
+  const parts = text.split(/(\s+)/), n = parts.length;
+  const duration = Math.min(2800, Math.max(900, (n / 2) * 32)), t0 = performance.now();
   bubble.textContent = '';
   (function tick(){
-    i = Math.min(n, i + 2);
+    const k = Math.min(1, (performance.now() - t0) / duration);
+    const i = k >= 1 ? n : Math.ceil((n * k) / 2) * 2;
     bubble.textContent = parts.slice(0, i).join('');
     dtScroll(false);
-    if(i < n) setTimeout(tick, delay); else onDone();
+    if(k < 1) setTimeout(tick, 30); else onDone();
   })();
 }
 
