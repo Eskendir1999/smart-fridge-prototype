@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#FBF7F2">
+<title>Виджеты Smart Fridge</title>
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FBF7F2; --surface:#FFFFFF; --tile:#F4F0E8; --ink:#1F2A24; --soft:#5B655D; --muted:#8A8F87;
+  --line:#E6DFD3; --fresh:#2F7A4D; --fresh-soft:#E7F2EB; --warn:#D46A2C; --on-fresh:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121915; --surface:#1B2620; --tile:#25322B; --ink:#E8EEE9; --soft:#A6B1A9; --muted:#7B887F;
+    --line:#34443B; --fresh:#5CC585; --fresh-soft:#1D3327; --warn:#F18C4E; --on-fresh:#0E1712;
+  }
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--ink); font:400 16px/1.5 'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+main{ max-width:620px; margin:0 auto; padding:max(20px,env(safe-area-inset-top)) 16px max(32px,env(safe-area-inset-bottom)); }
+h1,h2{ font-family:'Fraunces',Georgia,serif; letter-spacing:-0.015em; line-height:1.15; margin:0; }
+h1{ font-size:1.9rem; margin:8px 0 6px; }
+h2{ font-size:1.2rem; }
+p{ margin:0 0 10px; }
+.lead{ color:var(--soft); margin-bottom:20px; }
+.copy{ position:sticky; top:0; z-index:2; padding:10px 0; background:var(--bg); }
+button.primary{
+  width:100%; min-height:52px; border:0; border-radius:16px; background:var(--fresh); color:var(--on-fresh);
+  font:600 1rem 'Inter',sans-serif; cursor:pointer;
+}
+button.primary:active{ transform:scale(.99); }
+button.primary:focus-visible, a:focus-visible, summary:focus-visible{ outline:3px solid var(--warn); outline-offset:3px; }
+button.primary[data-state="done"]{ background:var(--ink); color:var(--bg); }
+.status{ min-height:1.4em; margin:6px 2px 0; font-size:.875rem; color:var(--soft); }
+.status.err{ color:var(--warn); }
+ol{ list-style:none; counter-reset:step; margin:20px 0 0; padding:0; display:grid; gap:12px; }
+li{ counter-increment:step; background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:16px 16px 16px 58px; position:relative; }
+li::before{
+  content:counter(step); position:absolute; left:16px; top:16px; width:30px; height:30px; border-radius:50%;
+  background:var(--fresh-soft); color:var(--fresh); display:grid; place-items:center; font:600 .9rem 'Inter',sans-serif;
+}
+li p:last-child{ margin-bottom:0; }
+li strong{ font-weight:600; }
+a{ color:var(--fresh); font-weight:600; }
+code{ background:var(--tile); border-radius:6px; padding:1px 6px; font-size:.9em; }
+.sizes{ display:grid; gap:8px; margin:10px 0 0; }
+.size{ background:var(--tile); border-radius:12px; padding:10px 12px; font-size:.9375rem; }
+.size b{ display:block; font-weight:600; }
+.size span{ color:var(--soft); }
+details{ margin-top:20px; background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:4px 16px; }
+summary{ min-height:44px; display:flex; align-items:center; font-weight:600; cursor:pointer; }
+details p{ color:var(--soft); font-size:.9375rem; }
+textarea{
+  width:100%; height:180px; border:1px solid var(--line); border-radius:12px; padding:10px; background:var(--tile); color:var(--ink);
+  font:12px/1.4 ui-monospace,Menlo,monospace; margin-bottom:12px;
+}
+@media (prefers-reduced-motion: reduce){ button.primary:active{ transform:none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Виджеты на экран iPhone</h1>
+  <p class="lead">Бесплатный вариант через приложение Scriptable. Работают вес, дуга до цели, корзина и виджеты экрана блокировки.</p>
+
+  <div class="copy">
+    <button class="primary" id="copy-btn" type="button">Скопировать скрипт</button>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+  </div>
+
+  <ol>
+    <li>
+      <p><strong>Поставьте Scriptable.</strong> Это бесплатное приложение из App Store.</p>
+      <p><a href="https://apps.apple.com/app/scriptable/id1405459188">Открыть в App Store</a></p>
+    </li>
+    <li>
+      <p><strong>Нажмите «Скопировать скрипт»</strong> наверху этой страницы.</p>
+    </li>
+    <li>
+      <p><strong>Вставьте его в Scriptable.</strong> Откройте Scriptable, нажмите «+» вверху справа, задержите палец в пустом поле и выберите «Вставить». Назовите скрипт <code>Smart Fridge</code> (нажмите на название сверху).</p>
+    </li>
+    <li>
+      <p><strong>Войдите.</strong> Нажмите ▶ внизу справа и введите email и пароль от Smart Fridge. Пароль не сохраняется, на телефоне остаётся только токен сессии.</p>
+    </li>
+    <li>
+      <p><strong>Добавьте виджет.</strong> Задержите палец на пустом месте главного экрана, нажмите «+», найдите Scriptable и выберите размер. Затем нажмите на добавленный виджет и укажите:</p>
+      <p>Script: <code>Smart Fridge</code>, When Interacting: <code>Run Script</code>, Parameter: по таблице.</p>
+      <div class="sizes">
+        <div class="size"><b>Маленький</b><span>Parameter <code>weight</code> показывает вес и тренд. Parameter <code>arc</code> показывает дугу до цели.</span></div>
+        <div class="size"><b>Средний</b><span>Корзина. Parameter можно оставить пустым.</span></div>
+        <div class="size"><b>Экран блокировки</b><span>Круг с весом, строка «Взвесить через N дня» и прямоугольник. Parameter не нужен.</span></div>
+      </div>
+    </li>
+  </ol>
+
+  <details>
+    <summary>Кнопка не копирует?</summary>
+    <p>Нажмите на текст ниже, выделите всё и скопируйте вручную.</p>
+    <textarea id="code" readonly aria-label="Текст скрипта"></textarea>
+  </details>
+
+  <details>
+    <summary>Что умеют и чего не умеют эти виджеты</summary>
+    <p>Данные обновляются, когда iOS решает перезагрузить виджет, обычно раз в 15–30 минут. Галочки в корзине нажать нельзя: нажатие на виджет открывает Scriptable с меню. Если сети нет, виджет показывает последние сохранённые данные.</p>
+  </details>
+</main>
+
+<script>
+(function(){
+  var btn = document.getElementById('copy-btn');
+  var status = document.getElementById('status');
+  var code = document.getElementById('code');
+  var script = null;
+
+  function say(msg, err){ status.textContent = msg; status.className = 'status' + (err ? ' err' : ''); }
+
+  function load(){
+    return fetch('/scriptable/smart-fridge.js', { cache: 'no-store' })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function(t){ script = t; code.value = t; return t; });
+  }
+
+  function fallbackCopy(text){
+    code.value = text; code.removeAttribute('readonly'); code.select(); code.setSelectionRange(0, text.length);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch(e) {}
+    code.setAttribute('readonly', ''); code.blur();
+    return ok;
+  }
+
+  load().catch(function(){ say('Не удалось загрузить скрипт. Проверьте сеть и обновите страницу.', true); });
+
+  btn.addEventListener('click', function(){
+    var ready = script ? Promise.resolve(script) : load();
+    ready.then(function(text){
+      var done = function(){ btn.textContent = 'Скопировано'; btn.setAttribute('data-state', 'done'); say('Теперь откройте Scriptable и вставьте скрипт.'); };
+      var fail = function(){ say('Не получилось скопировать. Откройте «Кнопка не копирует?» ниже.', true); };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text) ? done() : fail(); });
+      } else {
+        fallbackCopy(text) ? done() : fail();
+      }
+    }).catch(function(){ say('Не удалось загрузить скрипт. Проверьте сеть.', true); });
+  });
+})();
+</script>
+</body>
+</html>
