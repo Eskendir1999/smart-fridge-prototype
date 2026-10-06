@@ -11,6 +11,8 @@ let html = fs.readFileSync(path.join(srcDir, 'index.html'), 'utf8');
 html = html.replaceAll('__SUPABASE_URL__', process.env.SUPABASE_URL || '');
 html = html.replaceAll('__SUPABASE_ANON_KEY__', process.env.SUPABASE_ANON_KEY || '');
 html = html.replaceAll('__VAPID_PUBLIC_KEY__', process.env.VAPID_PUBLIC_KEY || '');
+// Имя бота без @. Пока переменная не задана, кнопка «Подключить Telegram» остаётся скрытой.
+html = html.replaceAll('__TELEGRAM_BOT_USERNAME__', (process.env.TELEGRAM_BOT_USERNAME || '').trim().replace(/^@/, ''));
 fs.writeFileSync(path.join(distDir, 'index.html'), html);
 
 fs.copyFileSync(path.join(srcDir, 'manifest.json'), path.join(distDir, 'manifest.json'));

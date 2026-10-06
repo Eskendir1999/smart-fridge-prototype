@@ -1160,6 +1160,7 @@ img{ animation:imgFadeIn .25s ease; }
         <button class="secondary-btn" id="open-family-btn">👪 Семья</button>
         <button class="secondary-btn" id="push-toggle-btn">🔔 Уведомления об истечении срока</button>
         <button class="secondary-btn" id="meal-timer-btn" style="display:none">⏱ Таймер приёма пищи: вкл</button>
+        <button class="secondary-btn" id="telegram-btn" style="display:none">✈️ Подключить Telegram</button>
         <button class="secondary-btn" id="install-app-btn" style="display:none">📲 Установить приложение</button>
         <button class="secondary-btn" id="show-onboarding-btn">❓ Как пользоваться приложением</button>
         <button class="secondary-btn" id="biometric-toggle-btn" style="display:none">🔒 Вход по Face ID</button>
@@ -3977,6 +3978,7 @@ async function loadUserData(){
   renderRecipesList();
   playHomeIntro();
   initPushUI();
+  refreshTelegramStatus();
   initBiometricUI();
   initMealTimerUI();
   loadFamilyProfiles().then(() => queueNativeSync());
@@ -4138,6 +4140,51 @@ async function togglePushSubscription(){
   showToast('Уведомления включены');
 }
 document.getElementById('push-toggle-btn').addEventListener('click', togglePushSubscription);
+
+/* ===================== TELEGRAM-УВЕДОМЛЕНИЯ ===================== */
+// Бот присылает напоминания о сроках годности и взвешивании (cron на сервере) и отвечает на /status.
+// Кнопка скрыта, пока не задан бот (TELEGRAM_BOT_USERNAME при сборке) и не выполнена миграция.
+const TELEGRAM_BOT_USERNAME = '__TELEGRAM_BOT_USERNAME__';
+let telegramLinked = false, telegramUnlinkArmed = null;
+function telegramAvailable(){
+  return !isNativeApp() && /^[A-Za-z][A-Za-z0-9_]{3,30}bot$/i.test(TELEGRAM_BOT_USERNAME);
+}
+function renderTelegramBtn(){
+  const btn = document.getElementById('telegram-btn');
+  if(!telegramAvailable()){ btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  btn.textContent = telegramUnlinkArmed ? 'Нажмите ещё раз, чтобы отключить'
+    : telegramLinked ? '✈️ Telegram подключён · отключить' : '✈️ Подключить Telegram';
+}
+async function refreshTelegramStatus(){
+  if(!telegramAvailable() || !currentUserId) return;
+  const { data, error } = await sb.from('telegram_links').select('chat_id').eq('user_id', currentUserId).maybeSingle();
+  if(error){ document.getElementById('telegram-btn').style.display = 'none'; return; } // миграция ещё не выполнена
+  telegramLinked = !!(data && data.chat_id);
+  renderTelegramBtn();
+}
+document.getElementById('telegram-btn').addEventListener('click', async () => {
+  if(telegramLinked){
+    // Двойное нажатие вместо диалога: случайный тап ничего не отключит.
+    if(!telegramUnlinkArmed){
+      telegramUnlinkArmed = setTimeout(() => { telegramUnlinkArmed = null; renderTelegramBtn(); }, 4000);
+      renderTelegramBtn();
+      return;
+    }
+    clearTimeout(telegramUnlinkArmed); telegramUnlinkArmed = null;
+    const { error } = await sb.rpc('unlink_telegram');
+    if(error){ showToast('Не удалось отключить Telegram', true); renderTelegramBtn(); return; }
+    telegramLinked = false;
+    renderTelegramBtn();
+    showToast('Telegram отключён');
+    return;
+  }
+  const { data: token, error } = await sb.rpc('generate_telegram_link_token');
+  if(error || !token){ showToast('Не удалось начать подключение', true); return; }
+  // Переход вместо window.open: после await Safari блокирует всплывающие окна.
+  window.location.href = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${token}`;
+});
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') refreshTelegramStatus(); });
 
 /* ===================== НАТИВНОЕ ПРИЛОЖЕНИЕ: виджеты, напоминания, таймер еды ===================== */
 const MEAL_SLOTS = [
