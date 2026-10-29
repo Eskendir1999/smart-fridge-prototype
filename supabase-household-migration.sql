@@ -1,6 +1,9 @@
 -- Smart Fridge — миграция на "семейный" общий холодильник (household)
 -- Выполнить в Supabase Dashboard -> SQL Editor -> New query -> Run
 -- ПОСЛЕ основной схемы (smart-fridge-supabase-schema.sql), один раз.
+-- ВАЖНО: политики households/household_members ниже небезопасны (аудит S-01) и заменены
+-- в supabase-household-security-migration.sql. Если запускаете этот файл заново,
+-- обязательно выполните после него и тот файл.
 
 -- 1. Таблица "домохозяйств" и код приглашения
 create table if not exists public.households (
