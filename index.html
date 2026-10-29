@@ -3866,22 +3866,16 @@ async function dbSaveMeasurement(entry){
   );
 }
 
-function genInviteCode(){
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for(let i=0;i<6;i++) code += chars[Math.floor(Math.random()*chars.length)];
-  return code;
-}
-
 async function initEmptyAccount(userId){
   fridgeData.length = 0;
   freezerData.length = 0;
   cartData.length = 0;
   measurementHistory = [];
   usedCount = 0; usedWeightKg = 0; wastedCount = 0;
-  const { data: hh } = await sb.from('households').insert({invite_code: genInviteCode()}).select().single();
-  currentHouseholdId = hh.id;
-  await sb.from('household_members').insert({user_id: userId, household_id: hh.id});
+  // семья и код приглашения создаются на сервере (create_household), напрямую писать в households нельзя
+  const { data: householdId, error: hhErr } = await sb.rpc('create_household');
+  if(hhErr) throw hhErr;
+  currentHouseholdId = householdId;
   await sb.from('food_stats').upsert({user_id:userId, used_count:0, used_weight_kg:0, wasted_count:0});
 }
 
@@ -3903,15 +3897,17 @@ async function joinFamilyByCode(){
   errEl.classList.remove('show');
   const code = input.value.trim().toUpperCase();
   if(!code) return;
-  const { data: hh, error: hhErr } = await sb.from('households').select('id').eq('invite_code', code).maybeSingle();
-  if(hhErr || !hh){
-    errEl.textContent = 'Код не найден. Проверьте и попробуйте снова.';
+  // код проверяется на сервере (join_household): чужие семьи и их коды клиенту не видны
+  const { data: householdId, error: joinErr } = await sb.rpc('join_household', {code});
+  if(joinErr){
+    errEl.textContent = /too many attempts/.test(joinErr.message)
+      ? 'Слишком много неверных кодов. Попробуйте через час.'
+      : 'Не удалось присоединиться: ' + joinErr.message;
     errEl.classList.add('show');
     return;
   }
-  const { error: joinErr } = await sb.from('household_members').update({household_id: hh.id}).eq('user_id', currentUserId);
-  if(joinErr){
-    errEl.textContent = 'Не удалось присоединиться: ' + joinErr.message;
+  if(!householdId){
+    errEl.textContent = 'Код не найден. Проверьте и попробуйте снова.';
     errEl.classList.add('show');
     return;
   }
