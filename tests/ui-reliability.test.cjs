@@ -25,7 +25,7 @@ function editFixture(reply, quantity = '1.5') {
   const fridge = [p], freezer = [], button = { disabled: false }, calls = [], toasts = [];
   const nodes = { 'save-edit-btn': button, 'edit-name': { value: 'after' }, 'edit-qty-num': { value: quantity }, 'edit-qty-unit': { value: 'кг' }, 'edit-location': { value: 'Морозилка' }, 'edit-exp': { value: '2026-11-06' } };
   const c = load(['decimalInput', 'positiveQuantity', 'toDbRow', 'dbUpdateItem', 'saveProductEdit'], {
-    document: { getElementById: id => nodes[id] }, currentUserId: 'fixture-user', currentProduct: { list: 'fridge', idx: 0 }, currentCompartment: 'fridge',
+    document: { getElementById: id => nodes[id] }, currentUserId: 'fixture-user', foodWriteBusy: false, currentProduct: { list: 'fridge', idx: 0 }, currentCompartment: 'fridge',
     getArr: name => name === 'freezer' ? freezer : fridge,
     sb: { from: () => ({ update(payload) { calls.push(payload); return this; }, eq() { return this; }, select() { return this; }, single: async () => typeof reply === 'function' ? reply() : reply }) },
     updateSummary() {}, renderFridgeList() {}, renderMissingAlert() {}, renderSuggestRow() {}, showToast: (...args) => toasts.push(args), history: ['fridge', 'product', 'edit'], openProduct() {},
