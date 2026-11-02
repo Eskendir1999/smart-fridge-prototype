@@ -1,6 +1,7 @@
 const webpush = require('web-push');
 const apn = require('apn');
 const { createClient } = require('@supabase/supabase-js');
+const { isCronAuthorized } = require('./_lib/request-security');
 const { sendTelegramMessage } = require('./_lib/telegram');
 const { WEIGH_EVERY_DAYS, isoDate, daysBetween, addDaysIso, expiryText, weighText, householdIdOf, lastWeighIn } = require('./_lib/fridge');
 
@@ -27,7 +28,7 @@ if (process.env.APNS_KEY && process.env.APNS_KEY_ID && process.env.APNS_TEAM_ID)
 }
 
 module.exports = async (req, res) => {
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isCronAuthorized(req)) {
     res.status(401).json({ error: 'unauthorized' });
     return;
   }

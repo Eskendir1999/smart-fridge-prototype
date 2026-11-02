@@ -1616,9 +1616,12 @@ function findCatalogFuzzy(name){
 function productThumbHtml(p){
   const entry = findCatalogFuzzy(p.name);
   const photo = entry && entry.photo;
-  return photo
-    ? `<img src="${photo}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${p.emoji}'))">`
-    : p.emoji;
+  return imageThumbHtml(photo, p.emoji || '📦');
+}
+function imageThumbHtml(photo, fallback, className=''){
+  const text = escapeHtml(fallback);
+  if(typeof photo !== 'string' || !/^https:\/\//i.test(photo)) return text;
+  return `<img class="${escapeHtml(className)}" src="${escapeHtml(photo)}" data-fallback="${text}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode(this.dataset.fallback))">`;
 }
 
 // Корзина — начальный список покупок; пополняется из алерта "не хватает на неделю" и Vision
@@ -2052,7 +2055,7 @@ function renderExpiringRow(){
     return `
     <div class="expire-card${days<=1?' urgent':''}" data-list="fridge" data-idx="${idx}">
       <div class="ring-wrap">${ringSvg(pct,color)}<div class="ring-emoji">${productThumbHtml(p)}</div></div>
-      <div class="p-name">${p.name}</div>
+      <div class="p-name">${escapeHtml(p.name)}</div>
       <div class="p-days" style="color:${color}">${expiryLabel(days)}</div>
     </div>`;
   }).join('') : `<div style="font-size:0.7812rem; color:var(--muted); padding:0.5rem 0.25rem">Ничего не истекает в ближайшие дни</div>`;
@@ -2085,7 +2088,7 @@ function renderFridgeList(compartment){
     return `
     <div class="product-row" data-list="${compartment}" data-idx="${idx}">
       <div class="product-thumb">${productThumbHtml(p)}</div>
-      <div class="product-info"><div class="n">${p.name}</div><div class="q">${formatQty(p)}</div></div>
+      <div class="product-info"><div class="n">${escapeHtml(p.name)}</div><div class="q">${escapeHtml(formatQty(p))}</div></div>
       <div class="status-pill status-${status}">${label}</div>
     </div>`;
   }).join('');
@@ -2102,13 +2105,11 @@ document.querySelectorAll('.seg-btn').forEach(btn=>{
 });
 
 function recipePhotoHtml(r){
-  return r.photo
-    ? `<img src="${r.photo}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${r.icon}'))">`
-    : r.icon;
+  return imageThumbHtml(r.photo, r.icon);
 }
 function urgencyBadgeHtml(r){
   if(r.urgentDays == null || r.urgentDays > 4) return '';
-  return `<div style="font-size:0.6875rem; font-weight:700; color:var(--danger); margin-top:0.125rem;">🔥 Спасите: ${r.urgentItem} (${expiryLabel(r.urgentDays)})</div>`;
+  return `<div style="font-size:0.6875rem; font-weight:700; color:var(--danger); margin-top:0.125rem;">🔥 Спасите: ${escapeHtml(r.urgentItem)} (${expiryLabel(r.urgentDays)})</div>`;
 }
 function renderSuggestRow(){
   const cookable = computeCookable();
@@ -2117,16 +2118,16 @@ function renderSuggestRow(){
     <div class="suggest-card" data-recipe="${r.id}">
       <div class="suggest-photo">${recipePhotoHtml(r)}</div>
       <div class="suggest-body">
-        <div class="t">${r.title}</div>
-        <div class="s">${r.time} · ${r.servings}</div>
-        <span class="tag">${r.tags.join(' · ')}</span>
+        <div class="t">${escapeHtml(r.title)}</div>
+        <div class="s">${escapeHtml(r.time)} · ${escapeHtml(r.servings)}</div>
+        <span class="tag">${escapeHtml(r.tags.join(' · '))}</span>
         ${urgencyBadgeHtml(r)}
       </div>
     </div>`).join('');
   document.getElementById('home-meals-row').innerHTML = list.slice(0,3).map(r => `
     <div class="recipe-card" data-recipe="${r.id}">
       <div class="recipe-img">${recipePhotoHtml(r)}</div>
-      <div class="recipe-body"><div class="t">${r.title}</div><div class="s">${r.time} · ${r.servings}</div>${urgencyBadgeHtml(r)}</div>
+      <div class="recipe-body"><div class="t">${escapeHtml(r.title)}</div><div class="s">${escapeHtml(r.time)} · ${escapeHtml(r.servings)}</div>${urgencyBadgeHtml(r)}</div>
     </div>`).join('');
 }
 renderSuggestRow();
@@ -2138,7 +2139,7 @@ function renderRecipesList(){
   document.getElementById('recipes-list').innerHTML = ordered.map(r => `
     <div class="product-row" data-recipe="${r.id}">
       <div class="product-thumb">${recipePhotoHtml(r)}</div>
-      <div class="product-info"><div class="n">${r.title}</div><div class="q">${r.time} · ${r.servings}</div>${urgencyBadgeHtml(r)}</div>
+      <div class="product-info"><div class="n">${escapeHtml(r.title)}</div><div class="q">${escapeHtml(r.time)} · ${escapeHtml(r.servings)}</div>${urgencyBadgeHtml(r)}</div>
     </div>`).join('');
 }
 renderRecipesList();
@@ -2151,8 +2152,8 @@ function openRecipe(id){
   heroMedia.style.transform = '';
   document.getElementById('recipe-title').textContent = r.title;
   document.getElementById('recipe-meta').textContent = `${r.time} · ${r.servings}`;
-  document.getElementById('recipe-ingredients').innerHTML = r.ingredients.map(i=>`<li><span class="iname">${i.name}</span><span class="iqty">${i.qty}</span></li>`).join('');
-  document.getElementById('recipe-steps').innerHTML = r.steps.map((s)=>`<li><span class="step-num"></span><span>${s}</span></li>`).join('');
+  document.getElementById('recipe-ingredients').innerHTML = r.ingredients.map(i=>`<li><span class="iname">${escapeHtml(i.name)}</span><span class="iqty">${escapeHtml(i.qty)}</span></li>`).join('');
+  document.getElementById('recipe-steps').innerHTML = r.steps.map((s)=>`<li><span class="step-num"></span><span>${escapeHtml(s)}</span></li>`).join('');
   document.querySelectorAll('#recipe-steps .step-num').forEach((el,i)=> el.textContent = i+1);
   history.push('recipe-detail');
   showScreen('recipe-detail', false);
@@ -2360,8 +2361,8 @@ function populateCustomDishIngredients(){
     <label class="ingredient-check">
       <input type="checkbox" data-idx="${idx}">
       <span class="thumb">${productThumbHtml(p)}</span>
-      <span class="label">${p.name}</span>
-      <span class="qty">${formatQty(p)}</span>
+      <span class="label">${escapeHtml(p.name)}</span>
+      <span class="qty">${escapeHtml(formatQty(p))}</span>
     </label>`).join('');
 }
 
@@ -2395,11 +2396,9 @@ const toastEl = document.getElementById('toast');
 let toastTimer;
 function showToast(msg, isError=false){
   clearTimeout(toastTimer);
-  toastEl.innerHTML = (isError ? '⚠️ ' : '✅ ') + msg + (isError ? ' <span class="retry" id="retryLink">Повторить</span>' : '');
+  toastEl.textContent = (isError ? '⚠️ ' : '✅ ') + String(msg);
   toastEl.classList.add('show');
   toastTimer = setTimeout(()=> toastEl.classList.remove('show'), 2600);
-  const retry = document.getElementById('retryLink');
-  if(retry) retry.addEventListener('click', ()=> showToast('Сохранено'));
 }
 const stepFor = {'шт':1, 'г':10, 'кг':0.1, 'мл':50, 'л':0.1};
 function adjustQtyField(numId, unitId, dir){
@@ -2600,9 +2599,7 @@ function setDest(compartment){
   document.getElementById('dest-freezer').classList.toggle('active', compartment === 'freezer');
 }
 function thumbHtml(entry, size){
-  return entry.photo
-    ? `<img class="thumb-img" src="${entry.photo}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${entry.emoji}'))">`
-    : entry.emoji;
+  return imageThumbHtml(entry.photo, entry.emoji, 'thumb-img');
 }
 function applyCatalogEntry(entry){
   const thumb = document.getElementById('vr-thumb');
@@ -2626,7 +2623,7 @@ function renderSuggestions(query){
   if(!q){ box.classList.remove('show'); box.innerHTML=''; return; }
   const matches = productCatalog.filter(c => c.name.toLowerCase().includes(q)).slice(0,6);
   if(!matches.length){ box.classList.remove('show'); box.innerHTML=''; return; }
-  box.innerHTML = matches.map(m => `<div class="autocomplete-item" data-name="${m.name}">${thumbHtml(m)} ${m.name}</div>`).join('');
+  box.innerHTML = matches.map(m => `<div class="autocomplete-item" data-name="${escapeHtml(m.name)}">${thumbHtml(m)} ${escapeHtml(m.name)}</div>`).join('');
   box.classList.add('show');
   box.querySelectorAll('.autocomplete-item').forEach(el=>{
     el.addEventListener('mousedown', (ev)=>{
@@ -2648,7 +2645,7 @@ function showRecognitionResult(name, emoji, confText, matched){
   document.getElementById('vr-conf').textContent = confText;
   if(matched){ applyCatalogEntry(matched); }
   else { document.getElementById('vr-thumb').textContent = emoji; document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY,5)); }
-  if(stream){ setVisionState('live'); } else { stage.innerHTML = `<div class="vision-state"><div class="ic">${emoji}</div><h3>${name}</h3></div>`; }
+  if(stream){ setVisionState('live'); } else { stage.innerHTML = `<div class="vision-state"><div class="ic">${escapeHtml(emoji)}</div><h3>${escapeHtml(name)}</h3></div>`; }
   visionResult.classList.add('show');
 }
 function randomFallbackRecognition(){
@@ -2964,7 +2961,7 @@ function populateManualChecklist(){
     <label class="ingredient-check">
       <input type="checkbox" data-manual-idx="${idx}">
       <span class="thumb">${thumbHtml(p)}</span>
-      <span class="label">${p.name}</span>
+      <span class="label">${escapeHtml(p.name)}</span>
     </label>`).join('');
 }
 document.getElementById('manual-add-open-btn').addEventListener('click', ()=>{
@@ -3628,7 +3625,7 @@ function familyTileHtml(p){
     : `${fmtKg(Number(p.start_weight_kg))} кг · норма`;
   return `
     <button type="button" class="family-tile" data-profile="${escapeHtml(p.id)}">
-      <div class="avatar-lg">${profileInitial(p.name)}</div>
+      <div class="avatar-lg">${escapeHtml(profileInitial(p.name))}</div>
       <div><div class="name">${escapeHtml(p.name)}</div><div class="meta">${Number(p.age)} лет · ${p.sex === 'male' ? 'муж.' : 'жен.'}${isBreastfeeding(p) ? ' · 🤱 ГВ' : ''}</div></div>
       <div class="kcal">${goalLine}</div>
     </button>`;
@@ -3881,7 +3878,7 @@ function renderLowStock(missing){
     return;
   }
   section.style.display = '';
-  row.innerHTML = missing.map(m => `<div class="chip"><span class="dot"></span>${m.name}</div>`).join('');
+  row.innerHTML = missing.map(m => `<div class="chip"><span class="dot"></span>${escapeHtml(m.name)}</div>`).join('');
 }
 document.getElementById('low-stock-cart-btn').addEventListener('click', ()=>{
   if(!lastLowStockMissing.length) return;
@@ -3906,7 +3903,7 @@ function renderCart(){
     list.innerHTML = cartData.map((p, idx) => `
       <div class="product-row">
         <div class="product-thumb">${productThumbHtml(p)}</div>
-        <div class="product-info"><div class="n">${p.name}</div><div class="q">${formatQty(p)}</div></div>
+        <div class="product-info"><div class="n">${escapeHtml(p.name)}</div><div class="q">${escapeHtml(formatQty(p))}</div></div>
         <button data-bought="${idx}" style="min-height:36px; padding:0 0.75rem; border-radius:999px; background:var(--fresh); color:#fff; border:none; font-size:0.7188rem; font-weight:700; font-family:'Inter',sans-serif; flex-shrink:0;">Куплено</button>
       </div>`).join('');
     list.querySelectorAll('[data-bought]').forEach(btn=>{
@@ -4328,9 +4325,9 @@ async function renderFoodLog(){
     const dayLabel = foodLogDayLabel(isoDate(new Date(e.created_at)));
     return `
     <div class="product-row">
-      <div class="product-thumb">${e.emoji}</div>
+      <div class="product-thumb">${escapeHtml(e.emoji)}</div>
       <div class="product-info">
-        <div class="n">${e.name}</div>
+        <div class="n">${escapeHtml(e.name)}</div>
         <div class="q">${dayLabel}</div>
       </div>
       <div style="font-size:0.7188rem; font-weight:700; color:${color}; flex-shrink:0;">${isUsed?'✓':'🗑'} ${label}</div>
@@ -4345,7 +4342,7 @@ document.getElementById('save-banner-btn').addEventListener('click', ()=>{
 
 /* ===================== DIETITIAN CHAT ===================== */
 function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 let dietitianVoiceOn = true;
@@ -4508,12 +4505,15 @@ async function sendDietitianMessage(){
 
   const historyForApi = dietitianHistory.slice(-20);
   dietitianHistory.push({role:'user', content:text});
-  await sb.from('dietitian_messages').insert({user_id: currentUserId, role:'user', content:text});
 
   try{
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    if(sessionError || !sessionData?.session?.access_token) throw new Error('Session unavailable');
+    const saved = await sb.from('dietitian_messages').insert({user_id: currentUserId, role:'user', content:text});
+    if(saved.error) throw saved.error;
     const resp = await fetch('/api/dietitian-chat', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {'Content-Type':'application/json', 'Authorization': 'Bearer ' + sessionData.session.access_token},
       body: JSON.stringify({ message: text, history: historyForApi, profile: dietitianProfile() }),
     });
     const data = await resp.json();
@@ -4600,7 +4600,7 @@ async function initEmptyAccount(userId){
   usedCount = 0; usedWeightKg = 0; wastedCount = 0;
   // семья и код приглашения создаются на сервере (create_household), напрямую писать в households нельзя
   const { data: householdId, error: hhErr } = await sb.rpc('create_household');
-  if(hhErr) throw hhErr;
+  if(hhErr || !householdId) throw hhErr || new Error('Household unavailable');
   currentHouseholdId = householdId;
   await sb.from('food_stats').upsert({user_id:userId, used_count:0, used_weight_kg:0, wasted_count:0});
 }
@@ -4657,12 +4657,14 @@ function updateGreetingName(email){
 }
 
 async function loadUserData(){
-  const { data: { user } } = await sb.auth.getUser();
-  if(!user) return;
+  const { data: userData, error: userError } = await sb.auth.getUser();
+  const user = userData?.user;
+  if(userError || !user) throw userError || new Error('Session unavailable');
   currentUserId = user.id;
   updateGreetingName(user.email);
 
-  const { data: membership } = await sb.from('household_members').select('household_id').eq('user_id', user.id).maybeSingle();
+  const { data: membership, error: membershipError } = await sb.from('household_members').select('household_id').eq('user_id', user.id).maybeSingle();
+  if(membershipError) throw membershipError;
   if(membership){
     currentHouseholdId = membership.household_id;
   } else {
@@ -4675,6 +4677,8 @@ async function loadUserData(){
     sb.from('cart_items').select('*').eq('household_id', currentHouseholdId).order('created_at'),
     sb.from('food_stats').select('*').eq('user_id', user.id).maybeSingle()
   ]);
+
+  if(fridgeRes.error || cartRes.error || statsRes.error) throw fridgeRes.error || cartRes.error || statsRes.error;
 
   fridgeData.length = 0; freezerData.length = 0;
   if(!fridgeRes.error && fridgeRes.data){
@@ -5216,8 +5220,8 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
   wirePasswordToggle(recoveryPassInput, document.getElementById('recovery-password-toggle'));
 
   async function enterApp(){
-    loginScreen.style.display = 'none';
     await loadUserData();
+    loginScreen.style.display = 'none';
   }
 
   function showBiometricLock(userId, email){
@@ -5232,8 +5236,11 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
     if(!data || !data.session) return;
     const user = data.session.user;
     if(biometricEnabledFor(user.id)){ showBiometricLock(user.id, user.email); }
-    else { enterApp(); }
-  });
+    else { enterApp().catch(()=>{
+      loginError.textContent = 'Не удалось загрузить данные. Попробуйте войти ещё раз.';
+      loginError.classList.add('show');
+    }); }
+  }).catch(()=>{});
 
   document.getElementById('biometric-unlock-btn').addEventListener('click', async ()=>{
     biometricError.classList.remove('show');
@@ -5286,7 +5293,12 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
       userForBiometric = signUp.data.user;
     }
     submitBtn.disabled = false; submitBtn.textContent = 'Войти';
-    await enterApp();
+    try{ await enterApp(); }
+    catch{
+      loginError.textContent = 'Не удалось загрузить данные. Попробуйте войти ещё раз.';
+      loginError.classList.add('show');
+      return;
+    }
     // Спрашиваем про Face ID/отпечаток только сразу после регистрации нового
     // аккаунта — не при каждом обычном входе, чтобы не надоедать.
     if(isNewSignup && userForBiometric){
@@ -5358,15 +5370,17 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
     const recoverySubmitBtn = recoveryForm.querySelector('button[type=submit]');
     recoverySubmitBtn.disabled = true; recoverySubmitBtn.textContent = 'Сохраняем…';
     recoveryError.classList.remove('show');
-    const { error } = await sb.auth.updateUser({ password: newPassword });
-    if(error){
-      recoveryError.textContent = 'Не удалось сохранить пароль: ' + error.message;
+    try{
+      const { error } = await sb.auth.updateUser({ password: newPassword });
+      if(error) throw error;
+      window.history.replaceState(null, '', location.pathname + location.search);
+      await enterApp();
+    }catch(error){
+      recoveryError.textContent = 'Не удалось завершить вход. Попробуйте войти с новым паролем.';
       recoveryError.classList.add('show');
+    }finally{
       recoverySubmitBtn.disabled = false; recoverySubmitBtn.textContent = 'Сохранить и войти';
-      return;
     }
-    history.replaceState(null, '', location.pathname + location.search);
-    await enterApp();
   });
 })();
 </script>
