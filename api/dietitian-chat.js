@@ -26,6 +26,25 @@ const SYSTEM_PROMPT = `Ты — личный диетолог в приложе�
 на реплику — не читай лекцию, если не просят подробностей. Обходись без пафоса и дежурных фраз
 ("давай сделаем это красиво", "ты справишься") — конкретика звучит убедительнее лозунгов.`;
 
+// Режим питания приходит от клиента — в промпт попадают только значения из белого списка,
+// а не произвольный текст.
+const EXCLUSION_NAMES = { dairy: 'молочное', egg: 'яйца', fish: 'рыба и икра', nuts: 'орехи', gluten: 'глютен' };
+function dietModeLine(profile) {
+  let line = '';
+  if (profile.dietMode === 'breastfeeding') {
+    const age = Number.isInteger(profile.babyAgeMonths) && profile.babyAgeMonths >= 0 && profile.babyAgeMonths <= 36
+      ? ` Малышу ${profile.babyAgeMonths} мес.` : '';
+    line += ` Пользователь — кормящая мама (грудное вскармливание).${age} Учитывай безопасность продуктов при ГВ:
+без алкоголя, кофеин до 300 мг в день, рыба только с низким содержанием ртути (без крупного тунца, меч-рыбы, акулы),
+не советуй голодание, разгрузочные дни и дефицит больше 300 ккал; не опускай калорийность ниже 1800 ккал.
+Не предлагай исключать продукты "на всякий случай" — только если у малыша есть признаки аллергии и это согласовано с педиатром.
+При тревожных симптомах у мамы или малыша советуй обратиться к врачу.`;
+  }
+  const ex = Array.isArray(profile.excludedFoods) ? profile.excludedFoods.filter(x => x in EXCLUSION_NAMES) : [];
+  if (ex.length) line += ` Не предлагай блюда, в которых есть: ${ex.map(x => EXCLUSION_NAMES[x]).join(', ')}.`;
+  return line;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method not allowed' }); return; }
   if (!process.env.GEMINI_API_KEY) {
@@ -37,7 +56,7 @@ module.exports = async (req, res) => {
   if (!message || typeof message !== 'string') { res.status(400).json({ error: 'message required' }); return; }
 
   const profileLine = profile
-    ? `Текущий вес: ${profile.weightKg} кг. Целевой вес: ${profile.targetWeightKg} кг. Дневная норма: ${profile.kcalPerDay} ккал.`
+    ? `Текущий вес: ${profile.weightKg} кг. Целевой вес: ${profile.targetWeightKg} кг. Дневная норма: ${profile.kcalPerDay} ккал.` + dietModeLine(profile)
     : '';
 
   const contents = [];
