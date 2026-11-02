@@ -790,6 +790,7 @@ img{ animation:imgFadeIn .25s ease; }
           <div class="info-tile"><div class="l">Годен до</div><div class="v" id="product-exp">через 2 дня</div></div>
         </div>
         <button class="primary-btn" id="edit-open-btn">Изменить</button>
+        <div class="form-field"><label for="use-product-qty">Использовать количество (в единицах продукта)</label><input id="use-product-qty" type="number" min="0" step="any" inputmode="decimal"></div>
         <button class="secondary-btn" id="use-product-btn">✓ Использовать</button>
         <button class="secondary-btn" id="toss-product-btn" style="color:var(--danger); border-color:#F0D3D3">🗑 Выбросить</button>
       </div>
@@ -892,7 +893,7 @@ img{ animation:imgFadeIn .25s ease; }
             </select>
           </div>
         </div>
-        <div class="form-field" style="margin-bottom:0.875rem"><label>Годен до <span style="font-weight:400; color:var(--muted)">(рассчитано автоматически, можно изменить)</span></label><input type="date" id="vr-exp-date"></div>
+        <div class="form-field" style="margin-bottom:0.875rem"><label>Годен до <span style="font-weight:400; color:var(--muted)">(примерная дата из справочника; сверьте с упаковкой)</span></label><input type="date" id="vr-exp-date"></div>
         <div class="dest-row">
           <button class="dest-btn active" id="dest-fridge">❄️ Холодильник</button>
           <button class="dest-btn" id="dest-freezer">🧊 Морозилка</button>
@@ -1317,25 +1318,26 @@ img{ animation:imgFadeIn .25s ease; }
   <button class="sheet-cancel" id="sheet-cancel">Отмена</button>
 </div>
 
-<div class="sheet" id="meal-sheet">
+<div class="sheet" id="meal-sheet" style="max-height:90dvh;overflow-y:auto">
   <div class="sheet-handle"></div>
-  <h3>Добавить блюдо (вне диеты)</h3>
+  <h3>Использовать продукты для блюда</h3>
   <div class="form-field"><label>Название блюда</label><input type="text" id="custom-dish-name" placeholder="Например: Плов"></div>
   <div class="form-field">
     <label>Что потратить из холодильника</label>
     <div id="custom-dish-ingredients" style="display:flex; flex-direction:column; gap:0.5rem; max-height:230px; overflow-y:auto;"></div>
   </div>
-  <button class="primary-btn" id="save-custom-dish-btn">Добавить блюдо</button>
+  <button class="primary-btn" id="save-custom-dish-btn">Списать выбранные продукты</button>
   <button class="sheet-cancel" id="meal-sheet-cancel">Отмена</button>
 </div>
 
-<div class="sheet" id="manual-sheet">
+<div class="sheet" id="manual-sheet" style="max-height:90dvh;overflow-y:auto">
   <div class="sheet-handle"></div>
   <h3>Добавить вручную</h3>
   <div class="dest-row">
     <button class="dest-btn active" id="manual-dest-fridge">❄️ Холодильник</button>
     <button class="dest-btn" id="manual-dest-freezer">🧊 Морозилка</button>
   </div>
+  <p style="font-size:0.8rem;color:var(--muted)">Даты из справочника примерные (≈). Сверьте их с упаковкой. Для неизвестного товара срок не подставляется.</p>
   <label style="display:block; font-size:0.7812rem; font-weight:600; color:var(--ink-soft); margin-bottom:0.5rem">Отметьте, что нужно добавить:</label>
   <div id="manual-checklist" style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto; margin-bottom:0.875rem;"></div>
   <button class="primary-btn" id="manual-add-confirm-btn">Добавить отмеченное</button>
@@ -1408,6 +1410,12 @@ img{ animation:imgFadeIn .25s ease; }
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="stock-save-panel" role="status" aria-live="polite" style="display:none;background:var(--surface,#fff);color:var(--ink,#222);padding:12px 16px;margin:16px;border:1px solid #bbb;border-radius:16px;box-shadow:0 4px 20px #0002">
+  <div id="stock-save-message"></div>
+  <button id="stock-retry-btn" class="secondary-btn" hidden>Повторить сохранение</button>
+  <button id="stock-reset-btn" class="secondary-btn" hidden>Обновить данные и исправить ввод</button>
+  <button id="stock-undo-btn" class="secondary-btn" hidden>Отменить последнее действие</button>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
@@ -1939,6 +1947,7 @@ function showScreen(name, push=true){
   if(push) history.push(name);
   if(name === 'vision'){ ensureModel(); } else { stopVisionCamera(); }
   if(name === 'home' && userDataLoaded) playHomeIntro();
+  dockStockPanel(document.querySelector('.sheet.open'));
 }
 
 const topLevelScreens = new Set(['home','fridge','vision','diet','recipes','cart','profile']);
@@ -1972,6 +1981,7 @@ function openProduct(listName, idx, opts={}){
   currentProduct = {list:listName, idx};
   const p = getArr(listName)[idx];
   if(!p) return;
+  document.getElementById('use-product-qty').value = p.qtyNum;
   const days = daysUntil(p.expiresOn);
   document.getElementById('product-hero').innerHTML = productThumbHtml(p);
   document.getElementById('product-name').textContent = p.name;
@@ -1982,7 +1992,7 @@ function openProduct(listName, idx, opts={}){
   document.getElementById('product-qty').textContent = formatQty(p);
   const expEl = document.getElementById('product-exp');
   const isExpired = listName!=='freezer' && days<=0;
-  expEl.textContent = listName==='freezer' ? '−18°C' : (isExpired?'срок истёк': `через ${expiryLabel(days)}`);
+  expEl.textContent = !p.expiresOn ? 'Укажите на упаковке' : (p.expiryEstimated ? '≈ ' : '') + (listName==='freezer' ? p.expiresOn : (isExpired?'срок истёк': `через ${expiryLabel(days)}`));
   expEl.style.color = isExpired ? 'var(--danger)' : '';
   if(push) history.push('product');
   showScreen('product', false);
@@ -2056,7 +2066,7 @@ function renderExpiringRow(){
     <div class="expire-card${days<=1?' urgent':''}" data-list="fridge" data-idx="${idx}">
       <div class="ring-wrap">${ringSvg(pct,color)}<div class="ring-emoji">${productThumbHtml(p)}</div></div>
       <div class="p-name">${escapeHtml(p.name)}</div>
-      <div class="p-days" style="color:${color}">${expiryLabel(days)}</div>
+      <div class="p-days" style="color:${color}">${p.expiryEstimated ? '≈ ' : ''}${expiryLabel(days)}</div>
     </div>`;
   }).join('') : `<div style="font-size:0.7812rem; color:var(--muted); padding:0.5rem 0.25rem">Ничего не истекает в ближайшие дни</div>`;
   document.getElementById('sum-expiring').textContent = soon.length;
@@ -2084,7 +2094,7 @@ function renderFridgeList(compartment){
   list.innerHTML = data.map((p, idx) => {
     const days = daysUntil(p.expiresOn);
     const status = compartment === 'freezer' ? 'frost' : computeFreshStatus(days);
-    const label = compartment === 'freezer' ? '−18°C' : expiryLabel(days);
+    const label = !p.expiresOn ? 'Срок не указан' : (p.expiryEstimated ? '≈ ' : '') + (compartment === 'freezer' ? '−18°C' : expiryLabel(days));
     return `
     <div class="product-row" data-list="${compartment}" data-idx="${idx}">
       <div class="product-thumb">${productThumbHtml(p)}</div>
@@ -2261,6 +2271,7 @@ function springSheetTo(sheetEl, target, opts={}){
 }
 
 function openSheet(sheetEl){
+  dockStockPanel(sheetEl);
   overlay.classList.add('open');
   allSheets.forEach(s => { if(s !== sheetEl){ cancelSheetSpring(s); s.style.transform=''; s.style.transition=''; s.classList.remove('open'); } });
   if(isMobileSheet() && !prefersReducedMotion()){
@@ -2271,6 +2282,7 @@ function openSheet(sheetEl){
   }
 }
 function closeSheet(){
+  dockStockPanel();
   overlay.classList.remove('open');
   allSheets.forEach(s => {
     if(!s.classList.contains('open') && !sheetSprings.has(s)) return;
@@ -2320,6 +2332,7 @@ function makeSheetDraggable(sheetEl){
     const projected = y + projectMomentum(velocity);
     const shouldClose = projected > h*0.32 || velocity > 600;
     if(shouldClose){
+      dockStockPanel();
       overlay.classList.remove('open');
       springSheetTo(sheetEl, h+40, { from:y, velocity, dampingRatio:1, response:0.32 });
     } else {
@@ -2366,29 +2379,141 @@ function populateCustomDishIngredients(){
     </label>`).join('');
 }
 
-document.getElementById('save-custom-dish-btn').addEventListener('click', ()=>{
+document.getElementById('save-custom-dish-btn').addEventListener('click', async ()=>{
   const nameInput = document.getElementById('custom-dish-name');
-  const dishName = nameInput.value.trim();
-  if(!dishName){ showToast('Введите название блюда', true); return; }
-  const checked = Array.from(document.querySelectorAll('#custom-dish-ingredients input[type=checkbox]:checked'))
-    .map(cb => parseInt(cb.dataset.idx))
-    .sort((a,b)=>b-a); // remove from the end first, indices stay valid
-  checked.forEach(idx => {
-    const [removed] = fridgeData.splice(idx, 1);
-    dbDeleteItem(removed);
-    // Продукт ушёл в готовку до истечения срока — считается так же, как ручное «Использовано»
-    const kg = estimateKg(removed);
-    usedCount++; usedWeightKg += kg;
-    dbLogFoodEvent(removed, 'used', kg);
-  });
-  if(checked.length) dbSaveStats();
-  nameInput.value = '';
-  closeSheet();
-  renderFridgeList(currentCompartment);
-  updateSummary();
-  renderMissingAlert();
-  const spentMsg = checked.length ? `, списано продуктов: ${checked.length}` : '';
-  showToast(`«${dishName}» добавлено${spentMsg}`);
+  if(!nameInput.value.trim()){ showToast('Введите название блюда', true); return; }
+  const selected = Array.from(document.querySelectorAll('#custom-dish-ingredients input:checked'))
+    .map(cb=>({cb,item:fridgeData[Number(cb.dataset.idx)]}));
+  if(!selected.length){showToast('Выберите продукты для списания',true);return;}
+  for(const {cb,item} of selected){
+    const ok = await runStockOperation('used', {id:item._id,expected_qty:item.qtyNum,expected_unit:item.unit,amount:item.qtyNum}, ()=>{cb.checked=false; cb.disabled=true;});
+    if(!ok) return;
+  }
+  nameInput.value=''; closeSheet();
+});
+
+/* ---- Confirmed stock mutations. Persist exact intent before sending any request. ---- */
+let stockRequest = null, stockBusy = false, stockSavedId = null, stockOnSaved = null, stockScope = '', stockRejected = false;
+function dockStockPanel(sheet){
+  const panel=document.getElementById('stock-save-panel');
+  const target=sheet||document.querySelector('.screen.active')||document.body;
+  if(sheet) target.appendChild(panel); else target.prepend(panel);
+}
+function stockStorageKey(){ return 'sf_stock_v1_' + currentUserId + '_' + currentHouseholdId; }
+function stockPanel(message, pending=false, failed=false){
+  const panel=document.getElementById('stock-save-panel');
+  panel.style.display=message?'block':'none';
+  document.getElementById('stock-save-message').textContent=message;
+  document.getElementById('stock-retry-btn').hidden=!failed;
+  document.getElementById('stock-reset-btn').hidden=!failed || !stockRejected;
+  document.getElementById('stock-retry-btn').disabled=pending;
+  document.getElementById('stock-undo-btn').hidden=!stockSavedId || !!stockRequest;
+  document.getElementById('stock-undo-btn').disabled=pending;
+  if(message) panel.scrollIntoView?.({block:'nearest'});
+}
+function recoverStockOperation(){
+  const scope=stockStorageKey();
+  if(stockScope===scope) return;
+  stockScope=scope; stockRejected=false; stockRequest=null; stockBusy=false; stockOnSaved=null; stockSavedId=null;
+  try{
+    const saved=JSON.parse(localStorage.getItem(scope)||'null');
+    stockRequest=saved?.request||null; stockSavedId=saved?.lastId||null; stockRejected=!!saved?.rejected;
+  }catch{}
+  stockPanel(stockRequest?'Результат сохранения пока неизвестен. Повтор безопасен.':(stockSavedId?'Последнее действие сохранено.':''),false,!!stockRequest);
+}
+function stockItemFromRow(r){
+  return {_id:r.id,name:r.name,emoji:r.emoji,qtyNum:Number(r.qty_num),unit:r.unit,
+    location:r.location,expiresOn:r.expires_on,expiryEstimated:r.expiry_estimated,note:r.note};
+}
+function applyStockSnapshot(data){
+  const selected=currentProduct && getArr(currentProduct.list)[currentProduct.idx]?._id;
+  fridgeData.length=0; freezerData.length=0; cartData.length=0;
+  for(const r of data.fridge_items) getArr(r.compartment).push(stockItemFromRow(r));
+  for(const r of data.cart_items) cartData.push(stockItemFromRow(r));
+  usedCount=data.stats?.used_count||0; usedWeightKg=Number(data.stats?.used_weight_kg||0); wastedCount=data.stats?.wasted_count||0;
+  renderCart(); updateSummary(); renderFridgeList(currentCompartment); renderSuggestRow(); renderMissingAlert();
+  if(selected){
+    const list=fridgeData.some(p=>p._id===selected)?'fridge':'freezer';
+    const idx=getArr(list).findIndex(p=>p._id===selected);
+    currentProduct=idx>=0?{list,idx}:null;
+    if(history[history.length-1]==='product'){
+      if(idx>=0) openProduct(list,idx,{push:false});
+      else {history.pop();showScreen(history[history.length-1]||'fridge',false);}
+    }
+  }
+  if(history[history.length-1]==='food-log') renderFoodLog();
+}
+async function executeStockRequest(){
+  if(stockBusy || !stockRequest) return false;
+  const request=stockRequest, scope=stockStorageKey();
+  // A new attempt can commit even when the previous attempt was rejected.
+  // Clear the persisted rejection before sending, so a lost response stays ambiguous.
+  try{localStorage.setItem(scope,JSON.stringify({request,lastId:stockSavedId}));}
+  catch{showToast('Не удалось сохранить запрос на устройстве',true);return false;}
+  stockRejected=false;
+  stockBusy=true; stockPanel('Сохраняем…',true);
+  try{
+    const {data,error}=await sb.rpc('stock_mutate',request);
+    if(stockStorageKey()!==scope) return false;
+    if(error){
+      stockRejected=['40001','42501','22023','P0001','23514','22003','22P02','PGRST202','42703'].includes(error.code);
+      if(stockRejected) try{localStorage.setItem(scope,JSON.stringify({request,lastId:stockSavedId,rejected:true}));}catch{}
+      throw error;
+    }
+    if(!data?.operation_id || !Array.isArray(data.fridge_items) || !Array.isArray(data.cart_items)) throw error||new Error('No confirmation');
+    if(stockStorageKey()!==scope) return false;
+    stockRequest=null;
+    stockSavedId=request.kind==='undo'?null:data.operation_id;
+    try{localStorage.setItem(scope,JSON.stringify({lastId:stockSavedId}));}catch{}
+    // Confirmation is durable even if a later UI render fails. Do not offer a new
+    // retry for a request the server has already confirmed.
+    try{applyStockSnapshot(data);}catch{showToast('Сохранено. Обновите страницу для актуального списка.',true);}
+    const done=stockOnSaved; stockOnSaved=null;
+    if(done) try{done();}catch{}
+    stockPanel(request.kind==='undo'?'Действие отменено. Остатки и журнал восстановлены.':'Сохранено. Даты со знаком ≈ примерные — сверьте с упаковкой.');
+    return true;
+  }catch(error){
+    if(stockStorageKey()===scope){
+      stockPanel(stockRejected?'Сервер отклонил действие. Обновите данные и исправьте ввод.':'Не удалось подтвердить сохранение. Ввод сохранён; повторите эту операцию.',false,true);
+    }
+    return false;
+  }finally{if(stockStorageKey()===scope) stockBusy=false;}
+}
+async function runStockOperation(kind, body, onSaved){
+  if(!currentUserId || !currentHouseholdId){showToast('Сначала войдите в аккаунт',true);return false;}
+  recoverStockOperation();
+  if(stockBusy || stockRequest){showToast('Сначала повторите неподтверждённое сохранение',true);return false;}
+  const request={op_id:crypto.randomUUID(),hh_id:currentHouseholdId,kind,body};
+  try{localStorage.setItem(stockStorageKey(),JSON.stringify({request,lastId:stockSavedId}));}
+  catch{showToast('Не удалось сохранить запрос на устройстве. Освободите место и повторите.',true);return false;}
+  stockRequest=request; stockRejected=false; stockOnSaved=onSaved||null;
+  return executeStockRequest();
+}
+async function saveStockItem(item,toFreezer,onSaved){
+  return runStockOperation('add_item',{...toDbRow(item),compartment:toFreezer?'freezer':'fridge'},onSaved);
+}
+document.getElementById('stock-reset-btn').addEventListener('click',async ()=>{
+  if(!stockRejected || stockBusy) return;
+  try{
+    localStorage.setItem(stockStorageKey(),JSON.stringify({lastId:stockSavedId}));
+    stockRequest=null; stockOnSaved=null; stockRejected=false;
+    const selected=currentProduct && getArr(currentProduct.list)[currentProduct.idx]?._id;
+    await loadUserData();
+    if(selected){
+      const list=fridgeData.some(p=>p._id===selected)?'fridge':'freezer';
+      const idx=getArr(list).findIndex(p=>p._id===selected);
+      currentProduct=idx>=0?{list,idx}:null;
+      if(history[history.length-1]==='product'){
+        if(idx>=0) openProduct(list,idx,{push:false});
+        else {history.pop();showScreen('fridge',false);}
+      }
+    }
+    stockPanel('Данные обновлены. Проверьте остаток и повторите действие.');
+  }catch{stockPanel('Не удалось обновить данные. Проверьте подключение.');}
+});
+document.getElementById('stock-retry-btn').addEventListener('click',executeStockRequest);
+document.getElementById('stock-undo-btn').addEventListener('click',()=>{
+  if(stockSavedId) runStockOperation('undo',{operation_id:stockSavedId});
 });
 
 /* ===================== TOAST ===================== */
@@ -2447,6 +2572,7 @@ async function saveProductEdit(){
     unit: document.getElementById('edit-qty-unit').value,
     location: document.getElementById('edit-location').value,
     expiresOn: document.getElementById('edit-exp').value || p.expiresOn,
+    expiryEstimated: document.getElementById('edit-exp').value === p.expiresOn ? p.expiryEstimated : false,
   };
 
   // "Морозилка" как место хранения означает реальный переезд в другую вкладку/compartment,
@@ -2482,40 +2608,16 @@ async function saveProductEdit(){
 }
 document.getElementById('save-edit-btn').addEventListener('click', saveProductEdit);
 
-document.getElementById('use-product-btn').addEventListener('click', ()=>{
-  if(!currentProduct) return;
-  const arr = getArr(currentProduct.list);
-  const [item] = arr.splice(currentProduct.idx, 1);
-  const kg = estimateKg(item);
-  usedCount++; usedWeightKg += kg;
-  dbDeleteItem(item);
-  dbSaveStats();
-  dbLogFoodEvent(item, 'used', kg);
-  updateSummary();
-  renderFridgeList(currentCompartment);
-  renderMissingAlert();
-  showToast(`«${item.name}» использовано`);
-  history.pop();
-  const prev = history[history.length-1] || 'fridge';
-  showScreen(prev, false);
-});
-
-document.getElementById('toss-product-btn').addEventListener('click', ()=>{
-  if(!currentProduct) return;
-  const arr = getArr(currentProduct.list);
-  const [item] = arr.splice(currentProduct.idx, 1);
-  wastedCount++;
-  dbDeleteItem(item);
-  dbSaveStats();
-  dbLogFoodEvent(item, 'wasted', estimateKg(item));
-  updateSummary();
-  renderFridgeList(currentCompartment);
-  renderMissingAlert();
-  showToast(`«${item.name}» выброшено`, true);
-  history.pop();
-  const prev = history[history.length-1] || 'fridge';
-  showScreen(prev, false);
-});
+async function spendProduct(action){
+  if(!currentProduct) return false;
+  const item = getArr(currentProduct.list)[currentProduct.idx];
+  if(!item) return false;
+  const amount = action === 'wasted' ? item.qtyNum : positiveQuantity(document.getElementById('use-product-qty').value);
+  if(amount === null || amount > item.qtyNum){ showToast('Укажите количество больше нуля и не больше остатка', true); return false; }
+  return runStockOperation(action, {id:item._id, expected_qty:item.qtyNum, expected_unit:item.unit, amount});
+}
+document.getElementById('use-product-btn').addEventListener('click', ()=>spendProduct('used'));
+document.getElementById('toss-product-btn').addEventListener('click', ()=>spendProduct('wasted'));
 
 /* ===================== VISION (camera) ===================== */
 const stage = document.getElementById('vision-stage');
@@ -2630,7 +2732,8 @@ function applyCatalogEntry(entry){
   }
   document.getElementById('vr-qty-num').value = entry.defaultQty;
   document.getElementById('vr-qty-unit').value = entry.unit;
-  document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, entry.shelfDays));
+  document.getElementById('vr-exp-date').value = isoDate(addDays(new Date(), entry.shelfDays));
+  document.getElementById('vr-exp-date').dataset.estimated = 'true';
   setDest(entry.compartment);
 }
 function renderSuggestions(query){
@@ -2660,7 +2763,7 @@ function showRecognitionResult(name, emoji, confText, matched){
   document.getElementById('vr-name-input').value = name;
   document.getElementById('vr-conf').textContent = confText;
   if(matched){ applyCatalogEntry(matched); }
-  else { document.getElementById('vr-thumb').textContent = emoji; document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY,5)); }
+  else { document.getElementById('vr-thumb').textContent = emoji; document.getElementById('vr-exp-date').value = ''; }
   if(stream){ setVisionState('live'); } else { stage.innerHTML = `<div class="vision-state"><div class="ic">${escapeHtml(emoji)}</div><h3>${escapeHtml(name)}</h3></div>`; }
   visionResult.classList.add('show');
 }
@@ -2671,7 +2774,7 @@ function showRecognitionUnavailable(){
   document.getElementById('vr-thumb').textContent = '📦';
   document.getElementById('vr-qty-num').value = 1;
   document.getElementById('vr-qty-unit').value = 'шт';
-  document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, 5));
+  document.getElementById('vr-exp-date').value = '';
   visionResult.classList.add('show');
 }
 // Классы COCO-SSD -> каталог. Нужны как запасной вариант: ImageNet-1k (MobileNet)
@@ -2947,7 +3050,7 @@ async function onBarcodeDetected(code){
       document.getElementById('vr-thumb').textContent = '📦';
       document.getElementById('vr-qty-num').value = 1;
       document.getElementById('vr-qty-unit').value = 'шт';
-      document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, 5));
+      document.getElementById('vr-exp-date').value = '';
     } else if(data.status === 1 && data.product){
       const p = data.product;
       const name = p.product_name_ru || p.product_name || `Товар ${code}`;
@@ -2967,7 +3070,8 @@ async function onBarcodeDetected(code){
       const entry = findCatalog(name);
       document.getElementById('vr-qty-num').value = entry ? entry.defaultQty : 1;
       document.getElementById('vr-qty-unit').value = entry ? entry.unit : 'шт';
-      document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, entry ? entry.shelfDays : 5));
+      document.getElementById('vr-exp-date').value = entry ? isoDate(addDays(new Date(), entry.shelfDays)) : '';
+      document.getElementById('vr-exp-date').dataset.estimated = 'true';
       setDest(entry ? entry.compartment : 'fridge');
     } else {
       document.getElementById('vr-name-input').value = '';
@@ -2975,7 +3079,7 @@ async function onBarcodeDetected(code){
       document.getElementById('vr-thumb').textContent = '📦';
       document.getElementById('vr-qty-num').value = 1;
       document.getElementById('vr-qty-unit').value = 'шт';
-      document.getElementById('vr-exp-date').value = isoDate(addDays(TODAY, 5));
+      document.getElementById('vr-exp-date').value = '';
     }
   }catch(err){
     history.pop();
@@ -3013,72 +3117,41 @@ document.getElementById('family-copy-code-btn').addEventListener('click', ()=>{
   navigator.clipboard?.writeText(code).then(()=> showToast('Код скопирован'));
 });
 document.getElementById('family-join-btn').addEventListener('click', joinFamilyByCode);
-document.getElementById('manual-add-confirm-btn').addEventListener('click', ()=>{
-  const checked = Array.from(document.querySelectorAll('#manual-checklist input[type=checkbox]:checked'))
-    .map(cb => productCatalog[parseInt(cb.dataset.manualIdx)]);
-  if(checked.length === 0){ showToast('Отметьте хотя бы один продукт', true); return; }
+function catalogStockItem(entry, toFreezer){
+  return {name:entry.name, emoji:entry.emoji, qtyNum:entry.defaultQty, unit:entry.unit,
+    location:toFreezer?'Морозилка':'Средняя полка',
+    expiresOn:isoDate(addDays(new Date(), toFreezer ? Math.max(entry.shelfDays,60) : entry.shelfDays)), expiryEstimated:true};
+}
+document.getElementById('manual-add-confirm-btn').addEventListener('click', async ()=>{
+  const checked = Array.from(document.querySelectorAll('#manual-checklist input:checked'));
+  if(!checked.length){ showToast('Отметьте хотя бы один продукт',true); return; }
   const toFreezer = document.getElementById('manual-dest-freezer').classList.contains('active');
-  const target = toFreezer ? freezerData : fridgeData;
-  checked.forEach(entry => {
-    const newItem = {
-      name:entry.name, emoji:entry.emoji, qtyNum:entry.defaultQty, unit:entry.unit,
-      location: toFreezer ? 'Морозилка' : 'Средняя полка',
-      expiresOn: isoDate(addDays(TODAY, toFreezer ? Math.max(entry.shelfDays,60) : entry.shelfDays))
-    };
-    target.push(newItem);
-    dbInsertItem(newItem, toFreezer?'freezer':'fridge');
-  });
+  for(const cb of checked){
+    const entry = productCatalog[Number(cb.dataset.manualIdx)];
+    if(!await saveStockItem(catalogStockItem(entry,toFreezer),toFreezer,()=>{cb.checked=false;})) return;
+  }
   closeSheet();
-  renderFridgeList(currentCompartment);
-  updateSummary();
-  renderMissingAlert();
-  showToast(`Добавлено: ${checked.length} ${checked.length===1?'продукт':'продуктов'} в ${toFreezer?'морозилку':'холодильник'}`);
 });
-document.getElementById('manual-custom-add-btn').addEventListener('click', ()=>{
-  const nameInput = document.getElementById('manual-custom-name');
-  const name = nameInput.value.trim();
-  if(!name){ showToast('Введите название продукта', true); return; }
-  const toFreezer = document.getElementById('manual-dest-freezer').classList.contains('active');
-  const entry = findCatalog(name);
-  const target = toFreezer ? freezerData : fridgeData;
-  const newItem = {
-    name, emoji: entry ? entry.emoji : '📦',
-    qtyNum: entry ? entry.defaultQty : 1, unit: entry ? entry.unit : 'шт',
-    location: toFreezer ? 'Морозилка' : 'Средняя полка',
-    expiresOn: isoDate(addDays(TODAY, entry ? (toFreezer?Math.max(entry.shelfDays,60):entry.shelfDays) : (toFreezer?60:5)))
-  };
-  target.push(newItem);
-  dbInsertItem(newItem, toFreezer?'freezer':'fridge');
-  nameInput.value = '';
-  closeSheet();
-  renderFridgeList(currentCompartment);
-  updateSummary();
-  renderMissingAlert();
-  showToast(`«${name}» добавлено в ${toFreezer?'морозилку':'холодильник'}`);
+document.getElementById('manual-custom-add-btn').addEventListener('click', async ()=>{
+  const input=document.getElementById('manual-custom-name'), name=input.value.trim();
+  if(!name){showToast('Введите название продукта',true);return;}
+  const toFreezer=document.getElementById('manual-dest-freezer').classList.contains('active');
+  const entry=findCatalog(name);
+  const item=entry ? catalogStockItem(entry,toFreezer) : {name,emoji:'📦',qtyNum:1,unit:'шт',location:toFreezer?'Морозилка':'Средняя полка',expiresOn:null,expiryEstimated:false};
+  await saveStockItem(item,toFreezer,()=>{input.value='';closeSheet();});
 });
-
 document.getElementById('dest-fridge').addEventListener('click', ()=> setDest('fridge'));
 document.getElementById('dest-freezer').addEventListener('click', ()=> setDest('freezer'));
-document.getElementById('confirm-add-btn').addEventListener('click', ()=>{
-  const name = document.getElementById('vr-name-input').value.trim();
-  if(!name){ showToast('Введите название товара', true); return; }
-  const toFreezer = document.getElementById('dest-freezer').classList.contains('active');
-  const qtyNum = positiveQuantity(document.getElementById('vr-qty-num').value);
-  if(qtyNum === null){ showToast('Количество должно быть больше нуля', true); return; }
-  const unit = document.getElementById('vr-qty-unit').value;
-  const expiresOn = document.getElementById('vr-exp-date').value || isoDate(addDays(TODAY, toFreezer?90:5));
-  const entry = findCatalog(name);
-  const emoji = entry ? entry.emoji : (document.getElementById('vr-thumb').textContent || '📦');
-  const target = toFreezer ? freezerData : fridgeData;
-  const newItem = {name, emoji, qtyNum, unit, location: toFreezer?'Морозилка':'Средняя полка', expiresOn};
-  target.push(newItem);
-  dbInsertItem(newItem, toFreezer?'freezer':'fridge');
-  updateSummary();
-  renderFridgeList(currentCompartment);
-  renderSuggestRow();
-  renderMissingAlert();
-  showToast(`«${name}» добавлено в ${toFreezer?'морозилку':'холодильник'}`);
-  visionResult.classList.remove('show');
+document.getElementById('vr-exp-date').addEventListener('input', e=>{e.target.dataset.estimated='false';});
+document.getElementById('confirm-add-btn').addEventListener('click', async ()=>{
+  const name=document.getElementById('vr-name-input').value.trim();
+  const qtyNum=positiveQuantity(document.getElementById('vr-qty-num').value);
+  if(!name || qtyNum===null){showToast('Введите название и количество больше нуля',true);return;}
+  const toFreezer=document.getElementById('dest-freezer').classList.contains('active');
+  const entry=findCatalog(name), date=document.getElementById('vr-exp-date');
+  await saveStockItem({name,emoji:entry?.emoji||'📦',qtyNum,unit:document.getElementById('vr-qty-unit').value,
+    location:toFreezer?'Морозилка':'Средняя полка',expiresOn:date.value||null,expiryEstimated:date.dataset.estimated!=='false'},toFreezer,
+    ()=>{visionResult.classList.remove('show');});
 });
 
 /* ===================== DIET TAB — FAMILY PROFILES ===================== */
@@ -3866,15 +3939,10 @@ document.getElementById('ff-delete-btn').addEventListener('click', async ()=>{
 });
 
 /* ===================== WEEKLY MISSING-INGREDIENTS ALERT ===================== */
-function addMissingToCart(name){
-  const already = cartData.some(c => c.name === name);
-  if(!already){
-    const entry = findCatalog(name);
-    const newCartItem = {name, emoji: entry ? entry.emoji : '🛒', qtyNum: entry?entry.defaultQty:1, unit: entry?entry.unit:'шт', note:'нужно докупить'};
-    cartData.push(newCartItem);
-    dbInsertCart(newCartItem);
-  }
-  return !already;
+async function addMissingToCart(name){
+  if(cartData.some(c=>c.name===name)) return true;
+  const entry=findCatalog(name);
+  return runStockOperation('add_cart',{name,emoji:entry?.emoji||'🛒',qty_num:entry?.defaultQty||1,unit:entry?.unit||'шт',note:'нужно докупить'});
 }
 // Что нужно на неделю по текущему меню (с заменами), а не по фиксированному списку.
 function weekRequiredItems(){
@@ -3916,11 +3984,8 @@ function renderMissingAlert(){
       <button data-add-shopping="${escapeHtml(m.name)}">В покупки</button>
     </div>`).join('');
   listEl.querySelectorAll('[data-add-shopping]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const name = btn.dataset.addShopping;
-      const added = addMissingToCart(name);
-      renderCart();
-      showToast(added ? `«${name}» добавлено в корзину` : `«${name}» уже в корзине`);
+    btn.addEventListener('click', async ()=>{
+      await addMissingToCart(btn.dataset.addShopping);
     });
   });
   renderLowStock(missing);
@@ -3940,14 +4005,8 @@ function renderLowStock(missing){
   section.style.display = '';
   row.innerHTML = missing.map(m => `<div class="chip"><span class="dot"></span>${escapeHtml(m.name)}</div>`).join('');
 }
-document.getElementById('low-stock-cart-btn').addEventListener('click', ()=>{
-  if(!lastLowStockMissing.length) return;
-  let addedCount = 0;
-  lastLowStockMissing.forEach(m => { if(addMissingToCart(m.name)) addedCount++; });
-  renderCart();
-  showToast(addedCount
-    ? `Добавлено в корзину: ${addedCount}`
-    : 'Всё это уже в корзине');
+document.getElementById('low-stock-cart-btn').addEventListener('click', async ()=>{
+  for(const m of [...lastLowStockMissing]) if(!await addMissingToCart(m.name)) return;
 });
 
 /* ===================== CART ===================== */
@@ -3967,18 +4026,9 @@ function renderCart(){
         <button data-bought="${idx}" style="min-height:36px; padding:0 0.75rem; border-radius:999px; background:var(--fresh); color:#fff; border:none; font-size:0.7188rem; font-weight:700; font-family:'Inter',sans-serif; flex-shrink:0;">Куплено</button>
       </div>`).join('');
     list.querySelectorAll('[data-bought]').forEach(btn=>{
-      btn.addEventListener('click', (e)=>{
+      btn.addEventListener('click', async (e)=>{
         e.stopPropagation();
-        if(btn.disabled) return;
-        btn.disabled = true;
-        const idx = parseInt(btn.dataset.bought);
-        const item = cartData[idx];
-        const row = btn.closest('.product-row');
-        row.classList.add('bought');
-        btn.outerHTML = '<div class="cart-check">✓</div>';
-        const finish = () => buyCartItem(item, false);
-        if(prefersReducedMotion()){ finish(); return; }
-        setTimeout(() => { row.classList.add('row-exit'); setTimeout(finish, 250); }, 550);
+        await buyCartItem(cartData[Number(btn.dataset.bought)],false);
       });
     });
   }
@@ -3987,28 +4037,12 @@ function renderCart(){
 }
 // Покупка товара из корзины: переносит его в холодильник/морозилку. Вызывается и по кнопке
 // «Куплено», и по отметке из виджета на iPhone (silent — без тоста на каждый товар).
-function buyCartItem(item, silent){
-  const at = cartData.indexOf(item);
-  if(at >= 0) cartData.splice(at, 1);
-  dbDeleteCart(item);
-  const entry = findCatalog(item.name);
-  const toFreezer = entry ? entry.compartment === 'freezer' : false;
-  const shelfDays = entry ? entry.shelfDays : 5;
-  const target = toFreezer ? freezerData : fridgeData;
-  const newItem = {
-    name:item.name, emoji: item.emoji==='🛒' ? (entry?entry.emoji:'📦') : item.emoji,
-    qtyNum:item.qtyNum||1, unit:item.unit||'шт',
-    location: toFreezer?'Морозилка':'Средняя полка',
-    expiresOn: isoDate(addDays(TODAY, shelfDays))
-  };
-  target.push(newItem);
-  dbInsertItem(newItem, toFreezer?'freezer':'fridge');
-  renderCart();
-  updateSummary();
-  renderFridgeList(currentCompartment);
-  renderSuggestRow();
-  renderMissingAlert();
-  if(!silent) showToast(`«${item.name}» куплено и добавлено в ${toFreezer?'морозилку':'холодильник'}`);
+async function buyCartItem(item, silent){
+  if(!item) return false;
+  const entry=findCatalog(item.name), toFreezer=entry?.compartment==='freezer';
+  return runStockOperation('buy',{id:item._id,expected_qty:item.qtyNum,expected_unit:item.unit,
+    compartment:toFreezer?'freezer':'fridge',location:toFreezer?'Морозилка':'Средняя полка',
+    expires_on:entry ? isoDate(addDays(new Date(),entry.shelfDays)) : null});
 }
 function updateCartBadge(){
   const badge = document.getElementById('cart-badge');
@@ -4607,12 +4641,7 @@ showScreen('home', false);
 
 /* ===================== SUPABASE DATA SYNC ===================== */
 function toDbRow(p){
-  return {name:p.name, emoji:p.emoji, qty_num:p.qtyNum, unit:p.unit, location:p.location||null, expires_on:p.expiresOn||null};
-}
-async function dbInsertItem(item, compartment){
-  if(!currentUserId) return;
-  const { data, error } = await sb.from('fridge_items').insert({...toDbRow(item), compartment, user_id: currentUserId, household_id: currentHouseholdId}).select().single();
-  if(!error && data) item._id = data.id;
+  return {name:p.name, emoji:p.emoji, qty_num:p.qtyNum, unit:p.unit, location:p.location||null, expires_on:p.expiresOn||null, expiry_estimated:!!p.expiryEstimated};
 }
 async function dbUpdateItem(item, compartment){
   if(!currentUserId || !item._id) throw new Error('Product is not linked to the account');
@@ -4620,30 +4649,6 @@ async function dbUpdateItem(item, compartment){
   if(compartment) payload.compartment = compartment;
   const { data, error } = await sb.from('fridge_items').update(payload).eq('id', item._id).select('id').single();
   if(error || !data) throw error || new Error('Product was not saved');
-}
-async function dbDeleteItem(item){
-  if(!currentUserId || !item._id) return;
-  await sb.from('fridge_items').delete().eq('id', item._id);
-}
-async function dbInsertCart(item){
-  if(!currentUserId) return;
-  const { data, error } = await sb.from('cart_items').insert({name:item.name, emoji:item.emoji, qty_num:item.qtyNum, unit:item.unit, note:item.note||null, user_id: currentUserId, household_id: currentHouseholdId}).select().single();
-  if(!error && data) item._id = data.id;
-}
-async function dbDeleteCart(item){
-  if(!currentUserId || !item._id) return;
-  await sb.from('cart_items').delete().eq('id', item._id);
-}
-async function dbSaveStats(){
-  if(!currentUserId) return;
-  await sb.from('food_stats').upsert({user_id: currentUserId, used_count: usedCount, used_weight_kg: usedWeightKg, wasted_count: wastedCount});
-}
-async function dbLogFoodEvent(item, action, qtyKg){
-  if(!currentUserId || !currentHouseholdId) return;
-  await sb.from('food_events').insert({
-    household_id: currentHouseholdId, user_id: currentUserId,
-    name: item.name, emoji: item.emoji || '📦', action, qty_kg: qtyKg ?? null
-  });
 }
 async function dbSaveMeasurement(entry){
   if(!currentProfileId) return;
@@ -4744,7 +4749,7 @@ async function loadUserData(){
   fridgeData.length = 0; freezerData.length = 0;
   if(!fridgeRes.error && fridgeRes.data){
     fridgeRes.data.forEach(r => {
-      const item = {name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, location:r.location, expiresOn:r.expires_on, _id:r.id};
+      const item = {name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, location:r.location, expiresOn:r.expires_on, expiryEstimated:r.expiry_estimated, _id:r.id};
       (r.compartment === 'freezer' ? freezerData : fridgeData).push(item);
     });
   }
@@ -4757,6 +4762,7 @@ async function loadUserData(){
   }
 
   userDataLoaded = true;
+  recoverStockOperation();
   renderFridgeList(currentCompartment);
   revealSummary();
   renderCart();
@@ -5022,11 +5028,13 @@ async function applyWidgetPurchases(WB){
   const ids = (res && res.ids) || [];
   if(!ids.length) return;
   const bought = [];
-  ids.forEach(id => {
-    const item = cartData.find(c => String(c._id || c.name) === id);
-    if(item){ buyCartItem(item, true); bought.push(item.name); }
-  });
-  await WB.clearPending({ ids });
+  const confirmed=[];
+  for(const id of ids){
+    const item=cartData.find(c=>String(c._id||c.name)===id);
+    if(item){ if(!await buyCartItem(item,true)) break; bought.push(item.name); }
+    confirmed.push(id);
+  }
+  if(confirmed.length) await WB.clearPending({ids:confirmed});
   if(bought.length) showToast(`Куплено через виджет: ${bought.join(', ')}`);
 }
 

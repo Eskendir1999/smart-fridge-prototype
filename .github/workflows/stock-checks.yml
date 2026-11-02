@@ -1,0 +1,30 @@
+name: Stock reliability
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-stock-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          SUPABASE_URL: https://fixture.supabase.test
+          SUPABASE_ANON_KEY: sb_publishable_fixture
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+        env:
+          SF_EVIDENCE_DIR: ./test-evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-stock-browser
+          path: test-evidence
