@@ -2401,7 +2401,8 @@ function stockPanel(message, pending=false, failed=false){
   document.getElementById('stock-retry-btn').disabled=pending;
   document.getElementById('stock-undo-btn').hidden=!stockSavedId || !!stockRequest;
   document.getElementById('stock-undo-btn').disabled=pending;
-  if(message) panel.scrollIntoView?.({block:'nearest'});
+  // Preserve the user's position for pending/saved updates; reveal actionable errors only.
+  if(message && failed) panel.scrollIntoView?.({block:'nearest'});
 }
 function recoverStockOperation(){
   const scope=stockStorageKey();
