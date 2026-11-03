@@ -630,6 +630,10 @@ img{ animation:imgFadeIn .25s ease; }
   .expire-card.urgent .ring-wrap::after, .dt-orb, .dt-orb::before, .dt-status::before, .dietitian-msg, .dt-welcome, .dt-chip{ animation:none !important; }
   *{ scroll-behavior: auto !important; }
 }
+/* Preserve desktop sheet centering when reduced motion disables entrance animation. */
+@media (min-width:768px) and (prefers-reduced-motion: reduce){
+  .sheet{ transform:translate(-50%,-50%) !important; }
+}
 @media (prefers-reduced-transparency: reduce){
   .bottom-nav{ background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sheet{ background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
