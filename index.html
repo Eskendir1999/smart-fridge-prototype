@@ -636,6 +636,7 @@ img{ animation:imgFadeIn .25s ease; }
   .sheet{ background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 </style>
+<link rel="stylesheet" href="/ux/core-flow.css">
 </head>
 <body>
 
@@ -1343,20 +1344,41 @@ img{ animation:imgFadeIn .25s ease; }
 
 <div class="sheet" id="manual-sheet" style="max-height:90dvh;overflow-y:auto">
   <div class="sheet-handle"></div>
-  <h3>Добавить вручную</h3>
+  <h3>Добавить продукт</h3>
   <div class="dest-row">
     <button class="dest-btn active" id="manual-dest-fridge">❄️ Холодильник</button>
     <button class="dest-btn" id="manual-dest-freezer">🧊 Морозилка</button>
   </div>
-  <p style="font-size:0.8rem;color:var(--muted)">Даты из справочника примерные (≈). Сверьте их с упаковкой. Для неизвестного товара срок не подставляется.</p>
-  <label style="display:block; font-size:0.7812rem; font-weight:600; color:var(--ink-soft); margin-bottom:0.5rem">Отметьте, что нужно добавить:</label>
-  <div id="manual-checklist" style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto; margin-bottom:0.875rem;"></div>
-  <button class="primary-btn" id="manual-add-confirm-btn">Добавить отмеченное</button>
-  <div class="form-field" style="margin-top:0.875rem; margin-bottom:0.625rem">
-    <label>Своё название (если нет в списке)</label>
-    <input type="text" id="manual-custom-name" placeholder="Например: Кокосовое молоко">
+  <div class="sf-manual-fields">
+    <div class="form-field">
+      <label for="manual-custom-name">Название *</label>
+      <input type="text" id="manual-custom-name" required autocomplete="off" placeholder="Например, молоко" aria-describedby="sf-manual-hint">
+    </div>
+    <div class="sf-manual-grid">
+      <div class="form-field">
+        <label for="manual-custom-qty">Количество *</label>
+        <input type="text" id="manual-custom-qty" inputmode="decimal" required value="1" aria-describedby="sf-manual-hint">
+      </div>
+      <div class="form-field">
+        <label for="manual-custom-unit">Единица</label>
+        <select id="manual-custom-unit">
+          <option value="шт">шт</option><option value="г">г</option><option value="кг">кг</option>
+          <option value="мл">мл</option><option value="л">л</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-field">
+      <label for="manual-custom-expiry">Годен до (необязательно)</label>
+      <input type="date" id="manual-custom-expiry" aria-describedby="sf-manual-hint">
+    </div>
+    <p id="sf-manual-hint" class="sf-manual-hint">Срок оставьте пустым, если он неизвестен. Количество и единицу проверьте перед сохранением.</p>
+    <div id="manual-custom-error" class="sf-manual-error" role="alert" hidden></div>
+    <button class="primary-btn" id="manual-custom-add-btn">Сохранить продукт</button>
   </div>
-  <button class="secondary-btn" id="manual-custom-add-btn" style="margin-top:0">Добавить своё</button>
+  <div class="sf-manual-divider">Или выбрать продукты из списка</div>
+  <div id="manual-checklist" role="group" aria-label="Быстрый выбор продуктов"
+    style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto; margin-bottom:0.875rem;"></div>
+  <button class="secondary-btn" id="manual-add-confirm-btn">Добавить отмеченное</button>
   <button class="sheet-cancel" id="manual-sheet-cancel">Отмена</button>
 </div>
 
@@ -3126,14 +3148,47 @@ async function addManualProducts(){
   closeSheet();
 }
 document.getElementById('manual-add-confirm-btn').addEventListener('click', addManualProducts);async function addCustomProduct(){
-  const input=document.getElementById('manual-custom-name'), name=input.value.trim();
-  if(!name){showToast('Введите название продукта',true);return;}
+  const input=document.getElementById('manual-custom-name');
+  const quantityField=document.getElementById('manual-custom-qty');
+  const unitField=document.getElementById('manual-custom-unit');
+  const dateField=document.getElementById('manual-custom-expiry');
+  const errorField=document.getElementById('manual-custom-error');
+  const name=input.value.trim();
+  const raw=(quantityField?.value||'').trim();
+  const unit=unitField?.value||'шт';
+  const quantity=/^\d+(?:[.,]\d{1,3})?$/.test(raw) ? Number(raw.replace(',','.')) : NaN;
+  function invalid(message,field){
+    if(errorField){errorField.hidden=false;errorField.textContent=message;}
+    field?.setAttribute?.('aria-invalid','true');
+    field?.focus?.();
+    showToast(message,true);
+  }
+  if(!name){invalid('Введите название продукта',input);return;}
+  if(!Number.isFinite(quantity)||quantity<=0||(unit==='шт'&&!Number.isInteger(quantity))){
+    invalid('Введите положительное количество; штуки указываются целым числом',quantityField);
+    return;
+  }
+  if(errorField){errorField.hidden=true;errorField.textContent='';}
+  input.removeAttribute?.('aria-invalid');
+  quantityField?.removeAttribute?.('aria-invalid');
   const toFreezer=document.getElementById('manual-dest-freezer').classList.contains('active');
   const entry=findCatalog(name);
-  const item=entry ? catalogStockItem(entry,toFreezer) : {name,emoji:'📦',qtyNum:1,unit:'шт',location:toFreezer?'Морозилка':'Средняя полка',expiresOn:null,expiryEstimated:false};
+  const originalDraft=JSON.stringify([name,raw,unit,dateField?.value||'',toFreezer]);
+  const item={
+    name,emoji:entry?.emoji||'📦',qtyNum:quantity,unit,
+    location:toFreezer?'Морозилка':'Средняя полка',
+    expiresOn:dateField?.value||null,expiryEstimated:false
+  };
   await saveStockItem(item,toFreezer,()=>{
-    if(input.value.trim()!==name) return 'Предыдущее добавление сохранено. Новый ввод остался в форме.';
-    input.value='';closeSheet();
+    const currentDraft=JSON.stringify([
+      input.value.trim(),(quantityField?.value||'').trim(),
+      unitField?.value||'шт',dateField?.value||'',
+      document.getElementById('manual-dest-freezer').classList.contains('active')
+    ]);
+    if(currentDraft!==originalDraft)return 'Предыдущее добавление сохранено. Новый ввод остался в форме.';
+    input.value='';if(quantityField)quantityField.value='1';
+    if(unitField)unitField.value='шт';if(dateField)dateField.value='';
+    closeSheet();
   });
 }
 document.getElementById('manual-custom-add-btn').addEventListener('click', addCustomProduct);document.getElementById('dest-fridge').addEventListener('click', ()=> setDest('fridge'));
@@ -5282,5 +5337,6 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
   });
 })();
 </script>
+<script src="/ux/core-flow.js" defer></script>
 </body>
 </html>
