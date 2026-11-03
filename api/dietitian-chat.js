@@ -1,5 +1,7 @@
 // Прокси к Gemini API для чата с ИИ-диетологом. Не трогает базу — клиент
 // сам сохраняет сообщения в dietitian_messages после получения ответа.
+const { authenticatedUser, takeChatSlot } = require('./_lib/request-security');
+
 // Ключ GEMINI_API_KEY получается бесплатно на aistudio.google.com (без
 // привязки карты, щедрый бесплатный лимит) и хранится только в Vercel env.
 
@@ -40,20 +42,44 @@ function dietModeLine(profile) {
 Не предлагай исключать продукты "на всякий случай" — только если у малыша есть признаки аллергии и это согласовано с педиатром.
 При тревожных симптомах у мамы или малыша советуй обратиться к врачу.`;
   }
-  const ex = Array.isArray(profile.excludedFoods) ? profile.excludedFoods.filter(x => x in EXCLUSION_NAMES) : [];
+  const ex = Array.isArray(profile.excludedFoods) ? profile.excludedFoods.filter(x => Object.hasOwn(EXCLUSION_NAMES, x)) : [];
   if (ex.length) line += ` Не предлагай блюда, в которых есть: ${ex.map(x => EXCLUSION_NAMES[x]).join(', ')}.`;
   return line;
 }
 
 module.exports = async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') { res.status(405).json({ error: 'method not allowed' }); return; }
+  const auth = await authenticatedUser(req);
+  if (!auth.user) {
+    res.status(auth.status).json({ error: auth.status === 503 ? 'Проверка входа временно недоступна.' : 'Войдите в аккаунт, чтобы открыть диетолога.' });
+    return;
+  }
   if (!process.env.GEMINI_API_KEY) {
     res.status(503).json({ error: 'Диетолог временно недоступен: не настроен GEMINI_API_KEY.' });
     return;
   }
 
-  const { message, history, profile } = req.body || {};
-  if (!message || typeof message !== 'string') { res.status(400).json({ error: 'message required' }); return; }
+  const { message, history, profile: rawProfile } = req.body || {};
+  if (typeof message !== 'string' || !message.trim()) { res.status(400).json({ error: 'message required' }); return; }
+  if (message.length > 2000 || JSON.stringify(req.body).length > 32000) {
+    res.status(413).json({ error: 'Сообщение слишком длинное.' }); return;
+  }
+  // Never interpolate arbitrary client strings into the system instruction.
+  let profile = null;
+  if (rawProfile && typeof rawProfile === 'object' && !Array.isArray(rawProfile)) {
+    const { weightKg, targetWeightKg, kcalPerDay } = rawProfile;
+    if (![weightKg, targetWeightKg, kcalPerDay].every(Number.isFinite)
+      || weightKg < 10 || weightKg > 500 || targetWeightKg < 10 || targetWeightKg > 500
+      || kcalPerDay < 500 || kcalPerDay > 10000) {
+      res.status(400).json({ error: 'Некорректные данные профиля.' }); return;
+    }
+    profile = { weightKg, targetWeightKg, kcalPerDay,
+      dietMode: rawProfile.dietMode === 'breastfeeding' ? 'breastfeeding' : 'standard',
+      babyAgeMonths: rawProfile.babyAgeMonths,
+      excludedFoods: Array.isArray(rawProfile.excludedFoods) ? rawProfile.excludedFoods.filter(x => typeof x === 'string' && Object.hasOwn(EXCLUSION_NAMES, x)) : [],
+    };
+  }
 
   const profileLine = profile
     ? `Текущий вес: ${profile.weightKg} кг. Целевой вес: ${profile.targetWeightKg} кг. Дневная норма: ${profile.kcalPerDay} ккал.` + dietModeLine(profile)
@@ -62,18 +88,24 @@ module.exports = async (req, res) => {
   const contents = [];
   if (Array.isArray(history)) {
     for (const m of history.slice(-20)) {
-      if (m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string') {
+      if (m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.length <= 2000) {
         contents.push({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] });
       }
     }
   }
   contents.push({ role: 'user', parts: [{ text: message }] });
 
+  const slot = takeChatSlot(auth.user.id);
+  if (!slot.allowed) {
+    res.setHeader('Retry-After', String(slot.retryAfter));
+    res.status(429).json({ error: 'Слишком много запросов. Подождите минуту.' }); return;
+  }
   try {
     const resp = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
+        signal: AbortSignal.timeout(20000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_PROMPT + (profileLine ? '\n\n' + profileLine : '') }] },
@@ -84,7 +116,7 @@ module.exports = async (req, res) => {
     );
     const data = await resp.json();
     if (!resp.ok) {
-      res.status(502).json({ error: data.error?.message || 'Ошибка у диетолога, попробуйте позже.' });
+      res.status(502).json({ error: 'Ошибка у диетолога, попробуйте позже.' });
       return;
     }
     const reply = data.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
@@ -92,5 +124,7 @@ module.exports = async (req, res) => {
     res.status(200).json({ reply });
   } catch (err) {
     res.status(500).json({ error: 'Не удалось связаться с диетологом.' });
+  } finally {
+    slot.release();
   }
 };
