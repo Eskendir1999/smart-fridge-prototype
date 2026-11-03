@@ -1,14 +1,35 @@
--- Prepared only. Requires schema + household/security + food-log migrations.
--- Apply in an isolated database first; do not run against production as part of this PR.
+-- Stock v1 release. Requires schema + household/security + food-log migrations.
+-- Tested in isolation; apply before the client. Legacy direct writes become read-only.
 begin;
+set local lock_timeout='5s';
+set local statement_timeout='30s';
+lock table public.fridge_items,public.cart_items,public.food_events,public.food_stats in share row exclusive mode;
+create schema if not exists sf_private;
+revoke all on schema sf_private from public, anon, authenticated;
+grant usage on schema sf_private to authenticated;
+-- In-project recovery snapshot; never exposed through the Data API.
+create table sf_private.stock_release_backup (
+  source_table text not null, source_id text not null, row_data jsonb not null,
+  captured_at timestamptz not null default now(), primary key(source_table,source_id)
+);
+alter table sf_private.stock_release_backup enable row level security;
+revoke all on sf_private.stock_release_backup from public, anon, authenticated;
+insert into sf_private.stock_release_backup(source_table,source_id,row_data)
+  select 'fridge_items',id::text,to_jsonb(f) from public.fridge_items f
+  union all select 'cart_items',id::text,to_jsonb(c) from public.cart_items c
+  union all select 'food_events',id::text,to_jsonb(e) from public.food_events e
+  union all select 'food_stats',user_id::text,to_jsonb(s) from public.food_stats s;
+create table sf_private.stock_release_control (
+  singleton boolean primary key default true check(singleton), enabled boolean not null default true
+);
+alter table sf_private.stock_release_control enable row level security;
+revoke all on sf_private.stock_release_control from public, anon, authenticated;
+insert into sf_private.stock_release_control(singleton,enabled) values(true,true);
 -- Historical dates have no provenance. Mark them as estimates conservatively;
 -- future explicit/manual dates are not estimates unless the client says so.
 alter table public.fridge_items add column expiry_estimated boolean not null default true;
 alter table public.fridge_items alter column expiry_estimated set default false;
 
-create schema if not exists sf_private;
-revoke all on schema sf_private from public, anon, authenticated;
-grant usage on schema sf_private to authenticated;
 create table sf_private.stock_operations (
   id uuid primary key,
   household_id uuid not null references public.households(id) on delete cascade,
@@ -48,6 +69,8 @@ begin
   if op_id is null or body is null then raise exception 'Invalid operation'; end if;
   -- Serialize cooperating clients, including retries and undo, inside this household.
   perform pg_advisory_xact_lock(hashtextextended(hh_id::text, 0));
+  perform 1 from sf_private.stock_release_control where singleton and enabled for share;
+  if not found then raise exception 'Stock writes paused; retry later' using errcode = '55000'; end if;
   -- Membership can change while this request waits for the household lock.
   -- Recheck and hold that membership row until commit, so a queued request cannot
   -- mutate a household after the user has joined a different one.
@@ -180,4 +203,8 @@ returns jsonb language sql security invoker set search_path = '' as $$
 $$;
 revoke all on function public.stock_mutate(uuid,uuid,text,jsonb) from public,anon;
 grant execute on function public.stock_mutate(uuid,uuid,text,jsonb) to authenticated;
+-- Old clients must reload; their separate writes cannot corrupt the transaction model.
+revoke all on public.fridge_items,public.cart_items,public.food_events,public.food_stats from anon,authenticated;
+grant select on public.fridge_items,public.cart_items,public.food_events,public.food_stats to authenticated;
+notify pgrst, 'reload schema';
 commit;

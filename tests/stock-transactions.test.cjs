@@ -151,3 +151,33 @@ test('failed edit and zero quantity leave product and receipt unchanged',async()
   assert.equal(await scalar(`select qty_num::int n from fridge_items where id='${id}'`),500);
   assert.equal(await scalar(`select count(*)::int n from sf_private.stock_operations where id='${op}'`),0);
 });
+test('legacy direct writes are denied while transaction RPC and reads remain available',async()=>{
+  const id=await f.add();
+  await assert.rejects(f.db.transaction(async tx=>{
+    await tx.exec('set local role authenticated');await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[user]);
+    await tx.query('update fridge_items set qty_num=1 where id=$1',[id]);
+  }),/permission denied/);
+  assert.equal(await scalar(`select qty_num::int n from fridge_items where id='${id}'`),500);
+  await f.rpc('used',spend(id));assert.equal(await scalar(`select qty_num::int n from fridge_items where id='${id}'`),300);
+});
+test('release pause rejects mutations without changing stock; resume safely retries same ID',async()=>{
+  const id=await f.add(),op=randomUUID();await f.db.exec('update sf_private.stock_release_control set enabled=false');
+  try{await assert.rejects(f.rpc('used',spend(id),{id:op}),/Stock writes paused/);assert.equal(await scalar(`select qty_num::int n from fridge_items where id='${id}'`),500);}
+  finally{await f.db.exec('update sf_private.stock_release_control set enabled=true');}
+  await f.rpc('used',spend(id),{id:op});assert.equal(await scalar(`select qty_num::int n from fridge_items where id='${id}'`),300);
+});
+test('release migration snapshots existing rows before metadata changes without altering quantities',async()=>{
+  const u='90000000-0000-4000-8000-000000000001',h='90000000-0000-4000-8000-000000000002',id='90000000-0000-4000-8000-000000000003';
+  const isolated=await createStockDb({beforeStockMigration:async db=>db.exec(`
+    insert into auth.users(id) values('${u}');insert into households(id,invite_code) values('${h}','BACKUP');
+    insert into household_members(user_id,household_id) values('${u}','${h}');
+    insert into fridge_items(id,user_id,household_id,name,qty_num,compartment,unit) values('${id}','${u}','${h}','Synthetic backup fixture',500,'fridge','г');
+  `)});
+  try{
+    const before=(await isolated.db.query("select row_data from sf_private.stock_release_backup where source_table='fridge_items' and source_id=$1",[id])).rows[0].row_data;
+    assert.equal(before.qty_num,500);assert.equal(before.expiry_estimated,undefined);
+    const after=(await isolated.db.query('select to_jsonb(f) r from fridge_items f where id=$1',[id])).rows[0].r;
+    delete after.expiry_estimated;assert.deepEqual(after,before);
+    assert.equal((await isolated.db.query("select has_table_privilege('authenticated','sf_private.stock_release_backup','select') allowed")).rows[0].allowed,false);
+  }finally{await isolated.db.close();}
+});

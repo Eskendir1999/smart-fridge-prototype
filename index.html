@@ -706,6 +706,7 @@ img{ animation:imgFadeIn .25s ease; }
     <!-- ===== HOME ===== -->
     <section class="screen active" id="screen-home">
       <div class="mobile-brand">🧊 Smart Fridge</div>
+      <p class="section" style="font-size:0.8rem;color:var(--muted)">Холодильник и покупки доступны. Питание, ИИ и уведомления пока проходят проверку.</p>
       <div class="topbar">
         <div>
           <div class="greeting">Доброе утро</div>
@@ -1248,11 +1249,19 @@ img{ animation:imgFadeIn .25s ease; }
           <div><div class="num" id="cart-count">0</div><div class="label">товаров</div></div>
         </div>
       </div>
+      <div class="section">
+        <div class="form-field"><label for="cart-add-name">Добавить в покупки</label><input id="cart-add-name" placeholder="Название продукта" maxlength="160"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-field"><label for="cart-add-qty">Количество</label><input id="cart-add-qty" type="number" inputmode="decimal" step="any" min="0" value="1"></div>
+          <div class="form-field"><label for="cart-add-unit">Единица</label><select id="cart-add-unit"><option>шт</option><option>г</option><option>кг</option><option>мл</option><option>л</option></select></div>
+        </div>
+        <button class="primary-btn" id="cart-add-btn">Добавить в покупки</button>
+      </div>
       <div class="fridge-list" id="cart-list"></div>
       <div class="placeholder" id="cart-empty" style="display:none">
         <div class="ic">🛒</div>
         <h2>Корзина пуста</h2>
-        <p>Продукты, которых не хватает, появятся здесь — например, после проверки на вкладке «Диета».</p>
+        <p>Добавьте продукт в покупки с помощью формы выше.</p>
       </div>
     </section>
 
@@ -1425,6 +1434,8 @@ img{ animation:imgFadeIn .25s ease; }
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
 <script>
 /* ===================== SUPABASE ===================== */
+const SF_NUTRITION_ENABLED = false;
+const SF_NOTIFICATIONS_ENABLED = false;
 const SUPABASE_URL = '__SUPABASE_URL__';
 const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
 const VAPID_PUBLIC_KEY = '__VAPID_PUBLIC_KEY__';
@@ -1939,6 +1950,9 @@ const fab = document.getElementById('fab');
 let history = ['home'];
 
 function showScreen(name, push=true){
+  if(!SF_NUTRITION_ENABLED && /^(diet|recipe|family-form)/.test(name)){
+    name='home';
+  }
   screens.forEach(s => s.classList.toggle('active', s.id === 'screen-'+name));
   document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
   document.querySelectorAll('.side-item').forEach(b => b.classList.toggle('active', b.dataset.nav === name));
@@ -2123,6 +2137,7 @@ function urgencyBadgeHtml(r){
   return `<div style="font-size:0.6875rem; font-weight:700; color:var(--danger); margin-top:0.125rem;">🔥 Спасите: ${escapeHtml(r.urgentItem)} (${expiryLabel(r.urgentDays)})</div>`;
 }
 function renderSuggestRow(){
+  if(!SF_NUTRITION_ENABLED){document.getElementById('suggest-row').innerHTML='';document.getElementById('home-meals-row').innerHTML='';return;}
   const cookable = computeCookable();
   const list = cookable.length ? cookable : recipesData.slice(0,4);
   document.getElementById('suggest-row').innerHTML = list.map(r => `
@@ -2476,7 +2491,7 @@ async function executeStockRequest(){
     return true;
   }catch(error){
     if(stockStorageKey()===scope){
-      stockPanel(stockRejected?'Сервер отклонил действие. Обновите данные и исправьте ввод.':'Не удалось подтвердить сохранение. Ввод сохранён; повторите эту операцию.',false,true);
+      stockPanel(error?.code==='55000'?'Сохранение временно приостановлено. Ввод сохранён; повторите позже.':stockRejected?'Сервер отклонил действие. Обновите данные и исправьте ввод.':'Не удалось подтвердить сохранение. Ввод сохранён; повторите эту операцию.',false,true);
     }
     return false;
   }finally{if(stockStorageKey()===scope) stockBusy=false;}
@@ -3963,6 +3978,7 @@ function weekRequiredItems(){
   return list.concat(DAILY_NEEDS);
 }
 function renderMissingAlert(){
+  if(!SF_NUTRITION_ENABLED){document.getElementById('missing-alert').style.display='none';document.getElementById('low-stock-section').style.display='none';return;}
   const inventory = inventoryNames().map(normFood);
   const missing = weekRequiredItems().filter(req => ![].concat(req.keyword).some(k => inventory.some(n => n.includes(normFood(k)))));
   const titleEl = document.getElementById('missing-title');
@@ -4015,6 +4031,18 @@ document.getElementById('low-stock-cart-btn').addEventListener('click', async ()
 });
 
 /* ===================== CART ===================== */
+async function addCartDraft(){
+  const input=document.getElementById('cart-add-name'),qty=document.getElementById('cart-add-qty'),unit=document.getElementById('cart-add-unit');
+  const name=input.value.trim(),amount=positiveQuantity(qty.value);
+  if(!name||amount===null){showToast('Введите название и количество больше нуля',true);return false;}
+  const draft=JSON.stringify([input.value,qty.value,unit.value]);
+  return runStockOperation('add_cart',{name,qty_num:amount,unit:unit.value,emoji:findCatalog(name)?.emoji||'🛒'},()=>{
+    if(JSON.stringify([input.value,qty.value,unit.value])!==draft)return 'Предыдущее добавление сохранено. Новый ввод остался в форме.';
+    input.value='';qty.value='1';
+  });
+}
+document.getElementById('cart-add-btn').addEventListener('click',addCartDraft);
+
 function renderCart(syncNative=true){
   const list = document.getElementById('cart-list');
   const empty = document.getElementById('cart-empty');
@@ -4587,6 +4615,7 @@ function dtReveal(bubble, text, onDone){
 }
 
 async function sendDietitianMessage(){
+  if(typeof SF_NUTRITION_ENABLED!=='undefined' && !SF_NUTRITION_ENABLED){showToast('Питание и ИИ пока проходят проверку',true);return;}
   const text = dietitianInput.value.trim();
   if(!text || !currentUserId || dietitianSendBtn.disabled) return;
   dietitianInput.value = '';
@@ -4642,6 +4671,12 @@ async function sendDietitianMessage(){
 dietitianSendBtn.addEventListener('click', sendDietitianMessage);
 dietitianInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); sendDietitianMessage(); } });
 
+if(!SF_NUTRITION_ENABLED){
+  document.querySelectorAll('[data-nav="diet"],[data-nav="recipes"],#open-dietitian-btn,#meal-timer-btn').forEach(el=>el.style.display='none');
+  document.getElementById('home-meals-row').closest('.section').style.display='none';
+  document.getElementById('suggest-row').style.display='none';
+  document.getElementById('suggest-row').previousElementSibling.style.display='none';
+}
 showScreen('home', false);
 
 /* ===================== SUPABASE DATA SYNC ===================== */
@@ -4666,7 +4701,7 @@ async function initEmptyAccount(userId){
   const { data: householdId, error: hhErr } = await sb.rpc('create_household');
   if(hhErr || !householdId) throw hhErr || new Error('Household unavailable');
   currentHouseholdId = householdId;
-  await sb.from('food_stats').upsert({user_id:userId, used_count:0, used_weight_kg:0, wasted_count:0});
+  // Statistics are created atomically by stock_mutate on the first consumption.
 }
 
 async function renderFamily(){
@@ -4778,14 +4813,14 @@ async function loadUserData(){
 
 /* ===================== ОНБОРДИНГ (первый заход) ===================== */
 const onboardingSlides = [
-  {emoji:'🧊', title:'Добро пожаловать в Smart Fridge', text:'Холодильник, диета и список покупок — в одном месте. Покажем главное за минуту.'},
+  {emoji:'🧊', title:'Добро пожаловать в Smart Fridge', text:'Холодильник и список покупок — в одном месте. Покажем главное за минуту.'},
   {emoji:'📷', title:'Распознавание камерой', text:'Наведите камеру на продукт во вкладке Vision — приложение само определит, что это, и предложит добавить со сроком годности.'},
   {emoji:'🥬', title:'Холодильник и морозилка', text:'Все продукты со сроками годности. Красным подсвечено то, что скоро испортится — не пропустите.'},
   {emoji:'🥗', title:'Программа питания', text:'План на 7 дней с автоматическим расчётом порций под ваш вес и список того, чего не хватает на неделю.'},
   {emoji:'📖', title:'Рецепты', text:'Сами подстраиваются под то, что скоро испортится — ищите значок 🔥 «Спасите».'},
   {emoji:'👪', title:'Общий доступ для семьи', text:'В Профиле откройте «Семья» и поделитесь кодом — все члены семьи увидят один и тот же холодильник.'},
-  {emoji:'🔔', title:'Готово!', text:'В Профиле можно включить уведомления об истекающем сроке годности. Приятного пользования!'},
-];
+  {emoji:'🔔', title:'Готово!', text:'Добавьте первый продукт в холодильник или список покупок.'},
+].filter(slide=>!['Программа питания','Рецепты'].includes(slide.title));
 let onboardingStep = 0;
 function renderOnboardingStep(){
   const s = onboardingSlides[onboardingStep];
@@ -4853,6 +4888,7 @@ function pushSupported(){
   return 'serviceWorker' in navigator && 'PushManager' in window && VAPID_PUBLIC_KEY;
 }
 async function initPushUI(){
+  if(!SF_NOTIFICATIONS_ENABLED){document.getElementById('push-toggle-btn').style.display='none';return;}
   const btn = document.getElementById('push-toggle-btn');
   if(!pushSupported()){ btn.style.display = 'none'; return; }
   try{
@@ -4948,6 +4984,7 @@ function renderTelegramBtn(){
     : telegramLinked ? '✈️ Telegram подключён · отключить' : '✈️ Подключить Telegram';
 }
 async function refreshTelegramStatus(){
+  if(!SF_NOTIFICATIONS_ENABLED){document.getElementById('telegram-btn').style.display='none';return;}
   if(!telegramAvailable() || !currentUserId) return;
   const { data, error } = await sb.from('telegram_links').select('chat_id').eq('user_id', currentUserId).maybeSingle();
   if(error){ document.getElementById('telegram-btn').style.display = 'none'; return; } // миграция ещё не выполнена
@@ -5051,8 +5088,7 @@ async function syncNativeExtras(){
     await applyWidgetPurchases(WB);
     const pack = await widgetProfileRows();
     if(pack) await WB.setSnapshot({ json: JSON.stringify(buildWidgetSnapshot(pack.profile, pack.rows)) });
-    scheduleNativeReminders(pack);
-    maybeStartMealActivity(WB);
+    if(typeof SF_NOTIFICATIONS_ENABLED==='undefined'||SF_NOTIFICATIONS_ENABLED){scheduleNativeReminders(pack);maybeStartMealActivity(WB);}
   }catch(e){ console.warn('Синхронизация с виджетами не удалась', e); }
   finally{ nativeSyncRunning = false; }
 }
@@ -5129,6 +5165,7 @@ function maybeStartMealActivity(WB){
   if(stale) WB.endMealActivity();
 }
 function initMealTimerUI(){
+  if(!SF_NOTIFICATIONS_ENABLED){document.getElementById('meal-timer-btn').style.display='none';return;}
   const btn = document.getElementById('meal-timer-btn');
   if(!nativePlugin('WidgetBridge')) return;
   btn.style.display = '';

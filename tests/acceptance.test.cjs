@@ -17,7 +17,7 @@ function response() {
 function fixture({ env = {}, user = { id: 'fixture-user' }, authError = null, db = {}, fetch: upstream } = {}) {
   const calls = { auth: [], fetch: [] };
   const context = vm.createContext({
-    process: { env: { SUPABASE_URL: 'https://audit.invalid', SUPABASE_ANON_KEY: 'sb_publishable_fixture', GEMINI_API_KEY: 'fixture', CRON_SECRET: 'fixture-cron', ...env } },
+    process: { env: { SUPABASE_URL: 'https://audit.invalid', SUPABASE_ANON_KEY: 'sb_publishable_fixture', SF_ENABLE_AI_CHAT:'1', SF_ENABLE_AUTOMATIONS:'1', SF_ENABLE_NOTIFICATIONS:'1', GEMINI_API_KEY: 'fixture', CRON_SECRET: 'fixture-cron', ...env } },
     Buffer, Date, Intl, URL, AbortSignal, console: { warn() {}, error() {} },
     fetch: async (...args) => { calls.fetch.push(args); return upstream ? upstream(...args) : { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Fixture reply' }] } }] }) }; },
   });
@@ -278,4 +278,18 @@ test('public fixture config builds assets, prevents script-breakout, and remains
     for (const m of built.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) if (!m[1].includes('src=')) new vm.Script(m[2]);
     for (const file of ['manifest.json', 'sw.js', 'scriptable/smart-fridge.js', 'icons/icon-512.png']) assert.ok(fs.existsSync(path.join(f.dir, 'dist', file)));
   } finally { f.cleanup(); }
+});
+test('production AI and scheduled handlers fail closed before provider or database work',async()=>{
+  for(const file of ['api/dietitian-chat.js','api/dietitian-weekly-summary.js','api/send-expiry-notifications.js']){
+    const f=fixture({env:{SF_ENABLE_AI_CHAT:'',SF_ENABLE_AUTOMATIONS:'',SF_ENABLE_NOTIFICATIONS:''},db:{from(){throw Error('DB must not be read');}}});
+    const r=response();await f.load(file)({method:'POST',headers:{authorization:file.includes('dietitian-chat')?'Bearer fixture-token':'Bearer fixture-cron'},body:{message:'fixture'}},r);
+    assert.equal(r.statusCode,503);assert.equal(f.calls.fetch.length,0);
+  }
+  const cfg=JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8'));assert.deepEqual(cfg.crons,[]);
+});
+test('release status reports disabled nutrition, AI and broadcasts without secrets',async()=>{
+  const f=fixture({env:{SF_ENABLE_AI_CHAT:'',SF_ENABLE_AUTOMATIONS:'',SF_ENABLE_NOTIFICATIONS:'',VERCEL_GIT_COMMIT_SHA:'fixture-sha'}}),r=response();
+  await f.load('api/release-status.js')({method:'GET'},r);assert.equal(r.statusCode,200);assert.equal(r.body.commit,'fixture-sha');
+  for(const key of ['nutritionEnabled','aiEnabled','notificationsEnabled','automationsEnabled'])assert.equal(r.body[key],false);
+  assert.ok(!JSON.stringify(r.body).includes('fixture-cron'));
 });

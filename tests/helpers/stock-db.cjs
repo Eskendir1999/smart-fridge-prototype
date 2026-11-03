@@ -8,7 +8,7 @@ const other='10000000-0000-4000-8000-000000000002';
 const stranger='10000000-0000-4000-8000-000000000003';
 const household='20000000-0000-4000-8000-000000000001';
 const otherHousehold='20000000-0000-4000-8000-000000000002';
-async function createStockDb({database}={}){
+async function createStockDb({database,beforeStockMigration}={}){
   const db=database||new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth;
     create table auth.users(id uuid primary key);
@@ -18,13 +18,14 @@ async function createStockDb({database}={}){
     grant execute on all functions in schema auth to authenticated,anon;`);
   for(const file of ['supabase-schema.sql','supabase-household-migration.sql','supabase-household-security-migration.sql','supabase-food-log-migration.sql',
     ...fs.readdirSync(path.join(root,'supabase/migrations')).map(f=>'supabase/migrations/'+f)]){
+    if(file.startsWith('supabase/migrations/') && beforeStockMigration){await beforeStockMigration(db);beforeStockMigration=null;}
     await db.exec(fs.readFileSync(path.join(root,file),'utf8'));
   }
   await db.exec(`insert into auth.users values('${user}'),('${other}'),('${stranger}');
     insert into public.households(id,invite_code) values('${household}','FIRST1'),('${otherHousehold}','OTHER2');
     insert into public.household_members(user_id,household_id) values('${user}','${household}'),('${other}','${household}'),('${stranger}','${otherHousehold}');
     grant usage on schema public to authenticated,anon;
-    grant select,insert,update,delete on all tables in schema public to authenticated;`);
+    grant select on all tables in schema public to authenticated;`);
   async function rpc(kind,body,{id=randomUUID(),as=user,hh=household,role='authenticated'}={}){
     return db.transaction(async tx=>{
       await tx.exec(`set local role ${role}`);

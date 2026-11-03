@@ -95,6 +95,16 @@ async function main(){
     const hidden=await c.from('fridge_items').select('*').eq('household_id',household);assert.deepEqual(hidden.data,[]);
     const privateRead=await fetch(apiOrigin+'/stock_operations',{headers:{Authorization:'Bearer '+browserToken,'Accept-Profile':'sf_private'}});assert.equal(privateRead.status,406);
     check('real JWT signature/expiry + anon + household RLS + private-schema boundary');
+    const legacy=await a.from('fridge_items').update({qty_num:1}).eq('id',visibleId);assert.equal(legacy.error?.code,'42501');
+    assert.equal(Number((await row(visibleId)).qty_num),500);
+    check('old client direct API writes are denied; stock RPC remains the only write path');
+    await pool.query('update sf_private.stock_release_control set enabled=false');
+    const pauseOp=randomUUID();
+    try{const paused=await rpc(a,'used',spend(visibleId),pauseOp);assert.equal(paused.error?.code,'55000');assert.equal(Number((await row(visibleId)).qty_num),500);}
+    finally{await pool.query('update sf_private.stock_release_control set enabled=true');}
+    await must(rpc(a,'used',spend(visibleId),pauseOp));assert.equal(Number((await row(visibleId)).qty_num),300);
+    check('pause/resume gate preserves stock and reuses the pending operation ID');
+
     // Hold the same household lock, then confirm TWO separate API DB sessions wait
     // before releasing them. This proves actual overlap, rather than timing two calls.
     async function race(start){
@@ -191,6 +201,17 @@ async function main(){
     await page.waitForFunction(()=>/Сохранено/.test(document.getElementById('stock-save-message').textContent));assert.equal(Number((await row(id)).qty_num),250);
     await page.click('#stock-undo-btn');await page.waitForFunction(()=>/отменено/.test(document.getElementById('stock-save-message').textContent));assert.equal(Number((await row(id)).qty_num),300);
     assert.deepEqual(pageErrors,[]);check('stale editor + background refresh keeps draft, rejects overwrite, refresh shows 300 g, corrected edit/undo keep later usage');
+    await page.evaluate(()=>{history=['cart'];showScreen('cart',false);renderCart();});
+    await page.fill('#cart-add-name','Synthetic manual shopping');await page.fill('#cart-add-qty','2');await page.selectOption('#cart-add-unit','кг');transportMode='fail-before';await page.click('#cart-add-btn');
+    await page.waitForFunction(()=>/Не удалось/.test(document.getElementById('stock-save-message').textContent));assert.equal(await page.inputValue('#cart-add-name'),'Synthetic manual shopping');
+    await page.click('#stock-retry-btn');await page.waitForFunction(()=>/Сохранено/.test(document.getElementById('stock-save-message').textContent));
+    const manualOp=requests.at(-1).op_id;assert.equal((await pool.query('select qty_num::int n from cart_items where id=$1',[manualOp])).rows[0].n,2);
+    await page.click('#stock-undo-btn');await page.waitForFunction(()=>/отменено/.test(document.getElementById('stock-save-message').textContent));
+    assert.equal((await pool.query('select count(*)::int n from cart_items where id=$1',[manualOp])).rows[0].n,0);
+    assert.equal(await page.locator('[data-nav="diet"]:visible').count(),0);assert.equal(await page.locator('[data-nav="recipes"]:visible').count(),0);
+    assert.deepEqual(pageErrors,[]);check('manual shopping remains available without nutrition, retains failed draft and supports retry/undo');
+    await pool.query(fs.readFileSync(path.join(root,'tests/production-db-smoke.sql'),'utf8'));
+    check('production rollback-only smoke validates synthetic families and leaves no test records');
     const out=process.env.SF_EVIDENCE_DIR||'/tmp/sf-stock-http-evidence';fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'mobile-real-http-undo.png'),fullPage:true});
     fs.writeFileSync(path.join(out,'http-summary.json'),JSON.stringify({checks,postgres:(await pool.query('select version()')).rows[0].version,postgrest:logs[0],pageErrors},null,2));
     fs.writeFileSync(path.join(out,'postgrest.log'),logs.join(''));
