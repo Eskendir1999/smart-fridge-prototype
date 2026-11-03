@@ -1,8 +1,13 @@
 // Версия кэша: поднимайте при каждом деплое, чтобы старый app shell не залипал у пользователей.
-const CACHE_NAME = 'smart-fridge-nutrition-stage2-safe-20261103';
+const CACHE_NAME = 'smart-fridge-nutrition-stage2-safe-dinner-review-20261103';
 const APP_SHELL = [
   '/',
   '/manifest.json',
+  '/dinner/model.js',
+  '/dinner/queue.js',
+  '/dinner/ui.js',
+  '/dinner/catalog.json',
+  '/dinner/style.css',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png'

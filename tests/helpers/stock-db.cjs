@@ -8,15 +8,17 @@ const other='10000000-0000-4000-8000-000000000002';
 const stranger='10000000-0000-4000-8000-000000000003';
 const household='20000000-0000-4000-8000-000000000001';
 const otherHousehold='20000000-0000-4000-8000-000000000002';
-async function createStockDb({database,beforeStockMigration}={}){
-  const db=database||new PGlite();
-  await db.exec(`create role anon; create role authenticated; create schema auth;
+async function createStockDb({database,beforeStockMigration,enableDinner=false}={}){
+  const db=database||await PGlite.create();
+  await db.exec(`do $$begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if;
+    if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if; end$$; create schema auth;
     create table auth.users(id uuid primary key);
     create function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;
     create function auth.role() returns text language sql stable as $$select current_user::text$$;
     grant usage on schema auth to authenticated,anon;
     grant execute on all functions in schema auth to authenticated,anon;`);
   for(const file of ['supabase-schema.sql','supabase-household-migration.sql','supabase-household-security-migration.sql','supabase-food-log-migration.sql',
+    'supabase-family-profiles-migration.sql','supabase-diet-mode-migration.sql',
     ...fs.readdirSync(path.join(root,'supabase/migrations')).map(f=>'supabase/migrations/'+f)]){
     if(file.startsWith('supabase/migrations/') && beforeStockMigration){await beforeStockMigration(db);beforeStockMigration=null;}
     await db.exec(fs.readFileSync(path.join(root,file),'utf8'));
@@ -26,6 +28,11 @@ async function createStockDb({database,beforeStockMigration}={}){
     insert into public.household_members(user_id,household_id) values('${user}','${household}'),('${other}','${household}'),('${stranger}','${otherHousehold}');
     grant usage on schema public to authenticated,anon;
     grant select on all tables in schema public to authenticated;`);
+  if(enableDinner){
+    // REVIEW candidate is applied only in disposable dinner fixtures, never the product migration.
+    for(const file of ['supabase-dietitian-migration.sql','review/profile-privacy.sql']) await db.exec(fs.readFileSync(path.join(root,file),'utf8'));
+    await db.exec("update sf_private.dinner_release_control set enabled=true,profile_privacy_accepted=true");
+  }
   async function rpc(kind,body,{id=randomUUID(),as=user,hh=household,role='authenticated'}={}){
     return db.transaction(async tx=>{
       await tx.exec(`set local role ${role}`);

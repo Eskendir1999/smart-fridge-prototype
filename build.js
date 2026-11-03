@@ -27,7 +27,8 @@ if (botUsername && !/^[A-Za-z0-9_]{5,32}$/.test(botUsername)) throw new Error('I
 // Replace complete JS literals, not raw values inside quotes or HTML script tags.
 const jsLiteral = value => JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 function injectPublicConfig(text) {
-  return text.replaceAll("'__SUPABASE_URL__'", jsLiteral(supabaseUrl))
+  return text.replaceAll("'__DINNER_ENABLED__'", jsLiteral(process.env.SF_ENABLE_DINNER === '1' ? '1' : '0'))
+    .replaceAll("'__SUPABASE_URL__'", jsLiteral(supabaseUrl))
     .replaceAll("'__SUPABASE_ANON_KEY__'", jsLiteral(publicKey))
     .replaceAll("'__VAPID_PUBLIC_KEY__'", jsLiteral(process.env.VAPID_PUBLIC_KEY || ''))
     .replaceAll("'__TELEGRAM_BOT_USERNAME__'", jsLiteral(botUsername));
@@ -50,5 +51,7 @@ fs.mkdirSync(path.join(distDir, 'scriptable'), { recursive: true });
 const widgetJs = injectPublicConfig(fs.readFileSync(path.join(srcDir, 'scriptable', 'smart-fridge.js'), 'utf8'));
 fs.writeFileSync(path.join(distDir, 'scriptable', 'smart-fridge.js'), widgetJs);
 fs.cpSync(path.join(srcDir, 'icons'), path.join(distDir, 'icons'), { recursive: true });
+
+fs.cpSync(path.join(srcDir, 'dinner'), path.join(distDir, 'dinner'), { recursive: true });
 
 console.log('Build complete ->', distDir);
