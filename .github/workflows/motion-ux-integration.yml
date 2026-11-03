@@ -1,0 +1,55 @@
+name: SF motion UX integration (isolated)
+on:
+  push:
+    branches:
+      - qa/sf-motion-ux-combined-20261103
+permissions:
+  contents: read
+jobs:
+  combined-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compose review-only motion patches on UX branch
+        run: |
+          git config user.name "SF QA"
+          git config user.email "sf-qa@example.invalid"
+          for sha in \
+            662d3e92875f07b768e8a5271deac692d1b3b892 \
+            beb9e770e9ba8e046547b4742e144c51be8c4f92 \
+            b464ab59fe79735a440b2baee45bfa3874c10726 \
+            891d93f46fe15443d7a6c4b8dd5b21eceb7cf129 \
+            741f63e18e62da2e5905641642a743ed16894001 \
+            54146f6bf1926b711ff9e33e8aa9557c7b6f0475 \
+            ac2a89fa1d517287ed76a1ec1d3fcff7ae057d8f; do
+            git cherry-pick --no-edit "$sha"
+          done
+          git diff --check HEAD~7 HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          SUPABASE_URL: https://fixture.supabase.test
+          SUPABASE_ANON_KEY: sb_publishable_fixture
+      - run: npx playwright install --with-deps chromium
+      - name: Visual regression check (5 widths x 2 motion preferences)
+        run: node tests/motion-visual-browser.cjs
+        env:
+          SF_EVIDENCE_DIR: ./test-evidence/motion
+      - name: Existing stock browser flows against isolated test database
+        run: npm run test:browser
+        env:
+          SF_EVIDENCE_DIR: ./test-evidence/stock
+      - name: Save screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sf-motion-ux-combined-qa
+          path: test-evidence/
