@@ -34,7 +34,7 @@ const {createStockDb,user,household}=require('./helpers/stock-db.cjs');
       if(url.pathname==='/fixture/supabase.js'){res.setHeader('Content-Type','application/javascript');return res.end(stub);}
       const file=url.pathname==='/'?'dist/index.html':'dist'+url.pathname;
       if(!fs.existsSync(path.join(__dirname,'..',file))){res.statusCode=404;return res.end();}
-      res.setHeader('Content-Type',file.endsWith('html')?'text/html':file.endsWith('js')?'application/javascript':file.endsWith('json')?'application/json':'image/png');
+      res.setHeader('Content-Type',file.endsWith('html')?'text/html':file.endsWith('js')?'application/javascript':file.endsWith('css')?'text/css':file.endsWith('json')?'application/json':'image/png');
       res.end(fs.readFileSync(path.join(__dirname,'..',file)));
     }catch(e){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data:null,error:{message:e.message,code:e.code}}));}
   });
