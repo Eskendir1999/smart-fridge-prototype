@@ -93,6 +93,43 @@ async function main(){
   const persisted=await page.evaluate(()=>JSON.stringify(Object.entries(localStorage).filter(([k])=>k.startsWith('sf_dinner_v1_'))));assert.ok(!persisted.includes(profile));assert.ok(persisted.includes('resolve'));
   await page.evaluate(({token,user})=>localStorage.setItem('sb-127-auth-token',JSON.stringify({access_token:token,refresh_token:'fixture-unused',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:user,email:'fixture@example.test',role:'authenticated',aud:'authenticated'}})),{token,user});await page.reload();await page.waitForFunction(()=>userDataLoaded);await page.click('.nav-item[data-nav=recipes]');await page.click('#dinner-retry');await page.waitForFunction(()=>document.querySelector('#dinner-status').textContent==='Сохранено.');assert.equal(requests.at(-1).kind,'resolve');assert.equal(requests.at(-1).op_id,lostOnLogout);assert.deepEqual(requests.at(-1).body,{});assert.equal(Number((await row(cucumber)).qty_num),400);
   await page.click('#dinner-undo');await page.waitForFunction(()=>/отменён/.test(document.querySelector('#dinner-status').textContent));assert.equal(Number((await row(cucumber)).qty_num),500);check('logout clears personal context and private intent; opaque resolution after login never repeats use');
+  // Explicitly install the review-only My Data bridge in this disposable DB.
+  // The product helper/migration never installs it or accepts its rollout.
+  await pool.query(fs.readFileSync(path.join(root,'review/dinner-my-data.sql'),'utf8'));
+  let exported;for(let i=0;i<40;i++){exported=await a.rpc('sf_dinner_my_data');if(exported.error?.code!=='PGRST202')break;await pause(100)}
+  assert.equal(exported.error,null);assert.ok(exported.data.operations.some(o=>o.id===lostOnLogout));
+  const bExport=await b.rpc('sf_dinner_my_data');assert.equal(bExport.error,null);assert.ok(!bExport.data.operations.some(o=>o.id===lostOnLogout));
+  assert.ok(!JSON.stringify(exported.data).includes('Other private'));assert.ok(!JSON.stringify(exported.data).includes('before_lots'));
+  check('REVIEW own dinner export uses real HTTP; another member cannot export its private context');
+
+  // My Data sends this event before a deletion can have an unknown outcome.
+  await page.locator('[data-dinner-profile="'+profile+'"]').check();
+  await page.selectOption('#dinner-recipe','cheese-cucumber');for(let i=0;i<3;i++)await page.click('#dinner-next-step');await page.click('#dinner-cooked');await page.waitForSelector('#dinner-actual');await page.fill('[data-actual-lot="'+cucumber+'"]','100');transport='drop-after';await page.click('#dinner-confirm');await page.waitForFunction(()=>document.querySelector('#dinner-retry')&&!document.querySelector('#dinner-retry').disabled);const beforeDelete=requests.at(-1).op_id;
+  await page.evaluate(()=>window.dispatchEvent(new Event('sf:personal-data-deleting')));
+  const cleared=await page.evaluate(()=>JSON.stringify(Object.entries(localStorage).filter(([k])=>k.startsWith('sf_dinner_v1_'))));assert.ok(!cleared.includes(profile));assert.ok(cleared.includes('resolve'));assert.doesNotMatch(await page.textContent('#recipes-list'),/Профиль для ужина/);
+  const removed=await a.from('family_profiles').delete().eq('id',profile).select('id');assert.equal(removed.error,null);assert.equal(removed.data.length,1);
+  const erased=(await pool.query('select payload,profile_context_erased_at from sf_private.dinner_operations where id=$1',[beforeDelete])).rows[0];assert.deepEqual(erased.payload,{});assert.ok(erased.profile_context_erased_at);
+  await page.click('#dinner-retry');await page.waitForFunction(()=>document.querySelector('#dinner-status').textContent==='Сохранено.');assert.equal(requests.at(-1).kind,'resolve');assert.equal(requests.at(-1).op_id,beforeDelete);assert.equal(Number((await row(cucumber)).qty_num),400);
+  await page.click('#dinner-undo');await page.waitForFunction(()=>/отменён/.test(document.querySelector('#dinner-status').textContent));assert.equal(Number((await row(cucumber)).qty_num),500);
+  assert.ok(!JSON.stringify((await a.rpc('sf_dinner_my_data')).data).includes(profile));assert.deepEqual(errors,[]);
+  check('REVIEW deletion clears browser intent and stored profile context; opaque retry and undo preserve stock');
+
+  // Pause consume after it holds the profile SHARE lock. DELETE must wait and
+  // erase the newly committed receipt too, rather than miss its private input.
+  await pool.query("insert into family_profiles(id,household_id,created_by,profile_owner_user_id,name,sex,age,height_cm,start_weight_kg) values($1,$2,$3,$3,'Race private','male',30,170,70)",[profile,household,user]);
+  const raceId=randomUUID(),lockKey='dinner-profile-erase-'+raceId;
+  await pool.query(`create function public.pause_dinner_privacy() returns trigger language plpgsql as $$begin perform pg_advisory_xact_lock(hashtextextended('${lockKey}',0));return new;end$$;create trigger pause_dinner_privacy before insert on public.dinner_events for each row when(new.id='${raceId}'::uuid) execute function public.pause_dinner_privacy()`);
+  const hold=await pool.connect();await hold.query('begin');await hold.query('select pg_advisory_xact_lock(hashtextextended($1,0))',[lockKey]);
+  try{
+  const inFlight=Promise.resolve(rpc(a,'consume',await expense(),raceId));
+  let waits=0;for(let i=0;i<40;i++){waits=Number((await pool.query("select count(*) n from pg_locks where locktype='advisory' and not granted")).rows[0].n);if(waits)break;await pause(50)}assert.ok(waits);
+  const deleting=Promise.resolve(a.from('family_profiles').delete().eq('id',profile).select('id'));
+  let blockedDeletes=0;for(let i=0;i<40;i++){blockedDeletes=Number((await pool.query("select count(*) n from pg_locks where locktype='transactionid' and not granted")).rows[0].n);if(blockedDeletes)break;await pause(50)}assert.ok(blockedDeletes,'DELETE waits for in-flight profile lock');
+  await hold.query('commit');assert.equal((await inFlight).error,null);assert.equal((await deleting).data.length,1);
+  assert.deepEqual((await pool.query('select payload from sf_private.dinner_operations where id=$1',[raceId])).rows[0].payload,{});
+  const acknowledged=await rpc(a,'resolve',{},raceId);assert.equal(acknowledged.data.operation_state,'saved');await must(rpc(a,'undo',{operation_id:raceId}));
+  check('REVIEW simultaneous profile deletion waits for consume, then scrubs its new receipt without losing undo');
+  }finally{await hold.query('rollback');hold.release();}
   fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify({checks,postgres:(await pool.query('select version()')).rows[0].version,errors,requests:requests.map(({op_id,kind})=>({op_id,kind}))},null,2));
  }finally{if(browser)await browser.close();if(server)await new Promise(r=>server.close(r));if(pgrst&&pgrst.exitCode===null){pgrst.kill('SIGTERM');await exit;}if(pool)await pool.end();await admin.query('drop database if exists '+name+' with(force)');await admin.end();}
 }

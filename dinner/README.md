@@ -106,3 +106,13 @@ SF_TEST_POSTGREST_BIN; при необходимости SF_TEST_POSTGREST_LIBRA
 не в продуктовую migration. Это не managed Auth/pg_advisors/physical-device acceptance.
 
 Точные результаты, не принятые зависимости и передача: `../SF-DINNER-INTEGRATION.md`.
+
+## Дополнение к «Мои данные»
+
+`../review/dinner-my-data.sql` — отдельный review-кандидат: собственный экспорт dinner-действий
+и очистка исходного запроса при удалении его подтверждённого профиля. UUID/undo/общий запас сохраняются.
+Выпускной My Data UI должен послать `sf:personal-data-deleting` до запроса удаления, а затем
+обновить snapshot; dinner очищает личный ввод и разрешает незавершённое по opaque ID. Сам UI Stage3
+здесь не включён. Контракт, границы удаления и порядок приёмки —
+`../SF-DINNER-PERSONAL-DATA-REVIEW.md`. Полный набор: 192 теста, 14 групп dinner HTTP, включая
+три явно обозначенных review-проверки. Product migration/helper этот кандидат автоматически не ставят.

@@ -37,7 +37,7 @@ root.SFDinnerUI={mount({root:host,session,onSnapshot,stockLocked}){
   if(!scope()){host.append(E('p','Войдите, чтобы проверить свои запасы.'));return;}
   const q=queue.view(),status=E('p',q.busy?'Сохраняем…':loading?'Проверяем данные…':error||q.message||(q.request?'Результат сохранения пока неизвестен. Повторите ту же операцию.':''),{id:'dinner-status',role:'status','aria-live':'polite'});host.append(status);
   if(q.corrupt)host.append(E('p','Не удалось прочитать сохранённую операцию на устройстве. Сверьте остатки перед дальнейшими изменениями.'));
-  if(q.request){if(q.redacted)host.append(E('p','Личный ввод очищен при выходе. Проверьте результат предыдущего действия перед новым вводом.'));
+  if(q.request){if(q.redacted)host.append(E('p','Личный ввод очищен. Проверьте результат предыдущего действия перед новым вводом.'));
    const retry=button(q.request.kind==='resolve'?'Проверить результат':'Повторить сохранение',safe(()=>queue.retry()),'dinner-retry');retry.disabled=q.busy||stockLocked();host.append(retry);
    if(q.rejected)host.append(button('Обновить данные и исправить',safe(async()=>{if(queue.discardRejected()){resetCooking();await load();}}),'dinner-reset'));}
   if(q.lastConsumeId&&!q.request){host.append(button('Отменить расход',safe(()=>queue.start('undo',{operation_id:q.lastConsumeId})),'dinner-undo'));}
@@ -108,6 +108,9 @@ root.SFDinnerUI={mount({root:host,session,onSnapshot,stockLocked}){
    row.append(button('Куплено',safe(()=>queue.start('buy',{id:c.id,expected:c,expires_on:expiry.value})), 'dinner-buy-'+c.id));box.append(row);});parent.append(box);}
  window.addEventListener('sf:inventory',()=>{if(loading)needsRefresh=true;else if(!queue.pending()||!snapshot||loadedScope!==key()||!catalog)load();else render();});
  function clear(){queue.redact();generation++;snapshot=null;loadedScope='';selected=[];recipeId=null;step=0;actual=null;drafts={};actualDraft={};purchaseDraft={};error='';render();}
+ // My Data must emit this before sending a deletion, including an uncertain one.
+ // Resolve any pending receipt by opaque ID; never keep its deleted profile input.
+ window.addEventListener('sf:personal-data-deleting',clear);
  load();return {pending:()=>queue.pending(),refresh:load,clear};
 }};
 })(globalThis);
