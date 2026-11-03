@@ -1,6 +1,6 @@
 // Telegram вызывает этот адрес на каждое сообщение боту Smart Fridge.
 //   /start <код>  привязывает чат к аккаунту (код выдаёт кнопка «Подключить Telegram» в приложении)
-//   /status       что скоро испортится, что купить и когда следующее взвешивание
+//   /status       что скоро испортится и что купить
 //   /unlink       отключает уведомления
 //
 // Нужные переменные окружения: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET (тот же секрет надо
@@ -38,7 +38,7 @@ async function handleStart(sb, chatId, token) {
     await sendTelegramMessage(chatId, 'Не получилось подключить. Попробуйте ещё раз через минуту.');
     return;
   }
-  await sendTelegramMessage(chatId, '✅ Telegram подключён. Сюда будут приходить напоминания о сроках годности и взвешивании.\n\n/status — сводка прямо сейчас\n/unlink — отключить');
+  await sendTelegramMessage(chatId, '✅ Telegram подключён. Сюда будут приходить напоминания о сроках годности, когда уведомления будут включены.\n\n/status — сводка прямо сейчас\n/unlink — отключить');
 }
 
 async function handleStatus(sb, chatId) {

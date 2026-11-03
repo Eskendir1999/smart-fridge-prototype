@@ -63,3 +63,24 @@
 @media(prefers-reduced-motion:reduce){.sf-home-grid *,#screen-fridge .sf-stock-tools *{animation:none!important;scroll-behavior:auto!important}}
 
 .sf-manual-error{color:#a52b39;font-size:.875rem;margin:.25rem 0 .625rem}
+
+/* Interactive review improvements after stock reliability rollout. */
+.sf-home-disabled{background:#fff;border:1px solid var(--line);padding:1.25rem;border-radius:20px}
+.sf-home-disabled h2{font-family:Inter,system-ui,Arial,sans-serif;font-size:1.25rem;margin:0 0 .65rem}
+.sf-home-disabled p{font-size:.9375rem;line-height:1.55;color:var(--sf-muted-readable);margin:0 0 1rem}
+.sf-unavailable-label{font-size:.8125rem;font-weight:700;color:#5b655d;background:#f1f3ee;border-radius:999px;padding:.45rem .75rem}
+.side-item:disabled,.nav-item:disabled{opacity:.48;cursor:not-allowed}
+.bottom-nav .nav-item:disabled{display:none}
+.sf-manual-fields{background:var(--surface);border:1px solid var(--line);padding:1rem;border-radius:18px;margin:.875rem 0 1rem}
+.sf-manual-fields .form-field{margin-bottom:1rem}
+.sf-manual-fields .form-field label{font-size:.875rem;font-weight:700;color:var(--ink)}
+.sf-manual-fields input,.sf-manual-fields select{width:100%;min-height:48px;font-size:1rem;border:1.5px solid #a9b8ad;border-radius:12px;color:var(--ink);background:var(--surface);padding:.6rem .75rem}
+.sf-manual-fields input:focus-visible,.sf-manual-fields select:focus-visible{outline:3px solid var(--sf-focus);outline-offset:2px}
+.sf-manual-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(105px,1fr);gap:1rem}
+.sf-manual-hint{font-size:.875rem;color:var(--sf-muted-readable);line-height:1.5;margin:.25rem 0 .875rem}
+.sf-manual-divider{font-size:.875rem;font-weight:700;color:var(--sf-muted-readable);margin:1rem 0 .75rem}
+#manual-custom-error[hidden]{display:none!important}
+#manual-custom-error{font-size:.875rem;line-height:1.5;color:#9e2931;margin:0 0 .75rem}
+#fridge-list .product-row:focus-visible{outline:3px solid var(--sf-focus);outline-offset:3px}
+#manual-sheet{scrollbar-gutter:stable}
+@media(max-width:480px){.sf-manual-grid{grid-template-columns:1fr 105px;gap:.625rem}.sf-manual-fields{padding:.875rem}}

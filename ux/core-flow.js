@@ -37,14 +37,24 @@
       summary.prepend(title);
       primary.append(summary,expiring);
 
-      const mealsTitle=meals.querySelector('.section-head h2');
-      if(mealsTitle)mealsTitle.textContent='2. Приготовить · план питания';
-      const mealHint=document.createElement('p');
-      mealHint.className='sf-home-subhead';
-      mealHint.textContent='План питания — не подтверждение наличия всех ингредиентов. Проверяйте состав перед приготовлением.';
-      const mealHead=meals.querySelector('.section-head');
-      if(mealHead)mealHead.insertAdjacentElement('afterend',mealHint);
-      secondary.append(meals);
+      const nutritionEnabled=typeof SF_NUTRITION_ENABLED!=='undefined' && SF_NUTRITION_ENABLED;
+      if(nutritionEnabled){
+        const mealsTitle=meals.querySelector('.section-head h2');
+        if(mealsTitle)mealsTitle.textContent='2. Приготовить · план питания';
+        const mealHint=document.createElement('p');
+        mealHint.className='sf-home-subhead';
+        mealHint.textContent='План питания — не подтверждение наличия всех ингредиентов. Проверяйте состав перед приготовлением.';
+        const mealHead=meals.querySelector('.section-head');
+        if(mealHead)mealHead.insertAdjacentElement('afterend',mealHint);
+        secondary.append(meals);
+      }else{
+        meals.hidden=true;
+        secondary.append(meals);
+        const unavailable=document.createElement('section');
+        unavailable.className='sf-home-disabled';
+        unavailable.innerHTML='<h2>2. Приготовить</h2><p>Питание и подбор блюд временно недоступны: идёт проверка. Продукты и покупки продолжают работать.</p><span class="sf-unavailable-label">Пока недоступно</span>';
+        secondary.append(unavailable);
+      }
 
       const buy=document.createElement('section');
       buy.className='sf-home-buy';
@@ -66,7 +76,7 @@
       wrapper.className='sf-suggestions';
       const caption=document.createElement('p');
       caption.className='sf-disclaimer';
-      caption.textContent='Идеи для вдохновения. Полный состав и количество ингредиентов пока не проверены.';
+      caption.textContent=typeof SF_NUTRITION_ENABLED!=='undefined' && SF_NUTRITION_ENABLED?'Идеи для вдохновения. Проверяйте ингредиенты и количество.':'Подбор блюд временно недоступен. Сохранённые продукты и покупки доступны.';
       if(heading)heading.textContent='Идеи блюд';
       if(headingSection)wrapper.appendChild(headingSection);
       wrapper.appendChild(caption);
@@ -98,6 +108,12 @@
         const rows=Array.from(list.querySelectorAll('.product-row[data-list]'));
         let shown=0;
         for(const row of rows){
+          if(!row.dataset.sfKeyboardReady){
+            row.tabIndex=0;row.setAttribute('role','button');
+            row.setAttribute('aria-label','Открыть продукт: '+(row.querySelector('.product-info .n')?.textContent||''));
+            row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();row.click();}});
+            row.dataset.sfKeyboardReady='yes';
+          }
           const name=row.querySelector('.product-info .n')?.textContent||'';
           const hit=name.toLocaleLowerCase('ru').includes(needle);
           row.hidden=!hit;
@@ -118,6 +134,13 @@
       const text=Array.from(button.childNodes).find(n=>n.nodeType===Node.TEXT_NODE && n.textContent.trim());
       if(text)text.textContent=label;
     });
+    if(typeof SF_NUTRITION_ENABLED!=='undefined' && !SF_NUTRITION_ENABLED){
+      document.querySelectorAll('.side-item[data-nav="diet"],.side-item[data-nav="recipes"],.nav-item[data-nav="diet"],.nav-item[data-nav="recipes"]').forEach(button=>{
+        button.disabled=true;
+        button.title='Функция пока проходит проверку';
+        button.setAttribute('aria-label',button.textContent.trim()+' — пока недоступно');
+      });
+    }
     const sidebar=home.closest('#app')?.querySelector('.sidebar');
     const visionNav=sidebar?.querySelector('.side-item[data-nav="vision"]');
     const profileNav=sidebar?.querySelector('.side-item[data-nav="profile"]');
@@ -140,50 +163,17 @@
       edit.parentNode.insertBefore(use,edit);
     }
 
-    // Mobile add sheet: label the custom field and make manual entry discoverable first.
+    // Product entry is implemented in the native manual sheet. Keep RPC callbacks intact.
     const manual=document.getElementById('manual-sheet');
-    const custom=document.getElementById('manual-custom-name');
-    const customButton=document.getElementById('manual-custom-add-btn');
-    if(manual&&custom&&customButton){
-      custom.required=true;
-      custom.setAttribute('aria-required','true');
-      const nameError=document.createElement('p');
-      nameError.className='sf-manual-error';
-      nameError.id='sf-manual-error';
-      nameError.setAttribute('role','alert');
-      nameError.hidden=true;
-      custom.insertAdjacentElement('afterend',nameError);
-      custom.addEventListener('input',()=>{nameError.hidden=true;nameError.textContent='';custom.removeAttribute('aria-invalid');});
-      customButton.addEventListener('click',event=>{
-        if(custom.value.trim())return;
-        event.stopImmediatePropagation();
-        nameError.textContent='Введите название продукта';
-        nameError.hidden=false;
-        custom.setAttribute('aria-invalid','true');
-        custom.setAttribute('aria-describedby','sf-manual-note sf-manual-error');
-        custom.focus();
-      },true);
-      const field=custom.closest('.form-field');
-      const checklist=document.getElementById('manual-checklist');
-      const checklistLabel=checklist?.previousElementSibling;
-      const formHint=manual.querySelector('p');
-      const anchor=checklistLabel || checklist;
-      if(anchor&&field){
-        manual.insertBefore(field,anchor);
-        manual.insertBefore(customButton,anchor);
-        const note=document.createElement('p');
-        note.className='sf-manual-note';
-        note.id='sf-manual-note';
-        note.textContent='Введите название, затем уточните количество и дату в карточке продукта. Вы также можете выбрать товар из списка ниже.';
-        manual.insertBefore(note,anchor);
-        const label=field.querySelector('label');
-        if(label){label.htmlFor='manual-custom-name';label.textContent='Название продукта';}
-        custom.setAttribute('aria-describedby','sf-manual-note');
+    const clearError=()=>{
+      const err=document.getElementById('manual-custom-error');
+      if(err){err.textContent='';err.hidden=true;}
+      for(const id of ['manual-custom-name','manual-custom-qty'])document.getElementById(id)?.removeAttribute('aria-invalid');
+    };
+    if(manual){
+      for(const id of ['manual-custom-name','manual-custom-qty','manual-custom-unit','manual-custom-expiry']){
+        document.getElementById(id)?.addEventListener('input',clearError);
       }
-      if(formHint)formHint.style.color='var(--sf-muted-readable)';
-      const checklistLabelText=checklistLabel?.tagName==='LABEL'?checklistLabel:null;
-      if(checklistLabelText){checklistLabelText.textContent='Или выберите продукты из списка:';checklistLabelText.removeAttribute('for');}
-      checklist?.setAttribute('aria-label','Выбрать продукты из списка');
     }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

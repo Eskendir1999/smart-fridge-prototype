@@ -36,3 +36,15 @@ test('mobile usability and reduced motion are explicitly handled',()=>{
   assert.match(js,/aria-live/);
   assert.match(css,/min-height:48px/);
 });
+
+test('the manual form requests quantity and honest optional expiration',()=>{
+  for(const id of ['manual-custom-qty','manual-custom-unit','manual-custom-expiry','manual-custom-error'])assert.ok(html.includes('id="'+id+'"'));
+  assert.match(html,/const raw=\(quantityField\?\.value/);
+  assert.match(html,/qtyNum:quantity/);
+  assert.match(html,/expiresOn:dateField\?\.value\|\|null/);
+});
+test('unavailable nutrition is not presented as enabled',()=>{
+  assert.match(js,/SF_NUTRITION_ENABLED/);
+  assert.match(js,/button\.disabled=true/);
+  assert.match(js,/Пока недоступно/);
+});
