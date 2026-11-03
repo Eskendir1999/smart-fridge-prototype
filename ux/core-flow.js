@@ -49,6 +49,7 @@
       const buy=document.createElement('section');
       buy.className='sf-home-buy';
       buy.innerHTML='<h2>3. Купить</h2><p>Список покупок обновляется после подтверждённого сохранения. Предложенные ингредиенты не добавляются автоматически.</p><button type="button" class="secondary-btn" data-nav="cart">Открыть покупки</button>';
+      buy.querySelector('[data-nav="cart"]').addEventListener('click',()=>document.querySelector('.side-item[data-nav="cart"]')?.click());
       secondary.append(buy,lowStock);
       grid.append(primary,secondary);
       home.insertBefore(grid,saveBanner);
