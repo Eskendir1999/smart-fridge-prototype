@@ -17,7 +17,13 @@ function createTransaction({pool,readReceipt,verifyReadback,maxEvents=10000}={})
      const r=await db.query('SELECT grants, state FROM sf_pilot_private.pilots WHERE pilot_id=$1 FOR UPDATE',[pilotId]);
      if(!r.rows.length)return null;
      locked=pilotId;state=r.rows[0].state;grants=r.rows[0].grants;
-     return Object.hasOwn(grants,userId)?structuredClone(grants[userId]):null;
+     if(!Object.hasOwn(grants,userId))return null;
+     const grant=structuredClone(grants[userId]);
+     // Canonical membership, not the cached member flag. FOR SHARE also blocks
+     // non-key household changes until this transaction completes.
+     const membership=await db.query('SELECT household_id FROM public.household_members WHERE user_id=$1 FOR SHARE',[userId]);
+     if(typeof grant.householdId!=='string'||membership.rows.length!==1||membership.rows[0].household_id!==grant.householdId)return null;
+     return {...grant,member:true};
     },
     async getStream(g,id){scope(g);return state.streams[key(g,id)];},
     async saveStream(g,id,v){scope(g);state.streams[key(g,id)]=v;},
