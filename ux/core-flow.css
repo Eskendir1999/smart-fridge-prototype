@@ -1,0 +1,60 @@
+/* Smart Fridge · core journey UX layer
+   Source: PR #4, non-invasive presentation only. No RPC or data writes. */
+:root{
+  --sf-muted-readable:#526159;
+  --sf-focus:#286bba;
+}
+#screen-home .sf-home-intro{margin:0;padding:0 2rem 1.25rem;color:var(--sf-muted-readable);font-size:.9375rem;line-height:1.55}
+.sf-home-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,1fr);gap:1rem;align-items:start;padding:0 1rem}
+.sf-home-column{min-width:0;display:flex;flex-direction:column;gap:.5rem}
+.sf-home-grid .section{padding:1rem 1rem 1.25rem;border:1px solid var(--line);border-radius:20px;background:var(--surface);margin:0}
+.sf-home-grid .summary-card{box-shadow:none}
+.sf-home-grid .section-head h2{font-size:1.25rem}
+.sf-home-grid .hscroll{margin:0;padding:.125rem 0 .5rem;max-width:100%}
+.sf-home-grid .hscroll-wrap::after{display:none}
+.sf-home-grid .expire-card,.sf-home-grid .recipe-card{box-shadow:none;border:1px solid var(--line)}
+.sf-home-grid .chip-row{padding:0}
+.sf-home-grid .sf-home-subhead{font-family:Inter,Arial,sans-serif;font-size:.8125rem;line-height:1.5;color:var(--sf-muted-readable);margin:0 0 .75rem}
+.sf-home-buy{border:1px solid var(--line);border-radius:20px;padding:1rem;background:var(--surface)}
+.sf-home-buy h2{font-size:1.25rem;margin:0 0 .5rem}
+.sf-home-buy p{font-size:.875rem;line-height:1.5;color:var(--sf-muted-readable);margin:0 0 .75rem}
+.sf-home-buy button{width:auto}
+#screen-home .sf-home-bottom{max-width:840px;margin:1rem auto 0}
+#screen-home .sf-home-bottom .save-banner{margin:0}
+.sf-stock-tools{margin:0 1.25rem 1rem;padding:1rem;background:var(--surface);border-radius:16px;border:1px solid var(--line)}
+.sf-stock-tools label{font-size:.875rem;font-weight:700;display:block;margin-bottom:.5rem}
+.sf-stock-search{width:100%;min-height:48px;background:var(--bg);color:var(--ink);border:1.5px solid #b4beb5;border-radius:12px;padding:.75rem .875rem;font-size:1rem}
+.sf-stock-search:focus-visible,#manual-custom-name:focus-visible{outline:3px solid var(--sf-focus);outline-offset:2px}
+.sf-stock-result{font-size:.8125rem;color:var(--sf-muted-readable);margin-top:.5rem;min-height:1.2em}
+#fridge-list .product-row[hidden]{display:none!important}
+#screen-fridge .sf-suggestions{padding-top:1.25rem}
+#screen-fridge .sf-suggestions .sf-disclaimer{font-size:.8125rem;color:var(--sf-muted-readable);line-height:1.5;padding:0 1.25rem .75rem}
+#screen-fridge .sf-suggestions .suggest-row{margin:0;overflow:auto}
+#manual-sheet label[for="manual-custom-name"]{font-size:.875rem;color:var(--ink)}
+#manual-sheet .sf-manual-note{font-size:.8125rem;line-height:1.5;color:var(--sf-muted-readable);margin:.25rem 0 1rem}
+#manual-sheet .form-field input{font-size:1rem;min-height:48px}
+#manual-sheet .primary-btn,#manual-sheet .secondary-btn,#manual-sheet .sheet-cancel{min-height:48px}
+#manual-sheet #manual-checklist{max-height:min(31dvh,270px)!important}
+#stock-save-panel{position:relative!important;font-size:.875rem;line-height:1.5;color:var(--ink);border-color:#b5c4ba!important;box-shadow:none!important;max-width:min(100% - 2rem,650px)}
+.nav-item,.side-item{font-size:.875rem}
+#screen-fridge .product-info .q,#screen-home .expire-card .p-days{font-size:.8125rem;color:var(--sf-muted-readable)}
+#screen-home .section-head .link{min-height:44px;min-width:44px}
+@media(min-width:768px){
+  #screen-home .sf-home-grid{padding:0 1.5rem}
+  #screen-home .sf-home-intro{padding-left:2rem;padding-right:2rem}
+  .sf-stock-tools{margin:0 2rem 1rem}
+  #screen-fridge .sf-suggestions .sf-disclaimer{padding-left:2rem;padding-right:2rem}
+}
+@media(max-width:1023px){.sf-home-grid{grid-template-columns:1fr}.sf-home-column{gap:.75rem}}
+@media(max-width:767px){
+  #screen-home .sf-home-intro{padding:0 1.25rem 1rem}
+  .sf-home-grid{padding:0 .75rem;gap:.75rem}
+  .sf-home-grid .section{padding:1rem}
+  .sf-home-grid .summary-card{flex-wrap:wrap;gap:.65rem}
+  #screen-home .sf-home-bottom{margin:1rem .75rem 0}
+  .sf-stock-tools{margin:0 1.25rem .875rem}
+  #manual-sheet{max-height:calc(100dvh - env(safe-area-inset-top,0px) - 12px)!important;overscroll-behavior:contain}
+  #manual-sheet .sheet-cancel{margin-bottom:calc(.5rem + env(safe-area-inset-bottom,0px))}
+  .bottom-nav .nav-item[data-nav="vision"]{display:none}
+}
+@media(prefers-reduced-motion:reduce){.sf-home-grid *,#screen-fridge .sf-stock-tools *{animation:none!important;scroll-behavior:auto!important}}
