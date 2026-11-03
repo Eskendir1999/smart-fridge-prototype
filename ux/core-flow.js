@@ -145,6 +145,24 @@
     const custom=document.getElementById('manual-custom-name');
     const customButton=document.getElementById('manual-custom-add-btn');
     if(manual&&custom&&customButton){
+      custom.required=true;
+      custom.setAttribute('aria-required','true');
+      const nameError=document.createElement('p');
+      nameError.className='sf-manual-error';
+      nameError.id='sf-manual-error';
+      nameError.setAttribute('role','alert');
+      nameError.hidden=true;
+      custom.insertAdjacentElement('afterend',nameError);
+      custom.addEventListener('input',()=>{nameError.hidden=true;nameError.textContent='';custom.removeAttribute('aria-invalid');});
+      customButton.addEventListener('click',event=>{
+        if(custom.value.trim())return;
+        event.stopImmediatePropagation();
+        nameError.textContent='Введите название продукта';
+        nameError.hidden=false;
+        custom.setAttribute('aria-invalid','true');
+        custom.setAttribute('aria-describedby','sf-manual-note sf-manual-error');
+        custom.focus();
+      },true);
       const field=custom.closest('.form-field');
       const checklist=document.getElementById('manual-checklist');
       const checklistLabel=checklist?.previousElementSibling;
