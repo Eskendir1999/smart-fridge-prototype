@@ -3,7 +3,7 @@ const html=fs.readFileSync(require('node:path').join(__dirname,'../../index.html
 function fn(name){const start=html.search(new RegExp('(?:async )?function '+name+'\\('));const tail=html.slice(start);return tail.slice(0,tail.indexOf('\n}')+2);}
 function fixture({reply,storage=new Map()}={}){
   const nodes=new Map(),messages=[],calls=[];
-  const node=id=>{if(!nodes.has(id))nodes.set(id,{style:{},textContent:'',hidden:false,disabled:false,closest:()=>null});return nodes.get(id);};
+  const node=id=>{if(!nodes.has(id))nodes.set(id,{style:{},dataset:{},textContent:'',hidden:false,disabled:false,closest:()=>null});return nodes.get(id);};
   const c=vm.createContext({currentUserId:'fixture-user',currentHouseholdId:'fixture-household',crypto:{randomUUID},
     document:{getElementById:node},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},
     showToast:(...args)=>messages.push(args),applyStockSnapshot:data=>calls.push(['apply',data]),
