@@ -1,14 +1,8 @@
 // Smart Fridge: виджеты для Scriptable (бесплатная замена нативным виджетам).
 //
-// Как добавить виджет на экран:
-//   маленький    параметр «weight» (по умолчанию) — вес сейчас и линия тренда
-//   маленький    параметр «arc»                   — дуга до цели
-//   средний      любой параметр                   — корзина
-//   экран блокировки: круг, строка и прямоугольник
-// Нажатие на виджет открывает Scriptable с меню (вход, выход, предпросмотр).
-//
-// Пароль нигде не хранится: он уходит в Supabase один раз, а в связке ключей iPhone
-// остаётся только токен обновления сессии.
+// Личные виджеты временно отключены. Обновлённый скрипт не читает профиль,
+// не требует входа и при запуске удаляет свой прежний кэш замеров.
+// Уже сохранённые копии на других устройствах этим файлом не удаляются.
 
 const SUPABASE_URL = '__SUPABASE_URL__';
 const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
@@ -111,31 +105,9 @@ function parseLocalDate(iso) {
   return new Date(y, m - 1, d);
 }
 
-// Те же правила, что в приложении (buildWidgetSnapshot): виджеты показывают первый профиль семьи.
+// Personal reads are disabled regardless of the installed account.
 async function fetchSnapshot() {
-  const token = await getAccessToken();
-  const profiles = await rest('family_profiles?select=id,name,start_weight_kg,target_weight_kg,goal&order=created_at.asc&limit=1', token);
-  const profile = profiles[0];
-  if (!profile) return null;
-
-  const [rows, cart] = await Promise.all([
-    rest(`family_measurements?select=log_date,weight&profile_id=eq.${profile.id}&order=log_date.asc`, token),
-    rest(`cart_items?select=id,name&order=created_at.asc&limit=12`, token),
-  ]);
-  const weights = rows.map(r => Number(r.weight));
-  const first = rows[0], last = rows[rows.length - 1];
-  const start = Number(profile.start_weight_kg);
-  return {
-    profileName: profile.name,
-    weightNow: last ? Number(last.weight) : start,
-    weightStart: first ? Number(first.weight) : start,
-    weightGoal: (profile.goal === 'lose' && profile.target_weight_kg) ? Number(profile.target_weight_kg) : null,
-    startTs: first ? parseLocalDate(first.log_date).getTime() / 1000 : null,
-    lastWeighTs: last ? parseLocalDate(last.log_date).getTime() / 1000 : null,
-    trend: weights.slice(-20),
-    cart: cart.map(c => ({ id: String(c.id), name: c.name })),
-    updatedAt: Date.now() / 1000,
-  };
+  return null; // Personal widgets disabled until explicit disclosure and device access are accepted.
 }
 
 function cachePath() {
@@ -154,15 +126,9 @@ function writeCache(snap) {
 
 // Возвращает { snap, problem }. Без сети показываем последние данные, без входа — подсказку.
 async function loadSnapshot() {
-  try {
-    const snap = await fetchSnapshot();
-    if (snap) writeCache(snap);
-    return { snap, problem: snap ? null : 'noprofile' };
-  } catch (e) {
-    if (e instanceof AuthError) return { snap: null, problem: 'auth' };
-    const cached = readCache();
-    return { snap: cached, problem: cached ? null : 'offline' };
-  }
+  try { const { fm, path } = cachePath(); if(fm.fileExists(path)) fm.remove(path); } catch {}
+  // Never fall back to a cached personal snapshot, including on filesystem failure.
+  return {snap:null, problem:'disabled'};
 }
 
 // ---------- Форматирование ----------
@@ -374,6 +340,7 @@ function messageWidget(text) {
 }
 
 function problemText(problem) {
+  if (problem === 'disabled') return 'Личные виджеты временно отключены';
   if (problem === 'auth') return 'Войдите: нажмите на виджет и выберите «Войти»';
   if (problem === 'noprofile') return 'Создайте профиль в Smart Fridge';
   return 'Нет данных. Проверьте сеть';
@@ -531,26 +498,8 @@ async function preview(family, param) {
 }
 
 async function appMenu() {
-  if (!kcGet(KC_REFRESH)) {
-    if (!(await signInInteractive())) return;
-  }
-  while (true) {
-    const m = new Alert();
-    m.title = 'Smart Fridge';
-    m.message = kcGet(KC_EMAIL) ? `Аккаунт: ${kcGet(KC_EMAIL)}` : '';
-    ['Предпросмотр: вес', 'Предпросмотр: дуга до цели', 'Предпросмотр: корзина', 'Предпросмотр: экран блокировки',
-      'Открыть Smart Fridge', 'Войти в другой аккаунт', 'Выйти'].forEach(t => m.addAction(t));
-    m.addCancelAction('Закрыть');
-    const i = await m.presentSheet();
-    if (i === -1) return;
-    if (i === 0) await preview('small', 'weight');
-    else if (i === 1) await preview('small', 'arc');
-    else if (i === 2) await preview('medium', '');
-    else if (i === 3) await preview('accessoryCircular', '');
-    else if (i === 4) { Safari.open(APP_URL); return; }
-    else if (i === 5) { clearSession(); if (!(await signInInteractive())) return; }
-    else if (i === 6) { clearSession(); await notify('Вы вышли', 'Виджеты покажут подсказку, пока вы не войдёте снова.'); return; }
-  }
+  await loadSnapshot();
+  await notify('Личные виджеты отключены', 'Вход не требуется. Обновлённый скрипт не читает профиль и не показывает прежние замеры. Холодильник и покупки доступны в Smart Fridge.');
 }
 
 if (config.runsInWidget) {

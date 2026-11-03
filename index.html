@@ -24,6 +24,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
+[hidden]{display:none !important;}
 :root{
   --bg:#FBF7F2;
   --surface:#FFFFFF;
@@ -421,7 +422,7 @@ img{ animation:imgFadeIn .25s ease; }
 .dt-head{ display:flex; align-items:center; gap:0.875rem; padding:0.25rem 1.25rem 0.75rem 1.25rem; }
 .dt-head h2{ font-size:1.375rem; }
 .dt-status{ display:flex; align-items:center; gap:0.4375rem; font-size:0.75rem; color:var(--ink-soft); margin-top:0.1875rem; }
-.dt-status::before{ content:''; width:7px; height:7px; border-radius:50%; background:var(--fresh); animation:liveDot 2s infinite; }
+.dt-status::before{ content:''; width:7px; height:7px; border-radius:50%; background:var(--muted); animation:none; }
 @keyframes liveDot{ 0%{ box-shadow:0 0 0 0 rgba(47,122,77,0.5); } 70%,100%{ box-shadow:0 0 0 7px rgba(47,122,77,0); } }
 
 .dietitian-messages{ display:flex; flex-direction:column; gap:0.75rem; padding:0.5rem 1.25rem 1.125rem 1.25rem; }
@@ -694,7 +695,7 @@ img{ animation:imgFadeIn .25s ease; }
     <button class="side-item active" data-nav="home"><span>🏠</span>Home</button>
     <button class="side-item" data-nav="fridge"><span>🥬</span>Fridge</button>
     <button class="side-item" data-nav="vision"><span>📷</span>Vision</button>
-    <button class="side-item" data-nav="diet"><span>🥗</span>Диета</button>
+    <button class="side-item" data-nav="diet"><span>🥗</span>Питание</button>
     <button class="side-item" data-nav="recipes"><span>📖</span>Рецепты</button>
     <button class="side-item" data-nav="cart"><span>🛒</span>Корзина</button>
     <div class="divider"></div>
@@ -743,7 +744,7 @@ img{ animation:imgFadeIn .25s ease; }
       </div>
 
       <div class="section">
-        <div class="section-head"><h2>Приём пищи по программе</h2><button class="link" data-nav="diet">Диета</button></div>
+        <div class="section-head"><h2>Идеи блюд</h2><button class="link" data-nav="diet">Питание</button></div>
         <div class="hscroll-wrap"><div class="hscroll" id="home-meals-row"></div></div>
       </div>
 
@@ -927,7 +928,7 @@ img{ animation:imgFadeIn .25s ease; }
 
     <!-- ===== DIET / FAMILY PICKER ===== -->
     <section class="screen" id="screen-diet">
-      <div class="topbar"><h1>Диета</h1></div>
+      <div class="topbar"><h1>Питание</h1></div>
       <div class="family-grid" id="family-grid"></div>
     </section>
 
@@ -939,13 +940,13 @@ img{ animation:imgFadeIn .25s ease; }
       </div>
 
       <div class="diet-hero">
-        <div class="k" id="member-hero-k">Программа снижения веса</div>
-        <div class="big" id="member-hero-big">117,5 кг → 74 кг</div>
+        <div class="k" id="member-hero-k">Идеи блюд</div>
+        <div class="big" id="member-hero-big">Без назначения диеты</div>
         <div class="mode-badge" id="member-hero-mode" style="display:none"></div>
-        <div class="row">
-          <div class="item"><div class="n" id="hero-imt">39,3</div><div class="l">ИМТ</div></div>
-          <div class="item"><div class="n" id="hero-kcal">2130</div><div class="l">ккал/день</div></div>
-          <div class="item"><div class="n" id="hero-lost">−8,5 кг</div><div class="l">с начала</div></div>
+        <div class="row" hidden>
+          <div class="item"><div class="n" id="hero-imt">—</div><div class="l">ИМТ</div></div>
+          <div class="item"><div class="n" id="hero-kcal">—</div><div class="l">ккал/день</div></div>
+          <div class="item"><div class="n" id="hero-lost">—</div><div class="l">с начала</div></div>
         </div>
       </div>
 
@@ -956,8 +957,8 @@ img{ animation:imgFadeIn .25s ease; }
       <button type="button" class="dietitian-entry" id="open-dietitian-btn">
         <div class="dt-orb"></div>
         <div style="flex:1; min-width:0; text-align:left">
-          <div class="t">Диетолог</div>
-          <div class="s">Расскажите, что съели — подскажет калории и порцию</div>
+          <div class="t">AI-помощник</div>
+          <div class="s">Пока отключён · условия обработки данных проверяются</div>
         </div>
       </button>
 
@@ -976,13 +977,13 @@ img{ animation:imgFadeIn .25s ease; }
           <div class="bf-card-body" id="bf-card-body"></div>
         </div>
         <div class="section" style="padding-bottom:0">
-          <div class="section-head"><h2>Меню на неделю</h2><button class="link" id="menu-shuffle-btn">🎲 Разнообразить</button></div>
+          <div class="section-head"><h2>Идеи блюд на неделю</h2><button class="link" id="menu-shuffle-btn">🎲 Разнообразить</button></div>
         </div>
         <div class="day-pills" id="day-pills"></div>
         <div class="variety-hint" id="variety-hint" style="display:none"></div>
         <div id="meals-container"></div>
         <div class="menu-actions" id="menu-actions" style="display:none">
-          <button type="button" class="link-btn" id="menu-reset-day-btn">Вернуть программу на этот день</button>
+          <button type="button" class="link-btn" id="menu-reset-day-btn">Вернуть исходные блюда</button>
           <button type="button" class="link-btn" id="menu-reset-all-btn">Сбросить все замены</button>
         </div>
         <div class="alert-card" id="missing-alert">
@@ -999,8 +1000,8 @@ img{ animation:imgFadeIn .25s ease; }
         <div class="tip-card" id="tip-card">
           <div class="ic">💬</div>
           <div style="flex:1; min-width:0;">
-            <div class="t" id="tip-text">Вы вышли из категории ожирения 3-й степени — снижение веса идёт за счёт жировой массы, а не воды или мышц. Продолжайте в том же темпе.</div>
-            <div class="who" id="tip-who">Подсказано человеком</div>
+            <div class="t" id="tip-text">Проверьте количество продуктов дома перед составлением списка покупок.</div>
+            <div class="who" id="tip-who">Подсказка по приложению</div>
           </div>
           <button id="tip-close-btn" aria-label="Закрыть совет" style="flex-shrink:0; background:none; border:none; font-size:0.9375rem; color:var(--muted); align-self:flex-start; min-height:24px; min-width:24px;">✕</button>
         </div>
@@ -1064,11 +1065,11 @@ img{ animation:imgFadeIn .25s ease; }
         </div>
 
         <div class="portion-card">
-          <h3>Расчёт порций на сегодня <span style="font-weight:400; color:var(--muted); font-size:0.75rem">(от текущего веса)</span></h3>
+          <h3>Количество ингредиентов</h3>
           <div class="portion-grid">
-            <div class="portion-tile"><div class="ic">🍳</div><div class="v" id="port-breakfast">55 г</div><div class="l">Завтрак</div></div>
-            <div class="portion-tile"><div class="ic">🍽️</div><div class="v" id="port-lunch">200 г</div><div class="l">Обед · белок</div></div>
-            <div class="portion-tile"><div class="ic">🥗</div><div class="v" id="port-dinner">220 мл</div><div class="l">Ужин · салат</div></div>
+            <div class="portion-tile"><div class="ic">🍳</div><div class="v" id="port-breakfast">См. состав</div><div class="l">Завтрак</div></div>
+            <div class="portion-tile"><div class="ic">🍽️</div><div class="v" id="port-lunch">См. состав</div><div class="l">Обед</div></div>
+            <div class="portion-tile"><div class="ic">🥗</div><div class="v" id="port-dinner">См. состав</div><div class="l">Ужин</div></div>
           </div>
         </div>
       </div>
@@ -1078,7 +1079,7 @@ img{ animation:imgFadeIn .25s ease; }
     <section class="screen" id="screen-family-form">
       <div class="back-row"><button class="back-btn" data-back="diet">← Назад</button></div>
       <div class="detail-block" style="padding-top:0.375rem">
-        <h2 id="family-form-title" style="margin-bottom:1rem">Добавить члена семьи</h2>
+        <h2 id="family-form-title" style="margin-bottom:1rem">Создать мой личный профиль</h2><p>Создавайте профиль только для себя. Другой взрослый ведёт личные данные в своём аккаунте. Детские профили в этой версии не поддерживаются.</p>
         <div class="form-field">
           <label>Имя</label>
           <input type="text" id="ff-name" placeholder="Например: Мама">
@@ -1092,7 +1093,7 @@ img{ animation:imgFadeIn .25s ease; }
         </div>
         <div class="form-field">
           <label>Возраст, лет</label>
-          <input type="number" id="ff-age" inputmode="numeric" min="1" max="119" placeholder="30">
+          <input type="number" id="ff-age" inputmode="numeric" min="18" max="119" placeholder="30">
         </div>
         <div class="form-field">
           <label>Рост, см</label>
@@ -1102,21 +1103,21 @@ img{ animation:imgFadeIn .25s ease; }
           <label>Текущий вес, кг</label>
           <input type="number" id="ff-weight" inputmode="decimal" min="1" step="0.1" placeholder="70">
         </div>
-        <div class="form-field">
+        <div class="form-field" hidden>
           <label>Цель</label>
           <div class="dest-row" style="margin-bottom:0">
             <button type="button" class="dest-btn active" id="ff-goal-lose" style="flex:1">Снижение веса</button>
             <button type="button" class="dest-btn" id="ff-goal-maintain" style="flex:1">Поддержание нормы</button>
           </div>
         </div>
-        <div class="collapse-wrap" id="ff-target-field">
+        <div class="collapse-wrap" id="ff-target-field" hidden>
           <div class="form-field" style="margin-bottom:0">
             <label>Целевой вес, кг</label>
             <input type="number" id="ff-target" inputmode="decimal" min="1" step="0.1" placeholder="60">
           </div>
         </div>
         <div class="collapse-wrap" id="ff-child-note-wrap">
-          <div class="goal-note" style="margin-bottom:0">Для профиля младше 18 лет расчёт калорий ориентируется на возрастную норму — при выборе «Снижение веса» посоветуйтесь с педиатром перед тем, как следовать плану.</div>
+          <div class="goal-note" style="margin-bottom:0">Новые персональные профили доступны только взрослым от 18 лет. Питание ребёнка обсудите с педиатром.</div>
         </div>
         <div class="form-field">
           <label>Уровень активности</label>
@@ -1141,7 +1142,7 @@ img{ animation:imgFadeIn .25s ease; }
               <label>Возраст малыша, мес.</label>
               <input type="number" id="ff-baby-age" inputmode="numeric" min="0" max="36" placeholder="Например: 3">
             </div>
-            <div class="goal-note" style="margin:0">При грудном вскармливании норма калорий выше: +330 ккал до 6 месяцев и +400 ккал после. Снижение веса — не больше 300 ккал дефицита и не ниже 1800 ккал в день, чтобы не страдало молоко. Разгрузочный день в этом режиме заменяется обычным.</div>
+            <div class="goal-note" style="margin:0">При грудном вскармливании приложение не рассчитывает калорийность, дефицит и порции. Индивидуальный рацион обсудите со специалистом.</div>
           </div>
         </div>
         <div class="form-field">
@@ -1164,20 +1165,20 @@ img{ animation:imgFadeIn .25s ease; }
     <section class="screen" id="screen-dietitian">
       <div class="back-row">
         <button class="back-btn" data-back="diet">← Назад</button>
-        <button type="button" class="dietitian-voice-toggle" id="dietitian-voice-toggle" aria-pressed="true">🔊 Голос: вкл</button>
+        <button type="button" class="dietitian-voice-toggle" id="dietitian-voice-toggle" hidden disabled aria-pressed="false">🔊 Голос: вкл</button>
       </div>
       <div class="dt-head">
         <div class="dt-orb sm" id="dt-orb"></div>
         <div>
-          <h2>Диетолог</h2>
-          <div class="dt-status" id="dt-status">онлайн</div>
+          <h2>AI-помощник</h2>
+          <div class="dt-status" id="dt-status">отключён</div>
         </div>
       </div>
       <div id="dietitian-summaries-hint"></div>
       <div id="dietitian-messages" class="dietitian-messages"></div>
       <div class="dietitian-input-row">
-        <input type="text" id="dietitian-input" placeholder="Напишите, что съели или хотите съесть" autocomplete="off">
-        <button type="button" id="dietitian-send-btn" aria-label="Отправить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+        <input type="text" id="dietitian-input" disabled placeholder="AI-помощник пока отключён" autocomplete="off">
+        <button type="button" id="dietitian-send-btn" disabled aria-label="Отправить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
       </div>
     </section>
 
@@ -1185,7 +1186,7 @@ img{ animation:imgFadeIn .25s ease; }
     <section class="screen" id="screen-recipes">
       <div class="topbar"><h1>Рецепты</h1></div>
       <div class="section" style="padding-top:0">
-        <div class="section-head"><h2>Приём пищи вне программы</h2></div>
+        <div class="section-head"><h2>Каталог блюд</h2></div>
       </div>
       <div class="fridge-list" id="recipes-list"></div>
     </section>
@@ -1294,7 +1295,7 @@ img{ animation:imgFadeIn .25s ease; }
   <button class="nav-item active" data-nav="home"><span class="ic">🏠</span>Home</button>
   <button class="nav-item" data-nav="fridge"><span class="ic">🥬</span>Fridge</button>
   <button class="nav-item" data-nav="vision"><span class="ic">📷</span>Vision</button>
-  <button class="nav-item" data-nav="diet"><span class="ic">🥗</span>Диета</button>
+  <button class="nav-item" data-nav="diet"><span class="ic">🥗</span>Питание</button>
   <button class="nav-item" data-nav="recipes"><span class="ic">📖</span>Рецепты</button>
   <button class="nav-item" data-nav="cart"><span class="ic" style="position:relative">🛒<span class="cart-badge" id="cart-badge" style="display:none">0</span></span>Корзина</button>
 </nav>
@@ -1670,7 +1671,7 @@ const recipesData = [
    steps:['Разогреть сковороду-гриль на среднем огне.','Куриное филе слегка отбить, посолить и поперчить.','Обжарить филе по 5-6 минут с каждой стороны до готовности.','Помидоры и огурцы нарезать кубиками.','Заправить овощи маслом и лимонным соком, перемешать.','Подавать филе вместе с салатом.']},
   {id:'r2', icon:'🐟', photo:'https://www.themealdb.com/images/media/meals/do7zps1614349775.jpg', title:'Треска, запечённая с овощами', time:'30 мин', servings:'2 порции', tags:['Обед'], match:['треска','рыба'],
    ingredients:[{name:'Треска (филе)',qty:'400 г'},{name:'Овощная смесь',qty:'300 г'},{name:'Оливковое масло',qty:'1 ст.л.'},{name:'Соль, перец',qty:'по вкусу'}],
-   steps:['Разморозить филе трески при комнатной температуре.','Разогреть духовку до 190°C.','Выложить рыбу и овощную смесь на противень, сбрызнуть маслом.','Посолить, поперчить.','Запекать 20-25 минут до готовности.']},
+   steps:['Разморозить филе трески в холодильнике.','Разогреть духовку до 190°C.','Выложить рыбу и овощную смесь на противень, сбрызнуть маслом.','Посолить, поперчить.','Запекать 20-25 минут до готовности.']},
   {id:'r3', icon:'🥑', photo:'https://www.themealdb.com/images/media/meals/1549542994.jpg', title:'Салат с авокадо и яйцом', time:'10 мин', servings:'1 порция', tags:['Ужин','Быстро'], match:['авокадо'],
    ingredients:[{name:'Авокадо',qty:'1 шт'},{name:'Яйца',qty:'2 шт'},{name:'Помидоры',qty:'1 шт'},{name:'Оливковое масло',qty:'1 ч.л.'}],
    steps:['Яйца отварить вкрутую (8-9 минут), остудить и очистить.','Авокадо очистить и нарезать кубиками.','Помидоры нарезать дольками.','Смешать все ингредиенты, заправить маслом, посолить по вкусу.']},
@@ -1713,6 +1714,7 @@ function computeCookable(){
   // Морозилка не "истекает" в том же смысле (−18°C), поэтому срочность считаем только по холодильнику.
   const expiryList = fridgeData.map(p => ({name: p.name, lower: p.name.toLowerCase(), days: daysUntil(p.expiresOn)}));
   return recipesData
+    .filter(r => !recipeBlockReason(r))
     .filter(r => r.match.some(kw => inventoryNames.some(n => n.includes(kw))))
     .map(r => {
       let urgentDays = Infinity, urgentItem = null;
@@ -1726,7 +1728,7 @@ function computeCookable(){
     .sort((a,b) => a.urgentDays - b.urgentDays);
 }
 
-// Диета по дням программы (базовые порции при весе 117.5 кг)
+// Исходные количества ингредиентов: не персональная диета и не нутриентная норма.
 const dietDays = [
   {d:1, breakfastT:'Бутерброд с сыром', breakfastS:'Отрубной хлеб + масло + твёрдый сыр, чай/кофе', lunchT:'Мясо + овощной салат', lunchS:'Курица/баранина/говядина/конина, любым способом + салат из 3 овощей', lunchBase:200, dinnerT:'Салат с красной икрой', dinnerS:'Овощной салат с бобовыми + красная икра 1 ст.л. + хлеб + фреш', dinnerBase:220,
    breakfastItems:[{name:'Хлеб отрубной',qty:'55 г'},{name:'Масло сливочное',qty:'1 ч.л.'},{name:'Сыр твёрдый',qty:'80 г'},{name:'Чай/кофе/вода',qty:'300 мл'}],
@@ -1752,30 +1754,17 @@ const dietDays = [
    breakfastItems:[{name:'Хлеб отрубной',qty:'55 г'},{name:'Масло растительное',qty:'2 ч.л.'},{name:'Говяжий язык отварной',qty:'80 г'},{name:'Чай/кофе/вода',qty:'300 мл'}],
    lunchItems:[{name:'Рыба или морепродукты',qty:'210 г'},{name:'Овощи свежие',qty:'220 мл'},{name:'Кефир/йогурт/молоко',qty:'260 мл'}],
    dinnerItems:[{name:'Овощи отварные с мясом',qty:'220 мл'},{name:'Хлеб отрубной',qty:'55 г'},{name:'Сок фреш',qty:'290 мл'}]},
-  {d:7, breakfastT:'Разгрузочный день', breakfastS:'Кефир/молоко, творог, орехи, мёд, яблоки — 5-6 приёмов в течение дня', lunchT:'—', lunchS:'Приёмы пищи распределены равномерно, жидкости — до 2 л', lunchBase:0, dinnerT:'—', dinnerS:'Повторяется каждую неделю в один и тот же день', dinnerBase:0,
-   breakfastItems:[{name:'Кефир/молоко',qty:'670 мл'},{name:'Творог 9%',qty:'300 г'},{name:'Орехи (грецкий/миндаль)',qty:'30 г'},{name:'Мёд жидкий',qty:'2 ст.л.'},{name:'Яблоки',qty:'3 шт'}],
-   lunchItems:[], dinnerItems:[]},
+  {d:7},
 ];
 
 const tips = [
-  {text:'Вы вышли из категории ожирения 3-й степени — снижение веса идёт за счёт жировой массы, а не воды или мышц. Продолжайте в том же темпе.', source:'human'},
-  {text:'Важен каждый грамм и каждый миллилитр: старайтесь взвешивать порции, а не оценивать на глаз.', source:'human'},
-  {text:'На разгрузочный день выбирайте один и тот же день недели каждую неделю — так организму легче адаптироваться.', source:'human'},
-  {text:'Замену завтрака на кашу (овсяная, гречневая, пшённая, перловая) можно делать не чаще 2 раз в неделю — только из цельной крупы.', source:'human'},
-  {text:'Пейте стакан воды за 20 минут до еды — это помогает лучше чувствовать сытость и не переедать.', source:'ai'},
-  {text:'Добавляйте зелень почти в каждый приём пищи: она почти без калорий, но даёт объём и клетчатку.', source:'ai'},
-  {text:'Старайтесь ужинать за 2-3 часа до сна — это может улучшить пищеварение и качество сна.', source:'ai'},
-  {text:'Замените одну чашку кофе в день на травяной чай без сахара — небольшая, но устойчивая привычка.', source:'ai'},
-  // Советы ниже пересказаны своими словами по материалам реальных диетологов (см. коммит)
-  {text:'Делите тарелку по правилу: половина — некрахмалистые овощи, четверть — белок, четверть — цельные злаки. Так проще держать сахар в крови стабильным и не переедать.', source:'human'},
-  {text:'Добавляйте овощи или зелень в каждый приём пищи, даже понемногу — в омлет, в смузи, в гарнир. Клетчатка накапливается за день быстрее, чем кажется.', source:'human'},
-  {text:'Не пропускайте завтрак: сочетание белка, клетчатки и полезных жиров с утра даёт энергию на весь день и снижает тягу к перекусам.', source:'human'},
-  {text:'Жёсткие ограничения и голодание чаще всего уводят воду и мышцы, а не жир — и вес после такой диеты обычно быстро возвращается. Постепенные изменения работают устойчивее.', source:'human'},
-  {text:'Разрешайте себе немного любимой, не самой полезной еды — постоянные жёсткие запреты чаще заканчиваются срывом, чем умеренность.', source:'human'},
+  {text:'Проверьте количество продуктов дома перед составлением списка покупок.', source:'product'},
+  {text:'План блюда не означает, что вы его уже приготовили или съели.', source:'product'},
+  {text:'Состав и возможные следы аллергенов проверяйте по этикетке продукта.', source:'product'},
 ];
 
 /* ===================== DIET: библиотека блюд для замен и разнообразия ===================== */
-// slot: b — завтрак, l — обед, d — ужин, s — перекус (только для кормящей мамы), f — разгрузочный день.
+// slot: b — завтрак, l — обед, d — ужин. Только общие идеи блюд.
 // tags — что есть в блюде, по ним работают «Исключить из меню»: dairy, egg, fish, nuts, gluten.
 // bf: 'avoid' — не предлагать при грудном вскармливании, 'limit' — можно, но с оговоркой bfNote.
 // need — что придётся докупить (сверяется с холодильником по ключу k, попадает в «Не хватает продуктов»);
@@ -1783,7 +1772,7 @@ const tips = [
 // Блюда с day берут название, описание и состав из dietDays — это исходная программа.
 const SLOT_META = {
   b:{name:'Завтрак', icon:'🍳'}, s:{name:'Перекус', icon:'🍎'}, l:{name:'Обед', icon:'🍽️'},
-  d:{name:'Ужин', icon:'🥗'}, f:{name:'Разгрузочный день', icon:'♻️'},
+  d:{name:'Ужин', icon:'🥗'},
 };
 const EXCLUSION_LABELS = {dairy:'молочное', egg:'яйца', fish:'рыбу и икру', nuts:'орехи', gluten:'глютен'};
 const DISHES = [
@@ -1792,17 +1781,11 @@ const DISHES = [
   {id:'b_tongue', slot:'b', day:2, tags:['gluten'], uses:[['язык','казы','мяс','говя'],'хлеб']},
   {id:'b_eggs', slot:'b', day:5, tags:['egg'], need:[{n:'Яйца', k:'яйц'}]},
   {id:'l_meat', slot:'l', day:1, tags:['dairy'], uses:[['кур','мяс','говя','баран','конин','индейк'],['огурц','огурец','помидор','томат','капуст','перец'],['кефир','йогурт','молок']]},
-  {id:'l_fish', slot:'l', day:2, tags:['fish','dairy'], uses:[['рыб','лосос','сёмг','треск','минтай','хек','кревет'],['огурц','огурец','помидор','капуст'],['кефир','йогурт','молок']],
-   bf:'limit', bfNote:'При ГВ берите рыбу с низким содержанием ртути: лосось, треску, минтай, хек, сельдь. Без крупного тунца, меч-рыбы и акулы.'},
-  {id:'d_caviar', slot:'d', day:1, tags:['fish','gluten'], need:[{n:'Красная икра или икра рыбы', k:'икра'}], uses:['хлеб'],
-   bf:'limit', bfNote:'Икра солёная — при ГВ хватит 1 ч.л., и выпейте лишний стакан воды.'},
+  {id:'l_fish', slot:'l', day:2, tags:['fish','dairy'], uses:[['рыб','лосос','сёмг','треск','минтай','хек','кревет'],['огурц','огурец','помидор','капуст'],['кефир','йогурт','молок']],},
+  {id:'d_caviar', slot:'d', day:1, tags:['fish','gluten'], need:[{n:'Красная икра или икра рыбы', k:'икра'}], uses:['хлеб'],},
   {id:'d_olivier', slot:'d', day:2, tags:['gluten','egg'], uses:[['мяс','кур','говя'],['огурц','огурец','картоф','морков'],'хлеб']},
   {id:'d_avocado', slot:'d', day:3, tags:['gluten'], uses:['авокадо',['огурц','огурец','помидор','морков'],'хлеб']},
-  {id:'d_codliver', slot:'d', day:5, tags:['fish','gluten'], need:[{n:'Консервированная печень трески', k:'печень трески'}], uses:['хлеб'],
-   bf:'limit', bfNote:'В печени трески очень много витамина A — при ГВ не чаще раза в неделю.'},
-  {id:'f_fast', slot:'f', day:7, tags:['dairy','nuts'],
-   need:[{n:'Грецкий орех или миндаль', k:'орех'}, {n:'Мёд жидкий', k:'мёд'}, {n:'Творог (жирность не более 9%)', k:'творог'}],
-   bf:'avoid', bfNote:'Разгрузочные дни при ГВ могут уменьшить количество молока.'},
+  {id:'d_codliver', slot:'d', day:5, tags:['fish','gluten'], need:[{n:'Консервированная печень трески', k:'печень трески'}], uses:['хлеб'],},
 
   // — завтраки —
   {id:'b_oat', slot:'b', title:'Овсянка с ягодами и орехами', desc:'Каша на молоке или воде + ягоды или яблоко + горсть орехов', tags:['dairy','nuts','gluten'],
@@ -1840,7 +1823,7 @@ const DISHES = [
   {id:'l_chicken_soup', slot:'l', title:'Куриный суп с овощами', desc:'Наваристый суп: курица, картофель, морковь, немного лапши', portion:150, tags:['gluten'],
    items:[{name:'Курица',qty:'150 г'},{name:'Картофель',qty:'100 г'},{name:'Морковь',qty:'60 г'},{name:'Лапша',qty:'30 г'}],
    uses:['кур','картоф','морков']},
-  {id:'l_salmon_rice', slot:'l', title:'Запечённый лосось с рисом и брокколи', desc:'Источник омега-3 — 1–2 раза в неделю', portion:160, tags:['fish'],
+  {id:'l_salmon_rice', slot:'l', title:'Запечённый лосось с рисом и брокколи', desc:'Лосось, рис и брокколи', portion:160, tags:['fish'],
    items:[{name:'Лосось',qty:'160 г'},{name:'Рис',qty:'60 г'},{name:'Брокколи',qty:'150 г'}],
    need:[{n:'Лосось или другая красная рыба', k:'лосос'}], uses:['рис','брокк']},
   {id:'l_lentil', slot:'l', title:'Чечевичное рагу с овощами', desc:'Красная чечевица + морковь, лук, томаты — сытно и без мяса', tags:[],
@@ -1871,8 +1854,7 @@ const DISHES = [
    need:[{n:'Творог (жирность не более 9%)', k:'творог'}], uses:['огурц','огурец','редис',['зелен','укроп','петруш']]},
   {id:'d_herring', slot:'d', title:'Сельдь с картофелем и салатом', desc:'Слабосолёная сельдь + отварной картофель + свежий салат', tags:['fish'],
    items:[{name:'Сельдь слабосолёная',qty:'80 г'},{name:'Картофель отварной',qty:'150 г'},{name:'Овощи свежие',qty:'150 г'}],
-   need:[{n:'Сельдь слабосолёная', k:'сельд'}], uses:['картоф',['огурц','огурец','помидор','капуст']],
-   bf:'limit', bfNote:'Сельдь солёная — небольшая порция и побольше воды.'},
+   need:[{n:'Сельдь слабосолёная', k:'сельд'}], uses:['картоф',['огурц','огурец','помидор','капуст']],},
   {id:'d_chickpea', slot:'d', title:'Тёплый салат с нутом и овощами', desc:'Нут, печёный перец, огурец, зелень и лимонная заправка', tags:[],
    items:[{name:'Нут отварной',qty:'120 г'},{name:'Перец печёный',qty:'100 г'},{name:'Огурец',qty:'100 г'},{name:'Масло оливковое',qty:'1 ч.л.'}],
    need:[{n:'Нут', k:'нут'}], uses:['перец','огурц','огурец']},
@@ -1895,7 +1877,7 @@ const DISHES = [
 DISHES.forEach(dish => {
   if(!dish.day) return;
   const day = dietDays.find(x => x.d === dish.day);
-  const f = dish.slot === 'f' ? 'breakfast' : {b:'breakfast', l:'lunch', d:'dinner'}[dish.slot];
+  const f = {b:'breakfast', l:'lunch', d:'dinner'}[dish.slot];
   dish.title = day[f+'T'];
   dish.desc = day[f+'S'];
   dish.items = day[f+'Items'];
@@ -1911,11 +1893,8 @@ const PROGRAM_DAYS = {
   4:{b:'b_tongue', l:'l_fish', d:'d_olivier'},
   5:{b:'b_eggs', l:'l_meat', d:'d_codliver'},
   6:{b:'b_tongue', l:'l_fish', d:'d_olivier'},
-  7:{f:'f_fast'},
+  7:{b:'b_oat', l:'l_turkey', d:'d_greek'},
 };
-// У кормящей мамы разгрузочного дня нет — на 7-й день обычное меню.
-const BF_DAY7 = {b:'b_oat', l:'l_turkey', d:'d_greek'};
-const SNACK_ROTATION = ['s_yogurt','s_nuts','s_apple_cheese','s_kefir_banana','s_hummus','s_banana_seeds','s_yogurt'];
 // Нужны каждый день при любом меню — остаются в «Не хватает продуктов» как раньше.
 // keyword может быть массивом вариантов ("огур" ловил и «йогурт», поэтому основы огурца).
 const DAILY_NEEDS = [
@@ -1924,15 +1903,7 @@ const DAILY_NEEDS = [
 ];
 
 // Подсказки для режима «Кормящая мама» — показываются вместо части общих советов.
-const BF_TIPS = [
-  {text:'Выпивайте стакан воды каждый раз, когда садитесь кормить, — так проще набрать около 3 л жидкости за день.', source:'human'},
-  {text:'Худеть при грудном вскармливании лучше медленно, до 0,5 кг в неделю: резкий дефицит калорий может уменьшить количество молока.', source:'human'},
-  {text:'Рыбу с низким содержанием ртути (лосось, сельдь, треска, минтай) стоит есть 2–3 раза в неделю — омега-3 переходит в молоко и нужна для развития мозга малыша.', source:'human'},
-  {text:'Кофе можно, но не больше 2–3 чашек в день. Лучше пить его сразу после кормления, а не перед ним.', source:'human'},
-  {text:'Исключать молочное, яйца или другие продукты «на всякий случай» не нужно — только если у малыша есть признаки аллергии и это посоветовал педиатр.', source:'human'},
-  {text:'Новые продукты пробуйте по одному и пару дней наблюдайте за малышом — так легче понять, что ему не подходит.', source:'ai'},
-  {text:'Держите под рукой перекус, который можно съесть одной рукой: банан, йогурт, орехи. С малышом на руках это спасает от долгих голодных перерывов.', source:'ai'},
-];
+const BF_TIPS = [];
 
 // История замеров текущего открытого члена семьи (шея/грудь/живот/бёдра/вес) —
 // заполняется в openFamilyMember() из family_measurements при открытии профиля.
@@ -2139,7 +2110,8 @@ function urgencyBadgeHtml(r){
 function renderSuggestRow(){
   if(!SF_NUTRITION_ENABLED){document.getElementById('suggest-row').innerHTML='';document.getElementById('home-meals-row').innerHTML='';return;}
   const cookable = computeCookable();
-  const list = cookable.length ? cookable : recipesData.slice(0,4);
+  const list = cookable.length ? cookable : recipesData.filter(r => !recipeBlockReason(r)).slice(0,4);
+  if(!list.length){ for(const id of ['suggest-row','home-meals-row']) document.getElementById(id).textContent = recipeBlockReason(recipesData[0]) || 'Нет подходящих блюд.'; return; }
   document.getElementById('suggest-row').innerHTML = list.map(r => `
     <div class="suggest-card" data-recipe="${r.id}">
       <div class="suggest-photo">${recipePhotoHtml(r)}</div>
@@ -2160,9 +2132,11 @@ renderSuggestRow();
 
 function renderRecipesList(){
   const cookable = computeCookable();
+  const reason = recipeBlockReason(recipesData[0]);
+  if(reason){ document.getElementById('recipes-list').textContent = reason; return; }
   const cookableIds = new Set(cookable.map(r => r.id));
-  const ordered = [...cookable, ...recipesData.filter(r => !cookableIds.has(r.id))];
-  document.getElementById('recipes-list').innerHTML = ordered.map(r => `
+  const ordered = [...cookable, ...recipesData.filter(r => !cookableIds.has(r.id) && !recipeBlockReason(r))];
+  document.getElementById('recipes-list').innerHTML = '<p>Общие идеи блюд. Проверьте состав и этикетки; каталог не гарантирует безопасность при аллергии.</p>' + ordered.map(r => `
     <div class="product-row" data-recipe="${r.id}">
       <div class="product-thumb">${recipePhotoHtml(r)}</div>
       <div class="product-info"><div class="n">${escapeHtml(r.title)}</div><div class="q">${escapeHtml(r.time)} · ${escapeHtml(r.servings)}</div>${urgencyBadgeHtml(r)}</div>
@@ -2173,11 +2147,13 @@ renderRecipesList();
 function openRecipe(id){
   const r = recipesData.find(x=>x.id===id);
   if(!r) return;
+  const reason = recipeBlockReason(r);
+  if(reason){ showToast(reason, true); return; }
   const heroMedia = document.getElementById('recipe-hero-media');
   heroMedia.innerHTML = recipePhotoHtml(r);
   heroMedia.style.transform = '';
   document.getElementById('recipe-title').textContent = r.title;
-  document.getElementById('recipe-meta').textContent = `${r.time} · ${r.servings}`;
+  document.getElementById('recipe-meta').textContent = `${r.time} · ${r.servings} · Общий рецепт; проверьте состав и этикетки`;
   document.getElementById('recipe-ingredients').innerHTML = r.ingredients.map(i=>`<li><span class="iname">${escapeHtml(i.name)}</span><span class="iqty">${escapeHtml(i.qty)}</span></li>`).join('');
   document.getElementById('recipe-steps').innerHTML = r.steps.map((s)=>`<li><span class="step-num"></span><span>${escapeHtml(s)}</span></li>`).join('');
   document.querySelectorAll('#recipe-steps .step-num').forEach((el,i)=> el.textContent = i+1);
@@ -3179,91 +3155,58 @@ let familyProfiles = [];
 let currentProfileId = null;
 let currentProfileMeasurements = [];
 
+let privateContextVersion = 0;
+function resetPrivateContext(){
+  privateContextVersion++;
+  currentProfileId = null;
+  closeSheet();
+  swapContext = null;
+  currentProfileMeasurements = [];
+  measurementHistory = [];
+  mealChoices = {};
+  dietitianHistory = [];
+  window.speechSynthesis?.cancel();
+  const memberScreen = document.getElementById('screen-diet-member'); if(memberScreen) memberScreen.hidden = true;
+  for(const id of ['meals-container','recipe-ingredients','recipe-steps','dietitian-messages']){
+    const node = document.getElementById(id); if(node) node.replaceChildren();
+  }
+  for(const storage of [localStorage, sessionStorage]){
+    for(const key of Object.keys(storage)){
+      if(key.startsWith('sf_diet_settings_') || key.startsWith('sf_meal_choices_')) storage.removeItem(key);
+    }
+  }
+}
 function getCurrentProfile(){
-  return familyProfiles.find(p => p.id === currentProfileId) || null;
+  return familyProfiles.find(p => p.id === currentProfileId && p.profile_owner_user_id === currentUserId) || null;
 }
-// Митчелл-Сент-Джор (Mifflin-St Jeor) — формула базового обмена веществ (BMR),
-// отдельная для мужчин и женщин (у женщин ниже мышечная масса в среднем при
-// том же весе/росте, отсюда поправка −161 вместо +5). Для детей формула та же,
-// но без урезания калорий ниже безопасного порога (см. calcKcalTarget).
-function calcBMR(sex, weightKg, heightCm, age){
-  const base = 10*weightKg + 6.25*heightCm - 5*age;
-  return sex === 'male' ? base + 5 : base - 161;
+// MVP: legacy goals never produce a calorie prescription, for any age or diet mode.
+function calcKcalTarget(){
+  return null;
 }
-function activityMultiplier(level){
-  return {low:1.2, moderate:1.375, high:1.55}[level] || 1.375;
-}
-function calcKcalTarget(profile, currentWeightKg){
-  const bmr = calcBMR(profile.sex, currentWeightKg, Number(profile.height_cm), profile.age);
-  const tdee = bmr * activityMultiplier(profile.activity_level);
-  if(isBreastfeeding(profile)) return calcBreastfeedingKcal(profile, tdee);
-  if(profile.goal !== 'lose') return Math.round(tdee);
-  // безопасный минимум ккал/день даже при выбранном дефиците — не даём уйти
-  // ниже общепринятого порога, особенно для растущего организма
-  const floor = profile.age < 18 ? 1400 : (profile.sex === 'male' ? 1500 : 1200);
-  return Math.max(Math.round(tdee - 500), floor);
-}
-
-// Кормящей маме нужно больше энергии на выработку молока: по нормам IOM (DRI) это
-// +330 ккал в первые 6 месяцев и +400 ккал после. Худеть можно мягко — дефицит не больше
-// 300 ккал и не ниже 1800 ккал/день, иначе может уменьшиться количество молока.
-function calcBreastfeedingKcal(profile, tdee){
-  const age = babyAgeMonths(profile);
-  const need = tdee + (age != null && age >= 6 ? 400 : 330);
-  if(profile.goal !== 'lose') return Math.round(need);
-  return Math.max(Math.round(need - 300), 1800);
+function isAdultNutritionProfile(profile){
+  return !!profile && Number.isInteger(Number(profile.age)) && Number(profile.age) >= 18 && Number(profile.age) <= 119;
 }
 
 function updatePortions(){
-  const profile = getCurrentProfile();
-  if(!profile) return;
-  const w = parseFloat(document.getElementById('slider-weight').value);
-  const ratio = w / Number(profile.start_weight_kg);
-  document.getElementById('port-breakfast').textContent = Math.round(55*ratio) + ' г';
-  document.getElementById('port-lunch').textContent = Math.round(200*ratio) + ' г';
-  document.getElementById('port-dinner').textContent = Math.round(220*ratio) + ' мл';
+  // Ingredient quantities belong to the recipe, not to the person's weight.
+  for(const id of ['port-breakfast','port-lunch','port-dinner']){
+    const el = document.getElementById(id);
+    if(el) el.textContent = 'См. состав';
+  }
 }
 function updateDietHero(){
   const profile = getCurrentProfile();
   if(!profile) return;
-  const w = parseFloat(document.getElementById('slider-weight').value);
-  const heightM = Number(profile.height_cm) / 100;
-  const imt = w / (heightM*heightM);
-  const kcal = calcKcalTarget(profile, w);
-  const start = Number(profile.start_weight_kg);
-  const lost = start - w;
-  document.getElementById('hero-imt').textContent = imt.toFixed(1).replace('.', ',');
-  document.getElementById('hero-kcal').textContent = kcal;
-  const lostSign = lost > 0 ? '−' : lost < 0 ? '+' : '';
-  document.getElementById('hero-lost').textContent = lostSign + Math.abs(lost).toFixed(1).replace('.0','').replace('.', ',') + ' кг';
-  const bf = isBreastfeeding(profile);
-  document.getElementById('member-hero-k').textContent = bf
-    ? (profile.goal === 'lose' ? 'Кормящая мама · бережное снижение веса' : 'Кормящая мама · поддержание')
-    : (profile.goal === 'lose' ? 'Снижение веса' : 'Поддержание нормы');
-  const modeEl = document.getElementById('member-hero-mode');
-  const ex = profileExclusions(profile);
-  const modeParts = [];
-  if(bf){
-    const age = babyAgeMonths(profile);
-    modeParts.push('🤱 Грудное вскармливание' + (age != null ? ` · малышу ${age} мес.` : ''));
-  }
-  if(ex.length) modeParts.push('Без: ' + ex.map(t => EXCLUSION_LABELS[t]).join(', '));
-  modeEl.textContent = modeParts.join(' · ');
-  modeEl.style.display = modeParts.length ? '' : 'none';
-  document.getElementById('member-hero-big').textContent = (profile.goal === 'lose' && profile.target_weight_kg)
-    ? `${fmtKg(w)} кг → ${fmtKg(Number(profile.target_weight_kg))} кг`
-    : `${fmtKg(w)} кг`;
-
-  const noteWrap = document.getElementById('member-child-note-wrap');
-  const noteEl = document.getElementById('member-child-note');
-  if(profile.age < 18){
-    noteWrap.style.display = 'block';
-    noteEl.textContent = (profile.goal === 'lose'
-      ? '⚕️ Профиль младше 18 лет: ИМТ и калораж рассчитаны по взрослой формуле и не заменяют возрастные нормы роста — перед тем как следовать плану снижения веса, посоветуйтесь с педиатром.'
-      : '⚕️ Профиль младше 18 лет: показана ориентировочная норма для поддержания, без цели по весу — она не заменяет консультацию педиатра.');
-  } else {
-    noteWrap.style.display = 'none';
-  }
+  document.getElementById('hero-imt').textContent = '—';
+  document.getElementById('hero-kcal').textContent = '—';
+  document.getElementById('hero-lost').textContent = '—';
+  document.getElementById('member-hero-k').textContent = 'Идеи блюд';
+  document.getElementById('member-hero-big').textContent = 'Без назначения диеты';
+  document.getElementById('member-hero-mode').style.display = 'none';
+  document.getElementById('member-child-note-wrap').style.display = 'block';
+  document.getElementById('member-child-note').textContent = isAdultNutritionProfile(profile)
+    ? 'В этой версии нет автоматического плана похудения. Количества в рецептах не зависят от веса человека. При беременности, грудном вскармливании, заболеваниях или лечении индивидуальное питание обсудите со специалистом.'
+    : 'Персональные планы питания для несовершеннолетних в этой версии недоступны. Питание ребёнка обсудите с педиатром.';
 }
 ['weight','neck','chest','belly','hips'].forEach(key=>{
   const slider = document.getElementById('slider-'+key);
@@ -3312,12 +3255,12 @@ let dietColumnsMissing = false;
 function isMissingColumnError(error){
   return !!error && (error.code === 'PGRST204' || error.code === '42703' || /column|schema cache/i.test(error.message || ''));
 }
-function dietLocalKey(id){ return 'sf_diet_settings_' + id; }
+function dietLocalKey(id){ return 'sf_diet_settings_' + currentUserId + '_' + id; }
 function dietLocal(id){
-  try { return JSON.parse(localStorage.getItem(dietLocalKey(id)) || 'null') || {}; } catch(e){ return {}; }
+  try { return JSON.parse(sessionStorage.getItem(dietLocalKey(id)) || 'null') || {}; } catch(e){ return {}; }
 }
 function saveDietLocal(id, patch){
-  try { localStorage.setItem(dietLocalKey(id), JSON.stringify({...dietLocal(id), ...patch})); } catch(e){}
+  try { sessionStorage.setItem(dietLocalKey(id), JSON.stringify({...dietLocal(id), ...patch})); } catch(e){}
 }
 function dietField(profile, key){
   if(!profile) return null;
@@ -3334,13 +3277,13 @@ function babyAgeMonths(profile){
 }
 function profileExclusions(profile){
   const v = dietField(profile, 'excluded_foods');
-  return Array.isArray(v) ? v.filter(x => x in EXCLUSION_LABELS) : [];
+  return Array.isArray(v) ? v : ['unknown'];
 }
 
 /* ---- меню недели с заменами ---- */
 // mealChoices: {"<день 1-7>": {"<слот>": "<id блюда>"}} — только то, что отличается от программы.
 let mealChoices = {};
-function mealChoicesKey(id){ return 'sf_meal_choices_' + id; }
+function mealChoicesKey(id){ return 'sf_meal_choices_' + currentUserId + '_' + id; }
 function sanitizeMealChoices(obj){
   const out = {};
   if(!obj || typeof obj !== 'object') return out;
@@ -3348,21 +3291,21 @@ function sanitizeMealChoices(obj){
     if(!/^[1-7]$/.test(d) || !obj[d] || typeof obj[d] !== 'object') return;
     Object.keys(obj[d]).forEach(slot => {
       const dish = DISH_BY_ID[obj[d][slot]];
-      if(dish && dish.slot === slot){ (out[d] = out[d] || {})[slot] = dish.id; }
+      if(['b','l','d'].includes(slot) && dish && dish.slot === slot){ (out[d] = out[d] || {})[slot] = dish.id; }
     });
   });
   return out;
 }
 function loadMealChoices(profile){
   let local = null;
-  try { local = JSON.parse(localStorage.getItem(mealChoicesKey(profile.id)) || 'null'); } catch(e){}
+  try { local = JSON.parse(sessionStorage.getItem(mealChoicesKey(profile.id)) || 'null'); } catch(e){}
   const fromDb = !dietColumnsMissing && profile.meal_choices && typeof profile.meal_choices === 'object' ? profile.meal_choices : null;
   mealChoices = sanitizeMealChoices(fromDb && Object.keys(fromDb).length ? fromDb : local);
 }
 async function saveMealChoices(){
   const profile = getCurrentProfile();
   if(!profile) return;
-  try { localStorage.setItem(mealChoicesKey(profile.id), JSON.stringify(mealChoices)); } catch(e){}
+  try { sessionStorage.setItem(mealChoicesKey(profile.id), JSON.stringify(mealChoices)); } catch(e){}
   profile.meal_choices = mealChoices;
   if(dietColumnsMissing || !sb) return;
   const { error } = await sb.from('family_profiles').update({meal_choices: mealChoices}).eq('id', profile.id);
@@ -3370,17 +3313,32 @@ async function saveMealChoices(){
 }
 
 function daySlots(d, profile){
-  const bf = isBreastfeeding(profile);
-  if(d === 7 && !bf) return ['f'];
-  return bf ? ['b','s','l','d'] : ['b','l','d'];
+  return isAdultNutritionProfile(profile) ? ['b','l','d'] : [];
 }
 function defaultDishId(d, slot, profile){
-  if(slot === 's') return SNACK_ROTATION[(d-1) % SNACK_ROTATION.length];
-  if(d === 7 && isBreastfeeding(profile)) return BF_DAY7[slot];
-  return PROGRAM_DAYS[d][slot];
+  return PROGRAM_DAYS[d] && PROGRAM_DAYS[d][slot];
 }
 // Почему блюдо не подходит профилю (или null, если подходит).
+function recipeBlockReason(recipe, profile){
+  if(!profile){
+    try { profile = getCurrentProfile(); } catch { /* initial static render */ }
+  }
+  if(!profile) return null; // General catalogue only, never a claim of personal suitability.
+  try { if(sessionStorage.getItem('sf_restrictions_pending_'+currentUserId+'_'+profile.id)) return 'Изменения ограничений ещё не сохранены. Рекомендации приостановлены до повторного сохранения.'; } catch {}
+  const exclusions = profile.excluded_foods;
+  if(!Array.isArray(exclusions)) return 'Ограничения не загружены. Рекомендации временно недоступны.';
+  if(exclusions.some(x => typeof x !== 'string' || !['dairy','egg','fish','nuts','gluten'].includes(x)))
+    return 'Есть неподдерживаемое ограничение. Рекомендации недоступны до уточнения.';
+  if(exclusions.length){
+    if((recipe?.tags || []).some(t => exclusions.includes(t))) return 'В составе есть исключённый продукт. Рецепт не рекомендован.';
+    // Legacy catalogue has no verified ingredient/trace provenance. Tags alone cannot certify absence.
+    return 'Не удалось проверить полный состав и возможные следы аллергенов. Рецепт не рекомендован для выбранных ограничений.';
+  }
+  return recipe ? null : 'Состав рецепта неизвестен.';
+}
 function dishBlockReason(dish, profile){
+  const restriction = recipeBlockReason(dish, profile);
+  if(restriction) return restriction;
   const hit = (dish.tags || []).filter(t => profileExclusions(profile).includes(t));
   if(hit.length) return 'Исключено: ' + hit.map(t => EXCLUSION_LABELS[t]).join(', ');
   if(isBreastfeeding(profile) && dish.bf === 'avoid') return dish.bfNote || 'Не рекомендуется при грудном вскармливании';
@@ -3394,11 +3352,12 @@ function allowedDishes(slot, profile){
 function resolveDish(d, slot, profile){
   const defId = defaultDishId(d, slot, profile);
   const chosenId = (mealChoices[d] || {})[slot];
-  let dish = DISH_BY_ID[chosenId] || DISH_BY_ID[defId];
+  const chosen = DISH_BY_ID[chosenId];
+  let dish = chosen && chosen.slot === slot ? chosen : DISH_BY_ID[defId];
   const reason = dishBlockReason(dish, profile);
   if(!reason) return {dish, swapped: dish.id !== defId, autoReason: null};
   const alts = allowedDishes(slot, profile);
-  if(!alts.length) return {dish, swapped:false, autoReason: reason};
+  if(!alts.length) return {dish:null, swapped:false, autoReason: reason};
   return {dish: alts[(d-1) % alts.length], swapped:true, autoReason: reason};
 }
 function weekMenu(profile){
@@ -3413,7 +3372,7 @@ function weekMenu(profile){
 function normFood(s){ return String(s || '').toLowerCase().replace(/ё/g, 'е'); }
 function inventoryNames(){ return fridgeData.concat(freezerData).map(i => i.name); }
 function dishKeyGroups(dish){
-  return [...(dish.need || []).map(x => [x.k]), ...(dish.uses || []).map(k => Array.isArray(k) ? k : [k])];
+  return [...(dish?.need || []).map(x => [x.k]), ...(dish.uses || []).map(k => Array.isArray(k) ? k : [k])];
 }
 // Сколько ключевых продуктов блюда уже есть дома, и какие именно (имена из инвентаря).
 function fridgeMatch(dish, names){
@@ -3437,20 +3396,17 @@ function ingredientsHtml(items, ratio){
 // нет; совпадения с холодильником показываются только числом.
 function mealCardHtml(entry, ratio, profile, names){
   const {slot, dish, swapped, autoReason} = entry;
+  if(!dish) return `<div class="meal-card" style="padding:1rem"><p>${escapeHtml(autoReason || 'Нет подходящих блюд.')}</p></div>`;
   const meta = SLOT_META[slot];
   const id = 'meal-' + slot;
-  const portionLabel = dish.portion ? Math.round(dish.portion*ratio) + ' г белка'
-    : dish.portionMl ? Math.round(dish.portionMl*ratio) + ' мл салата' : '';
+  const portionLabel = 'Количество ингредиентов — в составе. Пищевая ценность не рассчитана.';
   const m = fridgeMatch(dish, names);
-  const bf = isBreastfeeding(profile);
   const badges = [];
   if(m.total && m.hits) badges.push(`<span class="meal-badge fridge">🧊 Дома ${m.hits} из ${m.total}</span>`);
   if(swapped) badges.push(`<span class="meal-badge swapped">${autoReason ? 'Автозамена' : 'Ваша замена'}</span>`);
-  if(bf && dish.bf === 'limit') badges.push(`<span class="meal-badge limit">⚠️ При ГВ — умеренно</span>`);
   const notes = [];
   if(autoReason) notes.push(autoReason + ' — подобрали другое блюдо.');
-  if(bf && dish.bf === 'limit' && dish.bfNote) notes.push(dish.bfNote);
-  const canSwap = slot !== 'f' || allowedDishes('f', profile).length > 1;
+  const canSwap = allowedDishes(slot, profile).length > 1;
   return `
     <div class="meal-card" id="${id}">
       <button class="meal-card-head" data-toggle="${id}">
@@ -3476,13 +3432,15 @@ let daySelected = 1;
 function renderDay(d){
   const profile = getCurrentProfile();
   if(!profile) return;
-  const ratio = parseFloat(document.getElementById('slider-weight').value) / Number(profile.start_weight_kg);
+  const ratio = 1; // Fixed recipe quantities; no body-weight multiplier.
   const container = document.getElementById('meals-container');
   const openIds = Array.from(container.querySelectorAll('.meal-card.open')).map(el => el.id);
   const week = weekMenu(profile);
   const day = week[d-1];
   const names = inventoryNames();
-  container.innerHTML = day.slots.map(entry => mealCardHtml(entry, ratio, profile, names)).join('');
+  container.innerHTML = day.slots.length && day.slots.every(entry => !entry.dish)
+    ? `<div class="meal-card" role="status" style="padding:1rem"><strong>Нет проверенных блюд для этих ограничений</strong><p>${escapeHtml(day.slots[0].autoReason)}</p></div>`
+    : day.slots.map(entry => mealCardHtml(entry, ratio, profile, names)).join('');
   openIds.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('open'); });
   renderDayPills(week);
   renderVarietyHint(week, d);
@@ -3502,9 +3460,9 @@ function renderDayPills(week){
   const wrap = document.getElementById('day-pills');
   const profile = getCurrentProfile();
   wrap.innerHTML = dietDays.map(day => {
-    const fast = day.d === 7 && !isBreastfeeding(profile);
+
     const changed = week && week[day.d-1].slots.some(x => x.swapped);
-    return `<button class="day-pill ${day.d===daySelected?'active':''}" data-day="${day.d}">${dayPillLabel(day.d)}${fast?' 🔄':''}${changed?'<span class="dot" aria-label="есть замены"></span>':''}</button>`;
+    return `<button class="day-pill ${day.d===daySelected?'active':''}" data-day="${day.d}">${dayPillLabel(day.d)}${changed?'<span class="dot" aria-label="есть замены"></span>':''}</button>`;
   }).join('');
 }
 document.getElementById('day-pills').addEventListener('click', (e)=>{
@@ -3519,7 +3477,8 @@ function renderVarietyHint(week, d){
   const el = document.getElementById('variety-hint');
   const repeats = [];
   week[d-1].slots.forEach(({slot, dish}) => {
-    const others = week.filter(w => w.d !== d && w.slots.some(x => x.slot === slot && x.dish.id === dish.id)).map(w => dayPillLabel(w.d));
+    if(!dish) return;
+    const others = week.filter(w => w.d !== d && w.slots.some(x => x.slot === slot && x.dish?.id === dish.id)).map(w => dayPillLabel(w.d));
     if(others.length) repeats.push(`${SLOT_META[slot].name.toLowerCase()} — ещё в ${others.join(', ')}`);
   });
   if(!repeats.length){ el.style.display = 'none'; el.textContent = ''; return; }
@@ -3535,8 +3494,9 @@ function openSwapSheet(d, slot){
   swapContext = {d, slot};
   const week = weekMenu(profile);
   const current = week[d-1].slots.find(x => x.slot === slot);
+  if(!current?.dish){ showToast('Нет подходящих блюд для выбранных ограничений.', true); return; }
   const names = inventoryNames();
-  const usedOn = id => week.filter(w => w.d !== d && w.slots.some(x => x.slot === slot && x.dish.id === id)).map(w => dayPillLabel(w.d));
+  const usedOn = id => week.filter(w => w.d !== d && w.slots.some(x => x.slot === slot && x.dish?.id === id)).map(w => dayPillLabel(w.d));
   const options = allowedDishes(slot, profile).map(dish => ({dish, match: fridgeMatch(dish, names), used: usedOn(dish.id), rnd: Math.random()}));
   // Сначала то, что не повторяется на неделе, затем — что можно приготовить из имеющегося.
   options.sort((a,b) => (a.used.length>0) - (b.used.length>0) || (b.match.hits/(b.match.total||1)) - (a.match.hits/(a.match.total||1)) || a.rnd - b.rnd);
@@ -3544,7 +3504,7 @@ function openSwapSheet(d, slot){
   document.getElementById('swap-sheet-title').textContent = `Заменить: ${SLOT_META[slot].name} · ${dayPillLabel(d)}`;
   const ex = profileExclusions(profile);
   document.getElementById('swap-sheet-sub').textContent = 'Сверху — блюда, которых ещё нет в меню на неделе, и то, что можно приготовить из продуктов дома.'
-    + (isBreastfeeding(profile) ? ' Учтены ограничения при ГВ.' : '')
+
     + (ex.length ? ` Без: ${ex.map(t => EXCLUSION_LABELS[t]).join(', ')}.` : '');
 
   const list = document.getElementById('swap-list');
@@ -3567,8 +3527,8 @@ function openSwapSheet(d, slot){
   ask.type = 'button';
   ask.className = 'swap-option';
   ask.dataset.askDietitian = '1';
-  const t = document.createElement('div'); t.className = 't'; t.textContent = '💬 Спросить диетолога';
-  const s = document.createElement('div'); s.className = 's'; s.textContent = 'Подставим вопрос с продуктами из холодильника — отправите сами.';
+  const t = document.createElement('div'); t.className = 't'; t.textContent = '💬 AI-помощник пока отключён';
+  const s = document.createElement('div'); s.className = 's'; s.textContent = 'Условия обработки данных и разделение профилей ещё проверяются.';
   ask.append(t, s);
   list.appendChild(ask);
   openSheet(swapSheet);
@@ -3655,7 +3615,7 @@ document.getElementById('menu-reset-day-btn').addEventListener('click', ()=>{
   saveMealChoices();
   renderDay(daySelected);
   renderMissingAlert();
-  showToast(`${dayPillLabel(daySelected)}: вернули меню программы`);
+  showToast(`${dayPillLabel(daySelected)}: вернули исходные блюда`);
 });
 document.getElementById('menu-reset-all-btn').addEventListener('click', ()=>{
   mealChoices = {};
@@ -3666,47 +3626,9 @@ document.getElementById('menu-reset-all-btn').addEventListener('click', ()=>{
 });
 
 /* ---- карточка «Питание при грудном вскармливании» ---- */
-const BF_GUIDE = [
-  {cls:'good', title:'Что важно', items:[
-    'Около 3 л жидкости в день — удобно выпивать стакан воды при каждом кормлении.',
-    'Есть 4–5 раз в день: в меню добавлен перекус, чтобы не было долгих голодных перерывов.',
-    'Рыба с низким содержанием ртути 2–3 раза в неделю: лосось, сельдь, треска, минтай.',
-    'Каждый день — источник кальция (творог, кефир, сыр) и железа (мясо, гречка, бобовые).',
-    'Витамин D, йод и другие добавки — так, как назначил врач.',
-  ]},
-  {cls:'limit', title:'Ограничить', items:[
-    'Кофе и крепкий чай — до 2–3 чашек в день (не больше 300 мг кофеина).',
-    'Солёное и копчёное: икра, сельдь, колбасы — небольшими порциями.',
-    'Печень трески — не чаще раза в неделю: в ней очень много витамина A.',
-    'Новые для вас продукты — по одному, наблюдая за малышом 1–2 дня.',
-  ]},
-  {cls:'avoid', title:'Избегать', items:[
-    'Алкоголь.',
-    'Рыбу с высоким содержанием ртути: крупный тунец, меч-рыба, акула, королевская макрель.',
-    'Голодание, разгрузочные и жёсткие диеты — они уменьшают количество молока.',
-    'Чаи и БАДы «для похудения» или «для лактации» без согласования с врачом.',
-  ]},
-];
+const BF_GUIDE = [];
 function renderBfCard(){
-  const profile = getCurrentProfile();
-  const card = document.getElementById('bf-card');
-  if(!isBreastfeeding(profile)){ card.style.display = 'none'; return; }
-  card.style.display = '';
-  const age = babyAgeMonths(profile);
-  document.getElementById('bf-card-sub').textContent = (age != null ? `Малышу ${age} мес. · ` : '') + 'что важно, что ограничить и чего избегать';
-  const body = document.getElementById('bf-card-body');
-  body.replaceChildren();
-  BF_GUIDE.forEach(g => {
-    const wrap = document.createElement('div'); wrap.className = 'bf-group ' + g.cls;
-    const h = document.createElement('h4'); h.textContent = g.title;
-    const ul = document.createElement('ul');
-    g.items.forEach(t => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
-    wrap.append(h, ul);
-    body.appendChild(wrap);
-  });
-  const foot = document.createElement('div'); foot.className = 'bf-foot';
-  foot.textContent = 'Исключать молочное, яйца и другие продукты «на всякий случай» не нужно — только если у малыша есть признаки аллергии и это посоветовал педиатр. Советы общие и не заменяют консультацию врача.';
-  body.appendChild(foot);
+  document.getElementById('bf-card').style.display = 'none';
 }
 document.getElementById('bf-card-toggle').addEventListener('click', ()=>{
   const card = document.getElementById('bf-card');
@@ -3732,33 +3654,36 @@ try { const saved = localStorage.getItem('sf_diet_tab'); if(saved === 'body') se
 function profileInitial(name){ return (name||'?').trim().charAt(0).toUpperCase() || '?'; }
 
 async function loadFamilyProfiles(){
-  if(!currentHouseholdId) return;
-  const { data, error } = await sb.from('family_profiles').select('*').eq('household_id', currentHouseholdId).order('created_at');
+  familyProfiles = [];
+  resetPrivateContext();
+  if(!currentUserId) return;
+  // This release keeps personal screens disabled until ownership and lifecycle acceptance.
+  if(typeof SF_NUTRITION_ENABLED!=='undefined' && !SF_NUTRITION_ENABLED){renderFamilyGrid();return;}
+  const actor = currentUserId;
+  const { data, error } = await sb.from('family_profiles').select('*').eq('profile_owner_user_id', actor).order('created_at');
+  if(currentUserId !== actor) return;
   if(!error && data){
-    familyProfiles = data;
+    familyProfiles = data.filter(p => p.profile_owner_user_id === actor);
     // колонки режима питания появляются после supabase-diet-mode-migration.sql
     if(data.length) dietColumnsMissing = !('diet_mode' in data[0]);
   }
   renderFamilyGrid();
+  if(error) showToast('Личные профили недоступны: права доступа не подтверждены. Общий холодильник доступен.', true);
 }
 
 function familyTileHtml(p){
-  const goalLine = (p.goal === 'lose' && p.target_weight_kg)
-    ? `${fmtKg(Number(p.start_weight_kg))} → ${fmtKg(Number(p.target_weight_kg))} кг`
-    : `${fmtKg(Number(p.start_weight_kg))} кг · норма`;
-  return `
-    <button type="button" class="family-tile" data-profile="${escapeHtml(p.id)}">
-      <div class="avatar-lg">${escapeHtml(profileInitial(p.name))}</div>
-      <div><div class="name">${escapeHtml(p.name)}</div><div class="meta">${Number(p.age)} лет · ${p.sex === 'male' ? 'муж.' : 'жен.'}${isBreastfeeding(p) ? ' · 🤱 ГВ' : ''}</div></div>
-      <div class="kcal">${goalLine}</div>
-    </button>`;
+  const label = isAdultNutritionProfile(p) ? 'Идеи блюд · без расчёта калорий' : 'Персональное питание недоступно';
+  return `<button type="button" class="family-tile" data-profile="${escapeHtml(p.id)}">
+    <div class="avatar-lg">${escapeHtml(profileInitial(p.name))}</div>
+    <div class="name">${escapeHtml(p.name)}</div><div class="kcal">${label}</div>
+  </button>`;
 }
 function renderFamilyGrid(){
   const grid = document.getElementById('family-grid');
   grid.innerHTML = familyProfiles.map(familyTileHtml).join('') + `
     <button type="button" class="family-tile-add" id="family-add-tile">
       <div class="plus">+</div>
-      <div class="lbl">Добавить члена семьи</div>
+      <div class="lbl">Создать мой личный профиль</div>
     </button>`;
   grid.querySelectorAll('[data-profile]').forEach(tile=>{
     tile.addEventListener('click', ()=> openFamilyMember(tile.dataset.profile));
@@ -3767,11 +3692,22 @@ function renderFamilyGrid(){
 }
 
 async function openFamilyMember(profileId){
+  const candidate = familyProfiles.find(p => p.id === profileId);
+  if(!isAdultNutritionProfile(candidate)){
+    showToast('Персональные планы питания доступны только взрослым. Питание ребёнка обсудите с педиатром.', true);
+    return;
+  }
+  if(candidate.profile_owner_user_id !== currentUserId){ showToast('Нет доступа к этому личному профилю.', true); return; }
+  resetPrivateContext();
+  const requestVersion = privateContextVersion;
   currentProfileId = profileId;
+  const actor = currentUserId;
   const profile = getCurrentProfile();
   if(!profile) return;
 
-  const { data } = await sb.from('family_measurements').select('*').eq('profile_id', profileId).order('log_date');
+  const { data, error } = await sb.from('family_measurements').select('*').eq('profile_id', profileId).order('log_date');
+  if(requestVersion !== privateContextVersion || currentProfileId !== profileId || actor !== currentUserId) return;
+  if(error){ resetPrivateContext(); showToast('Не удалось загрузить личные данные.', true); return; }
   currentProfileMeasurements = data || [];
   measurementHistory = currentProfileMeasurements.map(r => ({date:r.log_date, weight:Number(r.weight), neck:Number(r.neck), chest:Number(r.chest), belly:Number(r.belly), hips:Number(r.hips)}));
 
@@ -3795,7 +3731,9 @@ async function openFamilyMember(profileId){
   daySelected = 1;
   renderDay(1);
   renderMissingAlert();
+  renderRecipesList(); renderSuggestRow();
 
+  document.getElementById('screen-diet-member').hidden = false;
   history.push('diet-member');
   showScreen('diet-member', false);
 }
@@ -3806,8 +3744,10 @@ function setSegmented(activeId, ids){
 let editingProfileId = null;
 let familyFormInitialWeight = null;
 function openFamilyForm(profile){
+  privateContextVersion++;
+  if(profile && profile.profile_owner_user_id !== currentUserId){ showToast('Нет доступа к этому личному профилю.', true); return; }
   editingProfileId = profile ? profile.id : null;
-  document.getElementById('family-form-title').textContent = profile ? 'Изменить профиль' : 'Добавить члена семьи';
+  document.getElementById('family-form-title').textContent = profile ? 'Изменить профиль' : 'Создать мой личный профиль';
   document.getElementById('ff-name').value = profile ? profile.name : '';
   document.getElementById('ff-age').value = profile ? profile.age : '';
   document.getElementById('ff-height').value = profile ? profile.height_cm : '';
@@ -3817,7 +3757,7 @@ function openFamilyForm(profile){
   document.getElementById('ff-weight').value = familyFormInitialWeight ?? '';
   document.getElementById('ff-target').value = profile && profile.target_weight_kg ? profile.target_weight_kg : '';
   setSegmented(profile && profile.sex === 'female' ? 'ff-sex-female' : 'ff-sex-male', ['ff-sex-male','ff-sex-female']);
-  setSegmented(profile && profile.goal === 'maintain' ? 'ff-goal-maintain' : 'ff-goal-lose', ['ff-goal-lose','ff-goal-maintain']);
+  setSegmented('ff-goal-maintain', ['ff-goal-lose','ff-goal-maintain']);
   setSegmented('ff-act-'+((profile && profile.activity_level) || 'moderate'), ['ff-act-low','ff-act-moderate','ff-act-high']);
   setSegmented(isBreastfeeding(profile) ? 'ff-mode-breastfeeding' : 'ff-mode-standard', ['ff-mode-standard','ff-mode-breastfeeding']);
   const babyAge = profile ? babyAgeMonths(profile) : null;
@@ -3830,10 +3770,10 @@ function openFamilyForm(profile){
   showScreen('family-form', false);
 }
 function updateFamilyFormVisibility(){
-  const isLose = document.getElementById('ff-goal-lose').classList.contains('active');
+  const isLose = false;
   document.getElementById('ff-target-field').classList.toggle('open', isLose);
   const age = parseInt(document.getElementById('ff-age').value, 10);
-  document.getElementById('ff-child-note-wrap').classList.toggle('open', !!(isLose && age && age < 18));
+  document.getElementById('ff-child-note-wrap').classList.toggle('open', !!(age && age < 18));
   const female = document.getElementById('ff-sex-female').classList.contains('active');
   const bf = female && document.getElementById('ff-mode-breastfeeding').classList.contains('active');
   document.getElementById('ff-mode-wrap').classList.toggle('open', female);
@@ -3864,10 +3804,10 @@ async function saveFamilyProfile(){
   const age = decimalInput(document.getElementById('ff-age').value);
   const height = positiveQuantity(document.getElementById('ff-height').value);
   const weight = positiveQuantity(document.getElementById('ff-weight').value);
-  const goal = document.getElementById('ff-goal-lose').classList.contains('active') ? 'lose' : 'maintain';
-  const target = goal === 'lose' ? positiveQuantity(document.getElementById('ff-target').value) : null;
-  if(!name || !Number.isInteger(age) || age < 1 || age > 119 || height === null || weight === null || (goal==='lose' && target === null)){
-    showToast('Проверьте поля: возраст — целое число от 1 до 119, рост и вес — больше нуля', true);
+  const goal = 'maintain'; // Compatibility value only; no calorie target is calculated.
+  const target = null;
+  if(!name || !Number.isInteger(age) || age < 18 || age > 119 || height === null || weight === null || (goal==='lose' && target === null)){
+    showToast('Проверьте поля: возраст — целое число от 18 до 119, рост и вес — больше нуля', true);
     return;
   }
   const female = document.getElementById('ff-sex-female').classList.contains('active');
@@ -3881,41 +3821,35 @@ async function saveFamilyProfile(){
   const dietPayload = {
     diet_mode: bfMode ? 'breastfeeding' : 'standard',
     baby_age_months: bfMode ? babyAge : null,
-    excluded_foods: Array.from(document.querySelectorAll('#ff-exclusions [data-excl][aria-pressed="true"]')).map(b => b.dataset.excl),
+    excluded_foods: [...(familyProfiles.find(p => p.id === editingProfileId)?.excluded_foods || []).filter(x => !Object.hasOwn(EXCLUSION_LABELS,x)), ...Array.from(document.querySelectorAll('#ff-exclusions [data-excl][aria-pressed="true"]')).map(b => b.dataset.excl)],
   };
   const payload = {
-    household_id: currentHouseholdId,
-    created_by: currentUserId,
+    ...(editingProfileId ? {} : {household_id: currentHouseholdId, created_by: currentUserId, profile_owner_user_id: currentUserId}),
     name,
     sex: document.getElementById('ff-sex-female').classList.contains('active') ? 'female' : 'male',
     age,
     height_cm: height,
-    target_weight_kg: target,
-    goal,
+    ...(editingProfileId ? {} : {target_weight_kg: target, goal}),
     activity_level: document.getElementById('ff-act-low').classList.contains('active') ? 'low'
       : document.getElementById('ff-act-high').classList.contains('active') ? 'high' : 'moderate',
   };
-  // Пока миграция не применена, сохраняем профиль без новых полей, а режим питания — на устройстве.
-  const fallbackNote = ' Режим питания пока сохранён только на этом устройстве — нужна миграция в Supabase.';
+
   const wasEditing = !!editingProfileId;
+  const formVersion = privateContextVersion, formActor = currentUserId;
+  try { if(editingProfileId) sessionStorage.setItem('sf_restrictions_pending_'+formActor+'_'+editingProfileId,'1'); } catch {}
   button.disabled = true;
   try{
-    let result, local = false;
+    let result;
     if(wasEditing){
       result = await sb.from('family_profiles').update({...payload, ...dietPayload}).eq('id', editingProfileId).select('id').single();
-      if(isMissingColumnError(result.error)){
-        local = true;
-        result = await sb.from('family_profiles').update(payload).eq('id', editingProfileId).select('id').single();
-      }
+
     }else{
       payload.start_weight_kg = weight;
       result = await sb.from('family_profiles').insert({...payload, ...dietPayload}).select().single();
-      if(isMissingColumnError(result.error)){
-        local = true;
-        result = await sb.from('family_profiles').insert(payload).select().single();
-      }
+
     }
     if(result.error || !result.data?.id) throw result.error || new Error('Profile was not saved');
+    if(formVersion !== privateContextVersion || formActor !== currentUserId) return;
     // Retain the saved ID if the second write fails so a retry cannot create a duplicate profile.
     editingProfileId = result.data.id;
     saveDietLocal(editingProfileId, dietPayload);
@@ -3923,10 +3857,11 @@ async function saveFamilyProfile(){
       try{ await saveProfileWeight(editingProfileId, weight); }
       catch{ showToast('Профиль сохранён, но вес не записан. Повторите сохранение.', true); return; }
     }
+    if(formVersion !== privateContextVersion || formActor !== currentUserId) return;
     familyFormInitialWeight = weight;
+    try { sessionStorage.removeItem('sf_restrictions_pending_'+formActor+'_'+editingProfileId); } catch {}
     await loadFamilyProfiles();
-    if(local) dietColumnsMissing = true;
-    showToast((wasEditing ? 'Профиль обновлён' : `Профиль «${name}» добавлен`) + (local ? '.' + fallbackNote : ''));
+    showToast((wasEditing ? 'Профиль обновлён' : `Профиль «${name}» добавлен`));
     history.pop();
     await openFamilyMember(editingProfileId);
   }catch{
@@ -3948,8 +3883,10 @@ async function saveProfileWeight(profileId, weight){
 }
 document.getElementById('ff-delete-btn').addEventListener('click', async ()=>{
   if(!editingProfileId) return;
-  await sb.from('family_profiles').delete().eq('id', editingProfileId);
-  showToast('Профиль удалён');
+  const {data, error} = await sb.from('family_profiles').delete().eq('id', editingProfileId).eq('profile_owner_user_id', currentUserId).select('id');
+  if(error || !data?.length){ showToast('Удаление не подтверждено. Повторите попытку.', true); return; }
+  resetPrivateContext();
+  showToast('Личный профиль удалён из активной базы. Срок резервных копий требует отдельного подтверждения.');
   editingProfileId = null;
   currentProfileId = null;
   mealChoices = {};
@@ -3968,14 +3905,14 @@ async function addMissingToCart(name){
 function weekRequiredItems(){
   const profile = getCurrentProfile();
   const byKey = new Map();
-  weekMenu(profile).forEach(({d, slots}) => slots.forEach(({slot, dish}) => (dish.need || []).forEach(n => {
+  weekMenu(profile).forEach(({d, slots}) => slots.forEach(({slot, dish}) => (dish?.need || []).forEach(n => {
     const e = byKey.get(n.k) || {name:n.n, keyword:n.k, uses:[]};
-    e.uses.push(slot === 'f' ? `${dayPillLabel(d)} · разгрузочный` : `${SLOT_META[slot].name} · ${dayPillLabel(d)}`);
+    e.uses.push(`${SLOT_META[slot].name} · ${dayPillLabel(d)}`);
     byKey.set(n.k, e);
   })));
   const list = [...byKey.values()].map(e => ({name:e.name, keyword:e.keyword,
     forText: e.uses.length > 2 ? `${e.uses.slice(0,2).join(', ')} и ещё ${e.uses.length-2}` : e.uses.join(', ')}));
-  return list.concat(DAILY_NEEDS);
+  return list; // No unvalidated universal additions that bypass exclusions.
 }
 function renderMissingAlert(){
   if(!SF_NUTRITION_ENABLED){document.getElementById('missing-alert').style.display='none';document.getElementById('low-stock-section').style.display='none';return;}
@@ -3985,6 +3922,8 @@ function renderMissingAlert(){
   const subEl = document.getElementById('missing-sub');
   const listEl = document.getElementById('missing-list');
   const alertCard = document.getElementById('missing-alert');
+  if(recipeBlockReason(DISHES[0], getCurrentProfile())){ alertCard.style.display = 'none'; return; }
+  alertCard.style.display = '';
 
   if(missing.length === 0){
     alertCard.style.background = 'var(--fresh-soft)';
@@ -4096,16 +4035,15 @@ renderCart();
 
 /* ===================== DIET TIPS (человек / ИИ) ===================== */
 let tipIdx = 0;
-// Для кормящей мамы — свои советы плюс общие о питании (без советов про разгрузку и жёсткий дефицит).
+// Только подсказки о работе приложения, без клинических выводов.
 function tipsPool(){
-  if(!isBreastfeeding(getCurrentProfile())) return tips;
-  return BF_TIPS.concat(tips.filter(t => !/разгрузочн|ожирени|каждый грамм/i.test(t.text)));
+  return tips;
 }
 function renderTip(){
   const pool = tipsPool();
   const t = pool[tipIdx % pool.length];
   document.getElementById('tip-text').textContent = t.text;
-  document.getElementById('tip-who').textContent = t.source === 'ai' ? 'Подсказано ИИ' : 'Подсказано человеком';
+  document.getElementById('tip-who').textContent = 'Подсказка по приложению';
 }
 function showRandomTip(){
   let next;
@@ -4171,24 +4109,19 @@ document.getElementById('mark-measured-btn').addEventListener('click', ()=>{
 // за эту дату, а не затирая её целиком) и в БД — upsert пропускает undefined-поля,
 // так что запись только веса не обнулит ранее сохранённые шею/грудь/живот/бёдра
 // за тот же день, и наоборот.
-function mergeMeasurementEntry(partial){
+async function mergeMeasurementEntry(partial){
+  const version = privateContextVersion;
+  if(!Number.isFinite(partial.weight) || partial.weight <= 0){ showToast('Укажите корректный вес.', true); return null; }
   const existingIdx = measurementHistory.findIndex(m => m.date === partial.date);
   const merged = existingIdx >= 0 ? {...measurementHistory[existingIdx], ...partial} : partial;
+  try { await dbSaveMeasurement(merged); }
+  catch { if(version === privateContextVersion) showToast('Запись не сохранена. Повторите попытку.', true); return null; }
+  if(version !== privateContextVersion) return null;
   if(existingIdx >= 0) measurementHistory[existingIdx] = merged; else measurementHistory.push(merged);
-  dbSaveMeasurement(partial);
   return merged;
 }
 function congratsMessage(weight, isFullMeasurement){
-  // measurementHistory already includes today's just-saved entry at this point
-  // (mergeMeasurementEntry ran first) — the entry before it is the real "previous".
-  const sorted = [...measurementHistory].sort((a,b)=>a.date.localeCompare(b.date));
-  const prev = sorted.length >= 2 ? sorted[sorted.length-2] : null;
-  const prefix = isFullMeasurement ? '🎉 Замеры объёмов сохранены' : '🎉 Вес сохранён';
-  if(!prev) return `${prefix} — это первая запись, дальше будет виден прогресс!`;
-  const diff = +(weight - prev.weight).toFixed(1);
-  if(diff < -0.05) return `${prefix} — минус ${fmtKg(Math.abs(diff))} кг с прошлого раза, отличная динамика!`;
-  if(diff > 0.05) return `${prefix}. С прошлого раза +${fmtKg(diff)} кг — бывает, главное не останавливаться.`;
-  return `${prefix} — вес держится стабильно, так и продолжайте!`;
+  return isFullMeasurement ? 'Замеры сохранены.' : 'Вес сохранён.';
 }
 
 /* ===================== MEASUREMENT HISTORY ===================== */
@@ -4201,16 +4134,17 @@ document.getElementById('toggle-measurements-btn').addEventListener('click', ()=
     : 'Скрыть объёмы';
   document.getElementById('toggle-measurements-chevron').style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 });
-document.getElementById('save-weight-btn').addEventListener('click', ()=>{
+document.getElementById('save-weight-btn').addEventListener('click', async ()=>{
   const weight = parseFloat(document.getElementById('val-weight').value);
   if(isNaN(weight)){ showToast('Укажите вес'); return; }
-  const merged = mergeMeasurementEntry({ date: isoDate(TODAY), weight });
+  const merged = await mergeMeasurementEntry({ date: isoDate(TODAY), weight });
+  if(!merged) return;
   renderMemberTrend();
   renderReminders();
   queueNativeSync();
   showToast(congratsMessage(merged.weight, false));
 });
-document.getElementById('save-measurement-btn').addEventListener('click', ()=>{
+document.getElementById('save-measurement-btn').addEventListener('click', async ()=>{
   const entry = {
     date: isoDate(TODAY),
     weight: parseFloat(document.getElementById('val-weight').value),
@@ -4219,7 +4153,8 @@ document.getElementById('save-measurement-btn').addEventListener('click', ()=>{
     belly: parseFloat(document.getElementById('slider-belly').value),
     hips: parseFloat(document.getElementById('slider-hips').value),
   };
-  const merged = mergeMeasurementEntry(entry);
+  const merged = await mergeMeasurementEntry(entry);
+  if(!merged) return;
   renderMemberTrend();
   renderReminders();
   queueNativeSync();
@@ -4264,34 +4199,7 @@ function buildWeightChartSvg(sortedAsc){
 }
 
 function generateHistoryInsight(sortedAsc){
-  if(sortedAsc.length === 0) return 'Пока нет ни одного замера — сделайте первый на экране «Диета».';
-  if(sortedAsc.length === 1) return 'Это пока единственный замер — сделайте ещё один через несколько дней, чтобы увидеть тренд.';
-
-  const first = sortedAsc[0], last = sortedAsc[sortedAsc.length-1];
-  const totalChange = +(last.weight - first.weight).toFixed(1);
-
-  const setbacks = [];
-  for(let i=1;i<sortedAsc.length;i++){
-    const diff = +(sortedAsc[i].weight - sortedAsc[i-1].weight).toFixed(1);
-    if(diff > 0) setbacks.push({date: sortedAsc[i].date, diff});
-  }
-
-  let msg;
-  if(totalChange < 0){
-    msg = `Ты хорошо идёшь: с ${formatRuDate(first.date)} вес снизился на ${fmtKg(Math.abs(totalChange))} кг.`;
-  } else if(totalChange > 0){
-    msg = `С ${formatRuDate(first.date)} вес подрос на ${fmtKg(totalChange)} кг — стоит присмотреться к рациону.`;
-  } else {
-    msg = `С ${formatRuDate(first.date)} вес не изменился.`;
-  }
-
-  if(setbacks.length){
-    const list = setbacks.map(s => `${formatRuDate(s.date)} (+${fmtKg(s.diff)} кг)`).join(', ');
-    msg += ` Но были небольшие откаты: ${list} — похоже, в эти дни что-то пошло не по плану. Не страшно, главное — общий тренд.`;
-  } else if(totalChange < 0){
-    msg += ' Ни одного отката — отличная стабильность!';
-  }
-  return msg;
+  return sortedAsc.length ? 'Здесь показаны ваши записи веса. Приложение не оценивает здоровье или эффективность рациона по этим значениям.' : 'Записей пока нет. Ведение веса необязательно.';
 }
 
 function renderHistory(){
@@ -4319,7 +4227,7 @@ document.getElementById('open-history-btn').addEventListener('click', ()=>{
 });
 
 /* ===================== ADD/EDIT A PAST MEASUREMENT ===================== */
-// В отличие от быстрых кнопок на экране "Диета" (которые мержат и не трогают
+// В отличие от быстрых кнопок на экране "Питание" (которые мержат и не трогают
 // нетронутые поля, чтобы одно нажатие не стирало другое), это полноценная форма
 // редактирования: пустое поле здесь — осознанный сброс значения, а не "не трогать".
 let editingMeasurementDate = null;
@@ -4355,38 +4263,23 @@ document.getElementById('ms-save-btn').addEventListener('click', async ()=>{
     if(!isNaN(v)) partial[k] = v;
   });
 
-  // Дату в форме поменяли на другую (перенос записи) — старую строку удаляем,
-  // чтобы не остались задвоенные/осиротевшие данные под прежней датой.
   if(editingMeasurementDate && editingMeasurementDate !== date){
-    await sb.from('family_measurements').delete().eq('profile_id', currentProfileId).eq('log_date', editingMeasurementDate);
-    const oldIdx = measurementHistory.findIndex(m => m.date === editingMeasurementDate);
-    if(oldIdx >= 0) measurementHistory.splice(oldIdx, 1);
+    showToast('Перенос даты пока недоступен. Исходная запись не изменена.', true); return;
   }
-
-  const existingIdx = measurementHistory.findIndex(m => m.date === date);
-  if(existingIdx >= 0) measurementHistory[existingIdx] = partial; else measurementHistory.push(partial);
-  await sb.from('family_measurements').upsert(
-    {profile_id: currentProfileId, log_date: date, weight: partial.weight, neck: partial.neck ?? null, chest: partial.chest ?? null, belly: partial.belly ?? null, hips: partial.hips ?? null},
-    {onConflict:'profile_id,log_date'}
-  );
-  closeSheet();
-  renderHistory();
-  renderMemberTrend();
-  renderReminders();
-  queueNativeSync();
+  const saved = await mergeMeasurementEntry(partial);
+  if(!saved) return;
+  closeSheet(); renderHistory(); renderMemberTrend(); renderReminders();
   showToast(editingMeasurementDate ? 'Запись обновлена' : 'Запись добавлена');
 });
 document.getElementById('ms-delete-btn').addEventListener('click', async ()=>{
-  if(!editingMeasurementDate) return;
-  await sb.from('family_measurements').delete().eq('profile_id', currentProfileId).eq('log_date', editingMeasurementDate);
-  const idx = measurementHistory.findIndex(m => m.date === editingMeasurementDate);
-  if(idx >= 0) measurementHistory.splice(idx, 1);
-  closeSheet();
-  renderHistory();
-  renderMemberTrend();
-  renderReminders();
-  queueNativeSync();
-  showToast('Запись удалена');
+  const profile = getCurrentProfile(), date = editingMeasurementDate, version = privateContextVersion;
+  if(!profile || !date) return;
+  const {data,error} = await sb.from('family_measurements').delete().eq('profile_id', profile.id).eq('log_date', date).select('id');
+  if(version !== privateContextVersion) return;
+  if(error || !data?.length){ showToast('Удаление не подтверждено. Повторите попытку.', true); return; }
+  measurementHistory = measurementHistory.filter(m => m.date !== date);
+  closeSheet(); renderHistory(); renderMemberTrend(); renderReminders();
+  showToast('Запись удалена из активной базы.');
 });
 
 // Прогноз даты достижения цели по текущему темпу похудения — считаем
@@ -4394,20 +4287,8 @@ document.getElementById('ms-delete-btn').addEventListener('click', async ()=>{
 // линейно экстраполируем до целевого веса. Показываем только если реально
 // худеет и дистанция до цели ещё не пройдена (иначе прогноз вводит в
 // заблуждение).
-function projectGoalDate(sortedAsc, targetWeight){
-  if(sortedAsc.length < 2 || !targetWeight) return null;
-  const first = sortedAsc[0], last = sortedAsc[sortedAsc.length-1];
-  const daysElapsed = (new Date(last.date) - new Date(first.date)) / 86400000;
-  if(daysElapsed <= 0) return null;
-  const ratePerDay = (last.weight - first.weight) / daysElapsed;
-  if(ratePerDay >= -0.01) return null;
-  const remaining = last.weight - targetWeight;
-  if(remaining <= 0) return null;
-  const daysNeeded = remaining / Math.abs(ratePerDay);
-  if(daysNeeded > 3 * 365) return null; // слишком далёкий прогноз — не показываем, чтобы не демотивировать
-  const targetDate = new Date(last.date);
-  targetDate.setDate(targetDate.getDate() + Math.round(daysNeeded));
-  return targetDate;
+function projectGoalDate(){
+  return null;
 }
 function renderMemberTrend(){
   const profile = getCurrentProfile();
@@ -4418,7 +4299,7 @@ function renderMemberTrend(){
   document.getElementById('member-trend-chart').innerHTML = buildWeightChartSvg(sortedAsc);
 
   const projEl = document.getElementById('member-trend-projection');
-  const targetDate = profile.goal === 'lose' ? projectGoalDate(sortedAsc, Number(profile.target_weight_kg)) : null;
+  const targetDate = null;
   if(targetDate){
     projEl.style.display = 'block';
     projEl.textContent = `📈 При таком темпе — цель примерно к ${formatRuDate(isoDate(targetDate))}`;
@@ -4486,17 +4367,7 @@ function speakText(text){
 }
 
 function dietitianProfile(){
-  const profile = getCurrentProfile();
-  const w = parseFloat(document.getElementById('slider-weight').value);
-  if(!profile) return { weightKg: w, targetWeightKg: w, kcalPerDay: 2000 };
-  return {
-    weightKg: w,
-    targetWeightKg: profile.target_weight_kg ? Number(profile.target_weight_kg) : w,
-    kcalPerDay: calcKcalTarget(profile, w),
-    dietMode: isBreastfeeding(profile) ? 'breastfeeding' : 'standard',
-    babyAgeMonths: isBreastfeeding(profile) ? babyAgeMonths(profile) : null,
-    excludedFoods: profileExclusions(profile),
-  };
+  return null; // No personal parameters may enter the disabled AI route.
 }
 
 function dtSpeakBtn(content){ return `<button type="button" class="speak-btn" data-speak="${escapeHtml(content)}" aria-label="Озвучить">🔊</button>`; }
@@ -4532,36 +4403,13 @@ function dtScroll(smooth){
 let dietitianHistory = [];
 
 async function loadDietitianScreen(){
-  const listEl = document.getElementById('dietitian-messages');
-  const hintEl = document.getElementById('dietitian-summaries-hint');
-  hintEl.textContent = '';
-  if(!currentUserId){ listEl.innerHTML = ''; return; }
-  listEl.innerHTML = `<div style="font-size:0.7812rem; color:var(--muted); text-align:center; padding:1rem 0;">Загрузка…</div>`;
-
-  const [{ data: messages }, { data: summaries }] = await Promise.all([
-    sb.from('dietitian_messages').select('role, content, created_at').eq('user_id', currentUserId).order('created_at', {ascending:true}),
-    sb.from('dietitian_summaries').select('week_start, summary').eq('user_id', currentUserId).order('week_start', {ascending:false}).limit(1),
-  ]);
-
-  dietitianHistory = (messages || []).map(m => ({role: m.role, content: m.content}));
-
-  if(summaries && summaries.length){
-    hintEl.textContent = `За прошлую неделю: ${summaries[0].summary}`;
-  }
-
-  const suggestions = ['Съел бургер и картошку фри', 'Что приготовить на ужин из холодильника?', 'Сколько белка мне нужно сегодня?', 'Итоги этой недели'];
-  if(dietitianHistory.length){
-    listEl.innerHTML = dietitianHistory.map(m => dietitianMsgHtml(m.role, m.content, false)).join('');
-    const last = dietitianHistory[dietitianHistory.length - 1];
-    if(last.role === 'assistant'){
-      const lastUser = [...dietitianHistory].reverse().find(m => m.role === 'user');
-      listEl.insertAdjacentHTML('beforeend', dtChipsHtml(dtFollowups(lastUser && lastUser.content), 'dt-quick', 'dt-quick'));
-    }
-  } else {
-    listEl.innerHTML = `<div class="dt-welcome"><div class="dt-orb lg"></div><h3>Привет! Я ваш диетолог</h3><p>Расскажите, что сегодня съели или что планируете, и я подскажу калории и сколько можно съесть.</p>${dtChipsHtml(suggestions, 'dt-chips-grid')}</div>`;
-  }
-  dtSetThinking(false);
-  dtScroll(false);
+  dietitianHistory = [];
+  document.getElementById('dietitian-messages').textContent = 'AI-помощник пока отключён: условия обработки данных и разделение профилей ещё не подтверждены. Холодильник, покупки и каталог доступны.';
+  document.getElementById('dietitian-summaries-hint').textContent = '';
+  document.getElementById('dt-status').textContent = 'отключён';
+  dietitianInput.disabled = true;
+  dietitianSendBtn.disabled = true;
+  if(window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
 document.getElementById('open-dietitian-btn').addEventListener('click', ()=>{
@@ -4615,58 +4463,8 @@ function dtReveal(bubble, text, onDone){
 }
 
 async function sendDietitianMessage(){
-  if(typeof SF_NUTRITION_ENABLED!=='undefined' && !SF_NUTRITION_ENABLED){showToast('Питание и ИИ пока проходят проверку',true);return;}
-  const text = dietitianInput.value.trim();
-  if(!text || !currentUserId || dietitianSendBtn.disabled) return;
-  dietitianInput.value = '';
-  dtUpdateSendBtn();
-  dietitianSendBtn.disabled = true;
-  dtClearQuick();
-  const welcome = dietitianMessagesEl.querySelector('.dt-welcome');
-  if(welcome) welcome.remove();
-  dietitianMessagesEl.insertAdjacentHTML('beforeend', dietitianMsgHtml('user', text, false));
-  dietitianMessagesEl.insertAdjacentHTML('beforeend', dietitianMsgHtml('assistant', '', true));
-  const pendingRow = dietitianMessagesEl.lastElementChild;
-  const bubble = pendingRow.querySelector('.dietitian-msg');
-  dtSetThinking(true);
-  dtScroll(true);
-
-  const historyForApi = dietitianHistory.slice(-20);
-  dietitianHistory.push({role:'user', content:text});
-
-  try{
-    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
-    if(sessionError || !sessionData?.session?.access_token) throw new Error('Session unavailable');
-    const saved = await sb.from('dietitian_messages').insert({user_id: currentUserId, role:'user', content:text});
-    if(saved.error) throw saved.error;
-    const resp = await fetch('/api/dietitian-chat', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json', 'Authorization': 'Bearer ' + sessionData.session.access_token},
-      body: JSON.stringify({ message: text, history: historyForApi, profile: dietitianProfile() }),
-    });
-    const data = await resp.json();
-    bubble.classList.remove('pending');
-    if(!resp.ok || !data.reply){
-      bubble.textContent = data.error || 'Не удалось получить ответ, попробуйте ещё раз.';
-      dtSetThinking(false);
-      return;
-    }
-    dtReveal(bubble, data.reply, () => {
-      bubble.insertAdjacentHTML('beforeend', dtSpeakBtn(data.reply));
-      dtAppendQuick(text);
-      dtSetThinking(false);
-      dtScroll(true);
-    });
-    dietitianHistory.push({role:'assistant', content:data.reply});
-    await sb.from('dietitian_messages').insert({user_id: currentUserId, role:'assistant', content:data.reply});
-    if(dietitianVoiceOn) speakText(data.reply);
-  }catch(e){
-    bubble.classList.remove('pending');
-    bubble.textContent = 'Не удалось связаться с диетологом.';
-    dtSetThinking(false);
-  }finally{
-    dietitianSendBtn.disabled = false;
-  }
+  // Do not even persist a message until consent and profile isolation are implemented.
+  showToast('AI-помощник пока отключён. Холодильник и покупки доступны.', true);
 }
 dietitianSendBtn.addEventListener('click', sendDietitianMessage);
 dietitianInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); sendDietitianMessage(); } });
@@ -4684,11 +4482,13 @@ function toDbRow(p){
   return {name:p.name, emoji:p.emoji, qty_num:p.qtyNum, unit:p.unit, location:p.location||null, expires_on:p.expiresOn||null, expiry_estimated:!!p.expiryEstimated};
 }
 async function dbSaveMeasurement(entry){
-  if(!currentProfileId) return;
-  await sb.from('family_measurements').upsert(
-    {profile_id: currentProfileId, log_date: entry.date, weight: entry.weight, neck: entry.neck, chest: entry.chest, belly: entry.belly, hips: entry.hips},
+  const profile = getCurrentProfile();
+  if(!profile) throw new Error('Private profile required');
+  const {data,error} = await sb.from('family_measurements').upsert(
+    {profile_id: profile.id, log_date: entry.date, weight: entry.weight, neck: entry.neck, chest: entry.chest, belly: entry.belly, hips: entry.hips},
     {onConflict:'profile_id,log_date'}
-  );
+  ).select('id').single();
+  if(error || !data?.id) throw error || new Error('Measurement not confirmed');
 }
 
 async function initEmptyAccount(userId){
@@ -5027,34 +4827,15 @@ function nativePlugin(name){
 // Виджеты показывают первый профиль семьи. Если он сейчас открыт на экране, берём уже
 // загруженные замеры, иначе отдельный запрос.
 async function widgetProfileRows(){
-  const profile = familyProfiles[0];
-  if(!profile) return null;
-  let rows;
-  if(currentProfileId === profile.id && measurementHistory.length){
-    rows = measurementHistory.map(m => ({date:m.date, weight:m.weight, neck:m.neck, chest:m.chest, belly:m.belly, hips:m.hips}));
-  } else {
-    const { data } = await sb.from('family_measurements').select('log_date, weight, neck, chest, belly, hips').eq('profile_id', profile.id).order('log_date');
-    rows = (data || []).map(r => ({date:r.log_date, weight:Number(r.weight), neck:Number(r.neck), chest:Number(r.chest), belly:Number(r.belly), hips:Number(r.hips)}));
-  }
-  rows.sort((a,b) => a.date.localeCompare(b.date));
-  return { profile, rows };
+  return null; // Weight/measurements are not exported to widgets in this MVP.
 }
 
-function buildWidgetSnapshot(profile, rows){
-  const first = rows[0], last = rows[rows.length-1];
-  const toTs = iso => parseLocalDate(iso).getTime() / 1000;
-  return {
-    profileName: profile.name,
-    weightNow: last ? last.weight : Number(profile.start_weight_kg),
-    weightStart: first ? first.weight : Number(profile.start_weight_kg),
-    weightGoal: (profile.goal === 'lose' && profile.target_weight_kg) ? Number(profile.target_weight_kg) : null,
-    startTs: first ? toTs(first.date) : null,
-    lastWeighTs: last ? toTs(last.date) : null,
-    weighEveryDays: WEIGHT_REMINDER_DAYS,
-    trend: rows.slice(-20).map(r => r.weight),
-    cart: cartData.slice(0, 12).map(c => ({ id: String(c._id || c.name), name: c.name, done: false })),
-    updatedAt: Date.now() / 1000,
-  };
+function buildWidgetSnapshot(){
+  // Clear the previous personal snapshot, retaining the shared shopping list only.
+  return {profileName:null, weightNow:null, weightStart:null, weightGoal:null,
+    startTs:null, lastWeighTs:null, weighEveryDays:2, trend:[],
+    cart:cartData.slice(0,12).map(c=>({id:String(c._id||c.name),name:c.name,done:false})),
+    updatedAt:Date.now()/1000};
 }
 
 // Покупки, отмеченные галочкой прямо в виджете, применяются при открытии приложения.
@@ -5087,7 +4868,7 @@ async function syncNativeExtras(){
   try{
     await applyWidgetPurchases(WB);
     const pack = await widgetProfileRows();
-    if(pack) await WB.setSnapshot({ json: JSON.stringify(buildWidgetSnapshot(pack.profile, pack.rows)) });
+    await WB.setSnapshot({ json: JSON.stringify(buildWidgetSnapshot()) });
     if(typeof SF_NOTIFICATIONS_ENABLED==='undefined'||SF_NOTIFICATIONS_ENABLED){scheduleNativeReminders(pack);maybeStartMealActivity(WB);}
   }catch(e){ console.warn('Синхронизация с виджетами не удалась', e); }
   finally{ nativeSyncRunning = false; }
@@ -5360,6 +5141,8 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
     }
   });
   document.getElementById('biometric-use-password-btn').addEventListener('click', async ()=>{
+    resetPrivateContext(); familyProfiles = []; currentUserId = null;
+    document.getElementById('family-grid').replaceChildren();
     await sb.auth.signOut();
     biometricCard.style.display = 'none';
     loginCard.style.display = 'block';
@@ -5432,6 +5215,8 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
     if(barcodeStream){ stopBarcodeScan(); }
     stopDetectLoop();
     if(stream){ stream.getTracks().forEach(t=>t.stop()); }
+    resetPrivateContext(); familyProfiles = []; currentUserId = null;
+    document.getElementById('family-grid').replaceChildren();
     await sb.auth.signOut();
     location.reload();
   });
@@ -5459,7 +5244,13 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
 
   // Ссылка из письма сброса пароля открывает приложение с токеном восстановления
   // в URL — supabase-js подхватывает его сам (detectSessionInUrl) и шлёт это событие.
-  sb.auth.onAuthStateChange((event)=>{
+  sb.auth.onAuthStateChange((event, session)=>{
+    if(event === 'SIGNED_OUT' || (currentUserId && session?.user?.id && session.user.id !== currentUserId)){
+      resetPrivateContext(); familyProfiles = []; currentUserId = null;
+    document.getElementById('family-grid').replaceChildren();
+      document.querySelectorAll('#screen-family-form input, #measurement-sheet input').forEach(el => el.value = '');
+      loginScreen.style.display = 'flex';
+    }
     if(event === 'PASSWORD_RECOVERY'){
       loginCard.style.display = 'none';
       recoveryCard.style.display = 'block';

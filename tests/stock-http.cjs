@@ -27,7 +27,7 @@ async function main(){
     catch(e){await c.query('rollback');throw e;}finally{c.release();}
   }};
   let postgrest,postgrestExit,server,browser;
-  const logs=[],requests=[],checks=[];let transportMode='normal';
+  const logs=[],requests=[],checks=[],personalRequests=[];let transportMode='normal';
   const jwtSecret=randomBytes(32).toString('hex');
   const jwt=(as=user,exp=Math.floor(Date.now()/1000)+3600)=>{
     const header=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
@@ -53,6 +53,7 @@ async function main(){
     server=http.createServer(async(req,res)=>{
       try{
         if(req.url.startsWith('/rest/v1/')){
+          if(/^\/rest\/v1\/(family_profiles|family_measurements|measurement_logs|dietitian_)/.test(req.url))personalRequests.push(req.url);
           let bytes='';for await(const c of req)bytes+=c;
           const isMutation=req.url==='/rest/v1/rpc/stock_mutate';
           let active='normal';if(isMutation){active=transportMode;transportMode='normal';requests.push(JSON.parse(bytes));}
@@ -210,10 +211,12 @@ async function main(){
     assert.equal((await pool.query('select count(*)::int n from cart_items where id=$1',[manualOp])).rows[0].n,0);
     assert.equal(await page.locator('[data-nav="diet"]:visible').count(),0);assert.equal(await page.locator('[data-nav="recipes"]:visible').count(),0);
     assert.deepEqual(pageErrors,[]);check('manual shopping remains available without nutrition, retains failed draft and supports retry/undo');
+    assert.deepEqual(personalRequests,[]);check('production-disabled personal screens perform no profile, measurement or chat HTTP reads');
     await pool.query(fs.readFileSync(path.join(root,'tests/production-db-smoke.sql'),'utf8'));
     check('production rollback-only smoke validates synthetic families and leaves no test records');
+    const privacyReview=await require('./helpers/privacy-http-review.cjs')({pool,root,client,user,other,stranger,household,check});
     const out=process.env.SF_EVIDENCE_DIR||'/tmp/sf-stock-http-evidence';fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'mobile-real-http-undo.png'),fullPage:true});
-    fs.writeFileSync(path.join(out,'http-summary.json'),JSON.stringify({checks,postgres:(await pool.query('select version()')).rows[0].version,postgrest:logs[0],pageErrors},null,2));
+    fs.writeFileSync(path.join(out,'http-summary.json'),JSON.stringify({checks,privacyReview,postgres:(await pool.query('select version()')).rows[0].version,postgrest:logs[0],pageErrors},null,2));
     fs.writeFileSync(path.join(out,'postgrest.log'),logs.join(''));
   }finally{
     if(browser)await browser.close();

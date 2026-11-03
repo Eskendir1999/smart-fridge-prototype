@@ -25,7 +25,7 @@ function editFixture(reply, quantity = '1.5') {
   const fridge = [p], freezer = [], button = { disabled: false }, calls = [], toasts = [];
   const nodes = { 'edit-stock-current':{textContent:''}, 'save-edit-btn': button, 'edit-name': { value: 'after' }, 'edit-qty-num': { value: quantity }, 'edit-qty-unit': { value: 'кг' }, 'edit-location': { value: 'Морозилка' }, 'edit-exp': { value: '2026-11-06' } };
   const c = load(['decimalInput', 'positiveQuantity', 'toDbRow', 'stockExpectedItem', 'productEditDraft', 'setProductEditBaseline', 'saveProductEdit'], {
-    productEditBaseline:null, document: { getElementById: id => nodes[id] }, currentUserId: 'fixture-user', currentProduct: { list: 'fridge', idx: 0 }, currentCompartment: 'fridge',
+    productEditBaseline:null, document: { getElementById: id => nodes[id] }, currentUserId: 'fixture-user', privateContextVersion:1, familyProfiles:[], EXCLUSION_LABELS:{dairy:'Молоко'}, currentProduct: { list: 'fridge', idx: 0 }, currentCompartment: 'fridge',
     getArr: name => name === 'freezer' ? freezer : fridge,
     runStockOperation: async (kind,body,onSaved)=>{
       assert.equal(kind,'edit'); calls.push(body);
@@ -119,7 +119,7 @@ function profileFixture({ error = null, measuredFailure = false, editing = true,
   let measureFails = measuredFailure;
   const get = id => nodes[id] || { classList: { contains: () => false } };
   const c = load(['decimalInput', 'positiveQuantity', 'saveFamilyProfile'], {
-    document: { getElementById: get, querySelectorAll: () => [] }, currentHouseholdId: 'fixture-household', currentUserId: 'fixture-user',
+    document: { getElementById: get, querySelectorAll: () => [] }, currentHouseholdId: 'fixture-household', currentUserId: 'fixture-user', privateContextVersion:1, familyProfiles:[], EXCLUSION_LABELS:{dairy:'Молоко'},
     editingProfileId: editing ? 'fixture-profile' : null, familyFormInitialWeight: editing ? 75 : null, dietColumnsMissing: false,
     showToast: (...args) => toasts.push(args), isMissingColumnError: e => e?.code === '42703', saveDietLocal: (...args) => local.push(args),
     loadFamilyProfiles: async () => {}, openFamilyMember: async () => {}, history: ['diet', 'form'],
@@ -149,7 +149,7 @@ test('retry after initial measurement failure updates saved profile instead of d
   await f.run(); assert.deepEqual(f.writes.map(x => x.type), ['insert', 'update']); assert.equal(f.measures.length, 2); assert.equal(f.button.disabled, false);
 });
 test('invalid age or weight cannot be persisted', async () => {
-  for (const options of [{ weight: '-1' }, { weight: '0' }, { age: '30.5' }, { age: '120' }]) {
+  for (const options of [{ weight: '-1' }, { weight: '0' }, { age: '30.5' }, { age: '120' }, { age: '17' }, { age: '' }]) {
     const f = profileFixture(options); await f.run(); assert.equal(f.writes.length, 0); assert.equal(f.toasts[0][1], true);
   }
 });
