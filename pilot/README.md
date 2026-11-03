@@ -130,3 +130,38 @@ Seq в браузере локален для объекта: доверенны
 В тесте выполнен путь `browser client → transactional fixture → server receipt/readback fixture → offline report`: готовка даёт M2, полное подтверждение — один M5 cycle, отсутствующая базовая линия не создаёт экономию. Проверены подмена scope/source, несовпадающая квитанция, частичный batch, конкурентные повторы, отказ во второй записи с rollback и успешным повтором, отзыв согласия во время ожидания, смена владельца, коллизии ID и серверный порядок.
 
 Следующий этап G7: реализовать **постоянный транзакционный адаптер** вместе с batch-контрактом ужина, затем провести настоящий HTTP/DB E2E на синтетических аккаунтах. После этого подключать компонент в UI/build. Этот PR не даёт разрешения запускать реальные данные и не завершает интеграцию #5.
+
+### Подготовленный транспорт и Supabase Auth
+
+`transport.cjs` экспортирует `createAuthenticator(supabaseClient)` и `createHandler`.
+Адаптер передаёт явный bearer token в `auth.getUser(token)`, возвращает только ID,
+отклоняет ошибки и анонимные аккаунты. user_metadata не участвует в доступе.
+Официальный контракт: https://supabase.com/docs/reference/javascript/auth-getuser
+(проверен 03.11.2026; индекс changelog.md недоступен через средство просмотра).
+SDK сюда не добавлен: нужно передать серверный клиент существующего приложения
+с закреплённой версией, без service_role и без сохранения пользовательской сессии.
+
+Сборка соединяется явно:
+```js
+const authenticate = createAuthenticator(serverSupabaseClient);
+const collector = createCollector({ authenticate, transaction: persistentTransaction });
+const handler = createHandler({ collector, origin: appOrigin,
+  allowRequest: distributedRateLimiter, enabled: false });
+```
+Это схема подключения, не готовые реализации persistentTransaction/rateLimiter.
+Handler принимает стандартный Request и возвращает Response; предполагаемые пути
+POST /pilot/events и POST /pilot/confirm. Он НЕ зарегистрирован в API приложения.
+По умолчанию отвечает COLLECTION_DISABLED. Origin проверяется строго, токен только
+в Authorization, JSON ограничен 128 KiB по фактическим байтам до разбора; сжатие
+отклоняется. Ответы no-store; ошибки не раскрывают детали БД и токены.
+Хост должен ограничивать время чтения тела и исполнения, отключить логирование
+тел/Authorization и обеспечить распределённый rate limit по доверенным данным
+соединения. Origin не заменяет аутентификацию. Проверка getUser не заменяет
+проверку актуального членства/согласия внутри транзакции.
+
+Проверка: `node --test tests/pilot-*.test.cjs` — 73/73 на этом этапе.
+10 новых тестов используют Request/Response и подменённый Auth SDK/collector;
+это не проверка сети Supabase или развёрнутого HTTP-сервера. CI предыдущего
+коммита 6b1f6ba — success (run 41594491955). Новый коммит проверяется отдельно.
+G7 всё ещё открыт: постоянная БД, настоящий Auth/HTTP E2E, batch ужина, UI,
+удаление/экспорт/retention и приёмка всех G1–G8 требуются до реального сбора.
