@@ -209,7 +209,7 @@ test('all inline scripts and server files parse', () => {
 
 function buildFixture(env) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-build-'));
-  for (const name of ['build.js', 'index.html', 'manifest.json', 'sw.js', 'privacy.html', 'support.html', 'widgets.html', 'scriptable', 'icons']) fs.cpSync(path.join(root, name), path.join(dir, name), { recursive: true });
+  for (const name of ['build.js', 'index.html', 'manifest.json', 'sw.js', 'privacy.html', 'support.html', 'widgets.html', 'scriptable', 'icons', 'personal-data']) fs.cpSync(path.join(root, name), path.join(dir, name), { recursive: true });
   const inherited = { ...process.env }; for (const k of ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'VAPID_PUBLIC_KEY', 'TELEGRAM_BOT_USERNAME']) delete inherited[k];
   const result = cp.spawnSync(process.execPath, ['build.js'], { cwd: dir, env: { ...inherited, ...env }, encoding: 'utf8' });
   return { dir, result, cleanup() { fs.rmSync(dir, { recursive: true, force: true }); } };
@@ -228,7 +228,7 @@ test('public fixture config builds assets, prevents script-breakout, and remains
     assert.equal(f.result.status, 0, f.result.stderr); const built = fs.readFileSync(path.join(f.dir, 'dist/index.html'), 'utf8');
     assert.ok(!built.includes('__SUPABASE_')); assert.ok(!built.includes('</script><script>fixture()'));
     for (const m of built.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) if (!m[1].includes('src=')) new vm.Script(m[2]);
-    for (const file of ['manifest.json', 'sw.js', 'scriptable/smart-fridge.js', 'icons/icon-512.png']) assert.ok(fs.existsSync(path.join(f.dir, 'dist', file)));
+    for (const file of ['manifest.json', 'sw.js', 'scriptable/smart-fridge.js', 'icons/icon-512.png', 'personal-data/export.js', 'personal-data/ui.js']) assert.ok(fs.existsSync(path.join(f.dir, 'dist', file)));
   } finally { f.cleanup(); }
 });
 test('production AI and scheduled handlers fail closed before provider or database work',async()=>{

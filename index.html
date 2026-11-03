@@ -635,6 +635,19 @@ img{ animation:imgFadeIn .25s ease; }
   .bottom-nav{ background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
   .sheet{ background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+
+#screen-my-data .section{max-width:760px;margin-inline:auto;padding-bottom:5rem}
+#screen-my-data h2{margin-bottom:1rem}
+#screen-my-data p{margin:0.8rem 0;line-height:1.5}
+#screen-my-data details{margin:1rem 0;padding:1rem;background:#fff;border:1px solid var(--line);border-radius:16px}
+#screen-my-data summary{cursor:pointer;font-weight:700;line-height:1.5}
+#screen-my-data dl{margin-top:1rem}
+#screen-my-data dt{color:var(--muted);font-size:0.8rem;margin-top:0.65rem}
+#screen-my-data dd{margin:0.15rem 0 0;line-height:1.4}
+#my-data-status{padding:0.8rem;background:var(--fresh-soft);border-radius:12px}
+#my-data-status:empty{display:none}
+#my-data-confirmation{margin-top:1rem;padding:1rem;border:1px solid var(--danger);border-radius:16px}
+#my-data-confirm{padding:0.75rem;margin-top:0.5rem;border:1px solid var(--line);border-radius:10px;font:inherit}
 </style>
 </head>
 <body>
@@ -1267,6 +1280,30 @@ img{ animation:imgFadeIn .25s ease; }
     </section>
 
     <!-- ===== PROFILE ===== -->
+    <section class="screen" id="screen-my-data">
+      <div class="back-row"><button class="back-btn" data-back="profile">← Настройки</button></div>
+      <div class="section">
+        <h2>Мои данные</h2>
+        <p>Личные профили и замеры доступны только владельцу аккаунта. Общие запасы и покупки семьи не входят в этот экспорт.</p>
+        <p>AI и долговременная память отключены. Подключение и новое согласие пока недоступны.</p>
+        <details><summary>Не вижу старый профиль</summary><p>Профили без подтверждённого владельца закрыты. Имя, семейное членство и создание профиля не доказывают владение. Можно вести новый личный профиль, когда этот раздел будет доступен. Для разбора старых данных обратитесь в поддержку из настроек; не отправляйте вес и замеры в обычную переписку. Автоматическая передача старого профиля не выполняется.</p></details>
+        <p id="my-data-status" role="status" aria-live="polite"></p>
+        <button class="secondary-btn" id="my-data-refresh">Обновить</button>
+        <button class="secondary-btn" id="my-data-json" disabled>Скачать JSON</button>
+        <button class="secondary-btn" id="my-data-csv" disabled>Скачать CSV</button>
+        <p>Файл сохраняется на ваше устройство и содержит личные сведения. Передавайте его только по своему решению.</p>
+        <div id="my-data-content"></div>
+        <div id="my-data-confirmation" hidden>
+          <p id="my-data-delete-label"></p>
+          <p>Срок удаления резервных копий и ранее переданных внешнему провайдеру данных ещё не подтверждён. Удаление аккаунта целиком в этом экране недоступно.</p>
+          <label for="my-data-confirm">Введите УДАЛИТЬ</label>
+          <input id="my-data-confirm" autocomplete="off" style="width:100%;max-width:100%;box-sizing:border-box">
+          <button class="secondary-btn" id="my-data-delete">Удалить</button>
+          <button class="secondary-btn" id="my-data-cancel">Отмена</button>
+        </div>
+      </div>
+    </section>
+
     <section class="screen" id="screen-profile">
       <div class="topbar"><h1>Профиль</h1></div>
       <div class="section" style="padding-top:0">
@@ -1284,6 +1321,7 @@ img{ animation:imgFadeIn .25s ease; }
         <button class="secondary-btn" id="install-app-btn" style="display:none">📲 Установить приложение</button>
         <button class="secondary-btn" id="show-onboarding-btn">❓ Как пользоваться приложением</button>
         <button class="secondary-btn" id="biometric-toggle-btn" style="display:none">🔒 Вход по Face ID</button>
+        <button class="secondary-btn" id="my-data-open">Мои данные: просмотр, экспорт и удаление</button>
         <button class="secondary-btn" id="logout-btn" style="color:var(--danger); border-color:#F0D3D3">↪ Выйти</button>
       </div>
     </section>
@@ -1428,7 +1466,7 @@ img{ animation:imgFadeIn .25s ease; }
   <button id="stock-undo-btn" class="secondary-btn" hidden>Отменить последнее действие</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
@@ -1921,6 +1959,7 @@ const fab = document.getElementById('fab');
 let history = ['home'];
 
 function showScreen(name, push=true){
+  if(name !== 'my-data') window.dispatchEvent(new Event('sf-account-reset'));
   if(!SF_NUTRITION_ENABLED && /^(diet|recipe|family-form)/.test(name)){
     name='home';
   }
@@ -5141,6 +5180,8 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
     }
   });
   document.getElementById('biometric-use-password-btn').addEventListener('click', async ()=>{
+    // Keep opaque pending deletion tickets across logout; never persist personal snapshots.
+    window.dispatchEvent(new Event('sf-account-reset'));
     resetPrivateContext(); familyProfiles = []; currentUserId = null;
     document.getElementById('family-grid').replaceChildren();
     await sb.auth.signOut();
@@ -5174,7 +5215,7 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
         const alreadyRegistered = /already registered|user_already_exists/i.test(signUp.error?.message || signUp.error?.code || '');
         loginError.textContent = alreadyRegistered
           ? 'Неверный email или пароль. Если забыли пароль — восстановите его ниже.'
-          : (signUp.error ? ('Не удалось войти: ' + signUp.error.message) : 'Требуется подтверждение почты — отключите его в настройках Supabase Auth.');
+          : (signUp.error ? ('Не удалось войти: ' + signUp.error.message) : 'Подтвердите почту по письму, затем войдите снова.');
         loginError.classList.add('show');
         submitBtn.disabled = false; submitBtn.textContent = 'Войти';
         return;
@@ -5215,6 +5256,8 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
     if(barcodeStream){ stopBarcodeScan(); }
     stopDetectLoop();
     if(stream){ stream.getTracks().forEach(t=>t.stop()); }
+    // Keep opaque pending deletion tickets across logout; never persist personal snapshots.
+    window.dispatchEvent(new Event('sf-account-reset'));
     resetPrivateContext(); familyProfiles = []; currentUserId = null;
     document.getElementById('family-grid').replaceChildren();
     await sb.auth.signOut();
@@ -5246,8 +5289,10 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
   // в URL — supabase-js подхватывает его сам (detectSessionInUrl) и шлёт это событие.
   sb.auth.onAuthStateChange((event, session)=>{
     if(event === 'SIGNED_OUT' || (currentUserId && session?.user?.id && session.user.id !== currentUserId)){
+      // Keep opaque pending deletion tickets across logout; never persist personal snapshots.
+      window.dispatchEvent(new Event('sf-account-reset'));
       resetPrivateContext(); familyProfiles = []; currentUserId = null;
-    document.getElementById('family-grid').replaceChildren();
+      document.getElementById('family-grid').replaceChildren();
       document.querySelectorAll('#screen-family-form input, #measurement-sheet input').forEach(el => el.value = '');
       loginScreen.style.display = 'flex';
     }
@@ -5282,5 +5327,7 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
   });
 })();
 </script>
+<script src="/personal-data/export.js"></script>
+<script src="/personal-data/ui.js"></script>
 </body>
 </html>

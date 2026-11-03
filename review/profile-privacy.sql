@@ -16,11 +16,11 @@ revoke all on public.family_profiles, public.family_measurements from anon, auth
 grant select, insert, update, delete on public.family_profiles, public.family_measurements to authenticated;
 -- Restrictive gates remain ANDed with any pre-existing permissive family policy.
 create policy sf_private_profile_gate on public.family_profiles as restrictive for all to authenticated
- using (profile_owner_user_id = (select auth.uid()))
- with check (profile_owner_user_id = (select auth.uid()) and age >= 18);
+ using (profile_owner_user_id = (select auth.uid()) and not coalesce((nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'is_anonymous')::boolean,false))
+ with check (profile_owner_user_id = (select auth.uid()) and age >= 18 and not coalesce((nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'is_anonymous')::boolean,false));
 create policy sf_private_profile_owner on public.family_profiles for all to authenticated
- using (profile_owner_user_id = (select auth.uid()))
- with check (profile_owner_user_id = (select auth.uid()) and age >= 18);
+ using (profile_owner_user_id = (select auth.uid()) and not coalesce((nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'is_anonymous')::boolean,false))
+ with check (profile_owner_user_id = (select auth.uid()) and age >= 18 and not coalesce((nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'is_anonymous')::boolean,false));
 create policy sf_private_measurement_gate on public.family_measurements as restrictive for all to authenticated
  using (exists(select 1 from public.family_profiles p where p.id = profile_id and p.profile_owner_user_id = (select auth.uid())))
  with check (exists(select 1 from public.family_profiles p where p.id = profile_id and p.profile_owner_user_id = (select auth.uid())));

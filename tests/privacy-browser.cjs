@@ -4,7 +4,6 @@ const {createStockDb,user,other,household}=require('./helpers/stock-db.cjs');
 const A='30000000-0000-4000-8000-000000000001',B='30000000-0000-4000-8000-000000000002';
 (async()=>{
  const f=await createStockDb();const root=path.join(__dirname,'..');
- for(const file of ['supabase-family-profiles-migration.sql','supabase-diet-mode-migration.sql','supabase-dietitian-migration.sql','review/profile-privacy.sql'])await f.db.exec(fs.readFileSync(path.join(root,file),'utf8'));
  for(const [id,name,weight,excluded] of [[A,'Личный А',60,['egg']],[B,'Личный Б',90,[]]]){
  await f.db.query(`insert into family_profiles(id,household_id,created_by,profile_owner_user_id,name,sex,age,height_cm,start_weight_kg,excluded_foods) values($1,$2,$3,$3,$4,'male',30,170,$5,$6)`,[id,household,user,name,weight,excluded]);
  await f.db.query("insert into family_measurements(profile_id,log_date,weight) values($1,'2026-11-03',$2)",[id,weight]);
@@ -20,7 +19,7 @@ const A='30000000-0000-4000-8000-000000000001',B='30000000-0000-4000-8000-000000
  let rows=[];
  if(['family_profiles','family_measurements'].includes(table)){
  const allowed=['id','profile_id','profile_owner_user_id','household_id'];assert.ok(filters.every(([k])=>allowed.includes(k)));
- rows=await f.db.transaction(async tx=>{await tx.exec('set local role authenticated');await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[actor]);return (await tx.query(`select * from ${table}`+(filters.length?' where '+filters.map(([k],i)=>`${k}=$${i+1}`).join(' and '):''),filters.map(x=>x[1]))).rows;});
+ rows=await f.db.transaction(async tx=>{await tx.exec('set local role authenticated');await tx.query("select set_config('request.jwt.claim.sub',$1,true)",[actor]);await tx.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:actor,session_id:actor})]);return (await tx.query(`select * from ${table}`+(filters.length?' where '+filters.map(([k],i)=>`${k}=$${i+1}`).join(' and '):''),filters.map(x=>x[1]))).rows;});
  }else if(table==='household_members')rows=[{household_id:household}];else if(table==='households')rows=[{invite_code:'TEST'}];
  res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({data:rows,error:null}));
  }
