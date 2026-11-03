@@ -581,6 +581,16 @@ img{ animation:imgFadeIn .25s ease; }
   .vision-stage{ max-width:520px; margin-left:auto; margin-right:auto; }
 }
 
+/* Stock operation feedback: calm, readable states without layout animation. */
+#stock-save-panel{ border-radius:var(--radius-md); min-width:0; max-width:100%; overflow-wrap:anywhere; transition:background-color 160ms ease, border-color 160ms ease; }
+#stock-save-panel #stock-save-message{ font-size:0.875rem; font-weight:600; line-height:1.5; }
+#stock-save-panel[data-state="pending"]{ background:var(--frost-soft) !important; border-color:var(--frost) !important; }
+#stock-save-panel[data-state="error"]{ background:#FBEAEA !important; border-color:var(--danger) !important; }
+#stock-save-panel[data-state="saved"]{ background:var(--fresh-soft) !important; border-color:var(--fresh) !important; }
+#stock-save-panel .secondary-btn{ min-height:44px; margin-top:0.5rem; white-space:normal; }
+#stock-save-panel .secondary-btn[hidden]{ display:none !important; }
+@media (max-width:767px){ .sheet #stock-save-panel{ margin:0.75rem 0 0 !important; } }
+@media (prefers-reduced-motion: reduce){ #stock-save-panel{ transition:none !important; } }
 /* ===== Login gate ===== */
 .login-screen{ position:fixed; inset:0; z-index:300; background:linear-gradient(160deg,#1F2A24,#2E3E33); display:flex; align-items:center; justify-content:center; padding:calc(1.25rem + var(--safe-t)) 1.25rem calc(1.25rem + var(--safe-b)) 1.25rem; }
 .login-card{ width:100%; max-width:360px; background:var(--surface); border-radius:var(--radius-lg); padding:2rem 1.625rem; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
@@ -2395,6 +2405,7 @@ function stockStorageKey(){ return 'sf_stock_v1_' + currentUserId + '_' + curren
 function stockPanel(message, pending=false, failed=false){
   const panel=document.getElementById('stock-save-panel');
   panel.style.display=message?'block':'none';
+  panel.dataset.state=message?(pending?'pending':failed?'error':'saved'):'idle';
   document.getElementById('stock-save-message').textContent=message;
   document.getElementById('stock-retry-btn').hidden=!failed;
   document.getElementById('stock-reset-btn').hidden=!failed || !stockRejected;
