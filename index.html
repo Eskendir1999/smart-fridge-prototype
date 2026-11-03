@@ -801,6 +801,7 @@ img{ animation:imgFadeIn .25s ease; }
       <div class="back-row"><button class="back-btn" data-back="product">← Назад</button></div>
       <div class="detail-block" style="padding-top:0.375rem">
         <h2 style="margin-bottom:1rem">Изменить продукт</h2>
+        <p id="edit-stock-current" style="font-size:0.8rem;color:var(--muted)"></p>
         <div class="form-field"><label>Название</label><input type="text" id="edit-name"></div>
         <div class="form-field">
           <label>Количество</label>
@@ -2379,7 +2380,7 @@ function populateCustomDishIngredients(){
     </label>`).join('');
 }
 
-document.getElementById('save-custom-dish-btn').addEventListener('click', async ()=>{
+async function saveCustomDish(){
   const nameInput = document.getElementById('custom-dish-name');
   if(!nameInput.value.trim()){ showToast('Введите название блюда', true); return; }
   const selected = Array.from(document.querySelectorAll('#custom-dish-ingredients input:checked'))
@@ -2390,8 +2391,8 @@ document.getElementById('save-custom-dish-btn').addEventListener('click', async 
     if(!ok) return;
   }
   nameInput.value=''; closeSheet();
-});
-
+}
+document.getElementById('save-custom-dish-btn').addEventListener('click', saveCustomDish);
 /* ---- Confirmed stock mutations. Persist exact intent before sending any request. ---- */
 let stockRequest = null, stockBusy = false, stockSavedId = null, stockOnSaved = null, stockScope = '', stockRejected = false;
 function dockStockPanel(sheet){
@@ -2431,7 +2432,7 @@ function applyStockSnapshot(data){
   for(const r of data.fridge_items) getArr(r.compartment).push(stockItemFromRow(r));
   for(const r of data.cart_items) cartData.push(stockItemFromRow(r));
   usedCount=data.stats?.used_count||0; usedWeightKg=Number(data.stats?.used_weight_kg||0); wastedCount=data.stats?.wasted_count||0;
-  renderCart(); updateSummary(); renderFridgeList(currentCompartment); renderSuggestRow(); renderMissingAlert();
+  renderCart(!nativeSyncRunning); updateSummary(); renderFridgeList(currentCompartment); renderSuggestRow(); renderMissingAlert();
   if(selected){
     const list=fridgeData.some(p=>p._id===selected)?'fridge':'freezer';
     const idx=getArr(list).findIndex(p=>p._id===selected);
@@ -2456,7 +2457,7 @@ async function executeStockRequest(){
     const {data,error}=await sb.rpc('stock_mutate',request);
     if(stockStorageKey()!==scope) return false;
     if(error){
-      stockRejected=['40001','42501','22023','P0001','23514','22003','22P02','PGRST202','42703'].includes(error.code);
+      stockRejected=['40001','42501','22023','P0001','23514','22003','22007','22008','22P02','PGRST202','42703'].includes(error.code);
       if(stockRejected) try{localStorage.setItem(scope,JSON.stringify({request,lastId:stockSavedId,rejected:true}));}catch{}
       throw error;
     }
@@ -2469,8 +2470,9 @@ async function executeStockRequest(){
     // retry for a request the server has already confirmed.
     try{applyStockSnapshot(data);}catch{showToast('Сохранено. Обновите страницу для актуального списка.',true);}
     const done=stockOnSaved; stockOnSaved=null;
-    if(done) try{done();}catch{}
-    stockPanel(request.kind==='undo'?'Действие отменено. Остатки и журнал восстановлены.':'Сохранено. Даты со знаком ≈ примерные — сверьте с упаковкой.');
+    let savedMessage;
+    if(done) try{savedMessage=done();}catch{}
+    stockPanel(savedMessage||(request.kind==='undo'?'Действие отменено. Остатки и журнал восстановлены.':'Сохранено. Даты со знаком ≈ примерные — сверьте с упаковкой.'));
     return true;
   }catch(error){
     if(stockStorageKey()===scope){
@@ -2496,6 +2498,7 @@ document.getElementById('stock-reset-btn').addEventListener('click',async ()=>{
   if(!stockRejected || stockBusy) return;
   try{
     localStorage.setItem(stockStorageKey(),JSON.stringify({lastId:stockSavedId}));
+    const rejectedEdit=stockRequest?.kind==='edit';
     stockRequest=null; stockOnSaved=null; stockRejected=false;
     const selected=currentProduct && getArr(currentProduct.list)[currentProduct.idx]?._id;
     await loadUserData();
@@ -2503,6 +2506,7 @@ document.getElementById('stock-reset-btn').addEventListener('click',async ()=>{
       const list=fridgeData.some(p=>p._id===selected)?'fridge':'freezer';
       const idx=getArr(list).findIndex(p=>p._id===selected);
       currentProduct=idx>=0?{list,idx}:null;
+      if(rejectedEdit && idx>=0 && history[history.length-1]==='edit') setProductEditBaseline(getArr(list)[idx],list);
       if(history[history.length-1]==='product'){
         if(idx>=0) openProduct(list,idx,{push:false});
         else {history.pop();showScreen('fridge',false);}
@@ -2542,9 +2546,18 @@ function adjustQtyField(numId, unitId, dir){
   input.value = val;
 }
 
+let productEditBaseline=null;
+function productEditDraft(){
+  return ['edit-name','edit-qty-num','edit-qty-unit','edit-location','edit-exp'].map(id=>document.getElementById(id).value);
+}
+function setProductEditBaseline(item,compartment){
+  productEditBaseline={id:item._id,expected:stockExpectedItem(item,compartment)};
+  document.getElementById('edit-stock-current').textContent='В базе: '+item.qtyNum+' '+item.unit+'. Изменения в форме ещё не сохранены.';
+}
 document.getElementById('edit-open-btn').addEventListener('click', ()=>{
   if(!currentProduct) return;
   const p = getArr(currentProduct.list)[currentProduct.idx];
+  setProductEditBaseline(p,currentProduct.list);
   document.getElementById('edit-name').value = p.name;
   document.getElementById('edit-qty-num').value = p.qtyNum;
   document.getElementById('edit-qty-unit').value = p.unit;
@@ -2556,55 +2569,44 @@ document.getElementById('edit-open-btn').addEventListener('click', ()=>{
 document.getElementById('edit-qty-inc').addEventListener('click', ()=> adjustQtyField('edit-qty-num','edit-qty-unit',1));
 document.getElementById('edit-qty-dec').addEventListener('click', ()=> adjustQtyField('edit-qty-num','edit-qty-unit',-1));
 
+function stockExpectedItem(item,compartment){
+  return {name:item.name,emoji:item.emoji,qty_num:item.qtyNum,unit:item.unit,
+    location:item.location??null,expires_on:item.expiresOn??null,
+    expiry_estimated:!!item.expiryEstimated,compartment};
+}
 async function saveProductEdit(){
-  if(!currentProduct) return;
-  const button = document.getElementById('save-edit-btn');
-  if(button.disabled) return;
-  const editing = {...currentProduct};
-  const arr = getArr(editing.list);
-  const p = arr[editing.idx];
-  if(!p) return;
-  const qtyNum = positiveQuantity(document.getElementById('edit-qty-num').value);
-  if(qtyNum === null){ showToast('Количество должно быть больше нуля', true); return; }
-  const updated = {...p,
-    name: document.getElementById('edit-name').value.trim() || p.name,
-    qtyNum,
-    unit: document.getElementById('edit-qty-unit').value,
-    location: document.getElementById('edit-location').value,
-    expiresOn: document.getElementById('edit-exp').value || p.expiresOn,
-    expiryEstimated: document.getElementById('edit-exp').value === p.expiresOn ? p.expiryEstimated : false,
-  };
-
-  // "Морозилка" как место хранения означает реальный переезд в другую вкладку/compartment,
-  // а не просто текстовую метку — иначе карточка товара показывала бы противоречивое
-  // "Холодильник · Морозилка" одновременно.
-  const newCompartment = updated.location === 'Морозилка' ? 'freezer' : 'fridge';
-  button.disabled = true;
+  if(!currentProduct) return false;
+  const button=document.getElementById('save-edit-btn');
+  if(button.disabled) return false;
+  const editing={...currentProduct};
+  const item=getArr(editing.list)[editing.idx];
+  if(!item) return false;
+  if(!productEditBaseline || productEditBaseline.id!==item._id){showToast('Откройте редактирование продукта заново',true);return false;}
+  const baseline=productEditBaseline.expected;
+  const draft=JSON.stringify(productEditDraft());
+  const qtyNum=positiveQuantity(document.getElementById('edit-qty-num').value);
+  if(qtyNum===null){showToast('Количество должно быть больше нуля',true);return false;}
+  const date=document.getElementById('edit-exp').value||null;
+  const updated={...item,
+    name:document.getElementById('edit-name').value.trim()||baseline.name,
+    qtyNum,unit:document.getElementById('edit-qty-unit').value,
+    location:document.getElementById('edit-location').value,expiresOn:date,
+    expiryEstimated:date===baseline.expires_on?baseline.expiry_estimated:false};
+  const compartment=updated.location==='Морозилка'?'freezer':'fridge';
+  button.disabled=true;
   try{
-    await dbUpdateItem(updated, newCompartment);
-    Object.assign(p, updated);
-    const stillOpen = currentProduct && currentProduct.list === editing.list
-      && getArr(currentProduct.list)[currentProduct.idx] === p;
-    const at = arr.indexOf(p);
-    if(newCompartment !== editing.list && at >= 0){
-      arr.splice(at, 1);
-      const targetArr = getArr(newCompartment);
-      targetArr.push(p);
-      if(stillOpen) currentProduct = {list:newCompartment, idx: targetArr.length-1};
-    }
-
-    updateSummary();
-    renderFridgeList(currentCompartment);
-    renderMissingAlert();
-    renderSuggestRow();
-    showToast('Сохранено');
-    if(stillOpen){
-      history.pop();
-      openProduct(currentProduct.list, currentProduct.idx, {push:false});
-    }
-  }catch{
-    showToast('Не удалось сохранить продукт. Изменения остались в форме.', true);
-  }finally{ button.disabled = false; }
+    return await runStockOperation('edit',{id:item._id,expected:baseline,
+      ...toDbRow(updated),compartment},()=>{
+      // Snapshot application has already located this product by ID. A late response
+      // must not navigate away from another product or screen.
+      if(currentProduct && getArr(currentProduct.list)[currentProduct.idx]?._id===item._id
+        && history[history.length-1]==='edit'){
+        setProductEditBaseline(getArr(currentProduct.list)[currentProduct.idx],currentProduct.list);
+        if(JSON.stringify(productEditDraft())!==draft) return 'Предыдущее изменение сохранено. Новый ввод остался в форме.';
+        history.pop();openProduct(currentProduct.list,currentProduct.idx,{push:false});
+      }
+    });
+  }finally{button.disabled=false;}
 }
 document.getElementById('save-edit-btn').addEventListener('click', saveProductEdit);
 
@@ -3122,7 +3124,7 @@ function catalogStockItem(entry, toFreezer){
     location:toFreezer?'Морозилка':'Средняя полка',
     expiresOn:isoDate(addDays(new Date(), toFreezer ? Math.max(entry.shelfDays,60) : entry.shelfDays)), expiryEstimated:true};
 }
-document.getElementById('manual-add-confirm-btn').addEventListener('click', async ()=>{
+async function addManualProducts(){
   const checked = Array.from(document.querySelectorAll('#manual-checklist input:checked'));
   if(!checked.length){ showToast('Отметьте хотя бы один продукт',true); return; }
   const toFreezer = document.getElementById('manual-dest-freezer').classList.contains('active');
@@ -3131,16 +3133,19 @@ document.getElementById('manual-add-confirm-btn').addEventListener('click', asyn
     if(!await saveStockItem(catalogStockItem(entry,toFreezer),toFreezer,()=>{cb.checked=false;})) return;
   }
   closeSheet();
-});
-document.getElementById('manual-custom-add-btn').addEventListener('click', async ()=>{
+}
+document.getElementById('manual-add-confirm-btn').addEventListener('click', addManualProducts);async function addCustomProduct(){
   const input=document.getElementById('manual-custom-name'), name=input.value.trim();
   if(!name){showToast('Введите название продукта',true);return;}
   const toFreezer=document.getElementById('manual-dest-freezer').classList.contains('active');
   const entry=findCatalog(name);
   const item=entry ? catalogStockItem(entry,toFreezer) : {name,emoji:'📦',qtyNum:1,unit:'шт',location:toFreezer?'Морозилка':'Средняя полка',expiresOn:null,expiryEstimated:false};
-  await saveStockItem(item,toFreezer,()=>{input.value='';closeSheet();});
-});
-document.getElementById('dest-fridge').addEventListener('click', ()=> setDest('fridge'));
+  await saveStockItem(item,toFreezer,()=>{
+    if(input.value.trim()!==name) return 'Предыдущее добавление сохранено. Новый ввод остался в форме.';
+    input.value='';closeSheet();
+  });
+}
+document.getElementById('manual-custom-add-btn').addEventListener('click', addCustomProduct);document.getElementById('dest-fridge').addEventListener('click', ()=> setDest('fridge'));
 document.getElementById('dest-freezer').addEventListener('click', ()=> setDest('freezer'));
 document.getElementById('vr-exp-date').addEventListener('input', e=>{e.target.dataset.estimated='false';});
 document.getElementById('confirm-add-btn').addEventListener('click', async ()=>{
@@ -4010,7 +4015,7 @@ document.getElementById('low-stock-cart-btn').addEventListener('click', async ()
 });
 
 /* ===================== CART ===================== */
-function renderCart(){
+function renderCart(syncNative=true){
   const list = document.getElementById('cart-list');
   const empty = document.getElementById('cart-empty');
   document.getElementById('cart-count').textContent = cartData.length;
@@ -4033,7 +4038,7 @@ function renderCart(){
     });
   }
   updateCartBadge();
-  queueNativeSync();
+  if(syncNative) queueNativeSync();
 }
 // Покупка товара из корзины: переносит его в холодильник/морозилку. Вызывается и по кнопке
 // «Куплено», и по отметке из виджета на iPhone (silent — без тоста на каждый товар).
@@ -4643,13 +4648,6 @@ showScreen('home', false);
 function toDbRow(p){
   return {name:p.name, emoji:p.emoji, qty_num:p.qtyNum, unit:p.unit, location:p.location||null, expires_on:p.expiresOn||null, expiry_estimated:!!p.expiryEstimated};
 }
-async function dbUpdateItem(item, compartment){
-  if(!currentUserId || !item._id) throw new Error('Product is not linked to the account');
-  const payload = toDbRow(item);
-  if(compartment) payload.compartment = compartment;
-  const { data, error } = await sb.from('fridge_items').update(payload).eq('id', item._id).select('id').single();
-  if(error || !data) throw error || new Error('Product was not saved');
-}
 async function dbSaveMeasurement(entry){
   if(!currentProfileId) return;
   await sb.from('family_measurements').upsert(
@@ -5038,6 +5036,7 @@ async function applyWidgetPurchases(WB){
   if(bought.length) showToast(`Куплено через виджет: ${bought.join(', ')}`);
 }
 
+var nativeSyncRunning = false;
 var nativeSyncTimer = null; // var, а не let: renderCart() вызывается при старте раньше этого места
 function queueNativeSync(){
   if(!isNativeApp()) return;
@@ -5046,7 +5045,8 @@ function queueNativeSync(){
 }
 async function syncNativeExtras(){
   const WB = nativePlugin('WidgetBridge');
-  if(!WB || !currentUserId || !userDataLoaded) return;
+  if(!WB || !currentUserId || !userDataLoaded || nativeSyncRunning) return;
+  nativeSyncRunning = true;
   try{
     await applyWidgetPurchases(WB);
     const pack = await widgetProfileRows();
@@ -5054,6 +5054,7 @@ async function syncNativeExtras(){
     scheduleNativeReminders(pack);
     maybeStartMealActivity(WB);
   }catch(e){ console.warn('Синхронизация с виджетами не удалась', e); }
+  finally{ nativeSyncRunning = false; }
 }
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') queueNativeSync(); });
 

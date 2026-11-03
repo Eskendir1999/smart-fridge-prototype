@@ -7,6 +7,18 @@ permissions:
 jobs:
   isolated-stock-checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: sf_test_admin
+          POSTGRES_PASSWORD: local-fixture-only
+          POSTGRES_DB: sf_stock_test_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sf_test_admin -d sf_stock_test_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,6 +35,17 @@ jobs:
       - run: npm run test:browser
         env:
           SF_EVIDENCE_DIR: ./test-evidence
+      - name: Install pinned PostgREST for isolated HTTP checks
+        shell: bash
+        run: |
+          curl -fsSL https://github.com/PostgREST/postgrest/releases/download/v16.5/postgrest-v16.5-linux-static-x86-64.tar.xz -o "$RUNNER_TEMP/postgrest.tar.xz"
+          echo "5099e7ada38f9f6846cd87c14c5f158b7c165f1e9959665ad412e61f4dceba95  $RUNNER_TEMP/postgrest.tar.xz" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/postgrest.tar.xz" -C "$RUNNER_TEMP"
+      - run: npm run test:http
+        env:
+          SF_TEST_DATABASE_URL: postgresql://sf_test_admin:local-fixture-only@127.0.0.1:5432/sf_stock_test_ci
+          SF_TEST_POSTGREST_BIN: ${{ runner.temp }}/postgrest
+          SF_EVIDENCE_DIR: ./test-evidence/http
       - uses: actions/upload-artifact@v4
         if: always()
         with:

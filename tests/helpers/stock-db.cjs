@@ -8,11 +8,11 @@ const other='10000000-0000-4000-8000-000000000002';
 const stranger='10000000-0000-4000-8000-000000000003';
 const household='20000000-0000-4000-8000-000000000001';
 const otherHousehold='20000000-0000-4000-8000-000000000002';
-async function createStockDb(){
-  const db=new PGlite();
+async function createStockDb({database}={}){
+  const db=database||new PGlite();
   await db.exec(`create role anon; create role authenticated; create schema auth;
     create table auth.users(id uuid primary key);
-    create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+    create function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;
     create function auth.role() returns text language sql stable as $$select current_user::text$$;
     grant usage on schema auth to authenticated,anon;
     grant execute on all functions in schema auth to authenticated,anon;`);

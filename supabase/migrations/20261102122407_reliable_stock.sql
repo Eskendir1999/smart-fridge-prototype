@@ -37,10 +37,10 @@ declare
   fi public.fridge_items%rowtype;
   ci public.cart_items%rowtype;
   previous jsonb;
+  expected jsonb;
   remaining numeric;
   amount numeric;
   kg numeric := 0;
-  ev uuid;
 begin
   if uid is null or not public.is_household_member(hh_id) then
     raise exception 'Household access denied' using errcode = '42501';
@@ -48,6 +48,11 @@ begin
   if op_id is null or body is null then raise exception 'Invalid operation'; end if;
   -- Serialize cooperating clients, including retries and undo, inside this household.
   perform pg_advisory_xact_lock(hashtextextended(hh_id::text, 0));
+  -- Membership can change while this request waits for the household lock.
+  -- Recheck and hold that membership row until commit, so a queued request cannot
+  -- mutate a household after the user has joined a different one.
+  perform 1 from public.household_members where user_id=uid and household_id=hh_id for share;
+  if not found then raise exception 'Household access denied' using errcode = '42501'; end if;
   select * into op from sf_private.stock_operations where id = op_id;
   if found then
     if op.user_id <> uid or op.household_id <> hh_id or op.action <> kind or op.payload <> body then
@@ -69,6 +74,25 @@ begin
         values(op_id,uid,hh_id,body->>'name',coalesce(body->>'emoji','🛒'),amount,body->>'unit',body->>'note') returning * into ci;
         op.before_cart := to_jsonb(ci);
       end if;
+    elsif kind = 'edit' then
+      select * into fi from public.fridge_items where id = (body->>'id')::uuid and household_id = hh_id for update;
+      if not found then raise exception 'Product changed; reload' using errcode = '40001'; end if;
+      expected := jsonb_build_object('name',fi.name,'emoji',fi.emoji,'qty_num',fi.qty_num,
+        'unit',fi.unit,'location',fi.location,'expires_on',fi.expires_on,
+        'expiry_estimated',fi.expiry_estimated,'compartment',fi.compartment);
+      if expected is distinct from body->'expected' then
+        raise exception 'Product changed; reload' using errcode = '40001';
+      end if;
+      amount := (body->>'qty_num')::numeric;
+      if amount is null or amount <= 0 or amount::text in ('NaN','Infinity','-Infinity')
+        or length(btrim(coalesce(body->>'name',''))) = 0
+        or coalesce(body->>'unit','') not in ('шт','г','кг','мл','л') then raise exception 'Invalid product'; end if;
+      op.before_item := to_jsonb(fi);
+      update public.fridge_items set name=body->>'name',emoji=coalesce(body->>'emoji','📦'),
+        qty_num=amount,unit=body->>'unit',location=body->>'location',compartment=body->>'compartment',
+        expires_on=nullif(body->>'expires_on','')::date,expiry_estimated=coalesce((body->>'expiry_estimated')::boolean,false)
+        where id=fi.id returning * into fi;
+      op.after_item := to_jsonb(fi);
     elsif kind = 'buy' then
       select * into ci from public.cart_items where id = (body->>'id')::uuid and household_id = hh_id for update;
       if not found then raise exception 'Cart item changed; reload' using errcode = '40001'; end if;

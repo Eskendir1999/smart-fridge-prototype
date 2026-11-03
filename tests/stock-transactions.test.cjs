@@ -125,3 +125,29 @@ test('new privileged code is private; public RPC is invoker, anon cannot execute
   assert.equal((await f.db.query("select has_table_privilege('authenticated','sf_private.stock_operations','insert') allowed")).rows[0].allowed,false);
   assert.equal((await f.db.query("select relrowsecurity from pg_class where oid='sf_private.stock_operations'::regclass")).rows[0].relrowsecurity,true);
 });
+async function editBody(id,changes={}){
+  const row=(await f.db.query('select to_jsonb(f) r from fridge_items f where id=$1',[id])).rows[0].r;
+  const fields=['name','emoji','qty_num','unit','location','expires_on','expiry_estimated','compartment'];
+  const expected=Object.fromEntries(fields.map(key=>[key,row[key]]));
+  return {id,expected,...expected,...changes};
+}
+test('editing uses a durable operation, can move compartments and undo restores exact original row',async()=>{
+  const id=await f.add(),op=randomUUID();const body=await editBody(id,{name:'Edited',qty_num:450,compartment:'freezer',location:'Морозилка'});
+  await f.rpc('edit',body,{id:op});const result=await f.rpc('edit',body,{id:op});
+  const row=result.fridge_items.find(p=>p.id===id);assert.equal(row.qty_num,450);assert.equal(row.compartment,'freezer');
+  assert.equal(await scalar(`select count(*)::int n from sf_private.stock_operations where id='${op}'`),1);
+  await f.rpc('undo',{operation_id:op});const restored=(await f.db.query('select to_jsonb(f) r from fridge_items f where id=$1',[id])).rows[0].r;
+  for(const key of Object.keys(body.expected))assert.deepEqual(restored[key],body.expected[key]);
+});
+test('stale editor cannot overwrite a later consumption or rename by another family member',async()=>{
+  const id=await f.add();const stale=await editBody(id,{qty_num:600});await f.rpc('used',spend(id),{as:other});
+  await assert.rejects(f.rpc('edit',stale),/Product changed/);assert.equal(await scalar(`select qty_num::int n from fridge_items where id='${id}'`),300);
+  const a=await editBody(id,{name:'Name A'}),b=await editBody(id,{name:'Name B'});await f.rpc('edit',a,{as:other});
+  await assert.rejects(f.rpc('edit',b),/Product changed/);
+});
+test('failed edit and zero quantity leave product and receipt unchanged',async()=>{
+  const id=await f.add(),op=randomUUID(),body=await editBody(id,{qty_num:0});
+  await assert.rejects(f.rpc('edit',body,{id:op}),/Invalid product/);
+  assert.equal(await scalar(`select qty_num::int n from fridge_items where id='${id}'`),500);
+  assert.equal(await scalar(`select count(*)::int n from sf_private.stock_operations where id='${op}'`),0);
+});
