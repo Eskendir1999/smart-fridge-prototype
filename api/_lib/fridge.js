@@ -54,23 +54,15 @@ async function householdIdOf(sb, userId) {
   return data ? data.household_id : null;
 }
 
-// Последний замер первого профиля семьи (так же, как в виджетах и приложении).
-async function lastWeighIn(sb, householdId) {
-  const { data: profiles } = await sb.from('family_profiles').select('id, name').eq('household_id', householdId).order('created_at', { ascending: true }).limit(1);
-  const profile = profiles && profiles[0];
-  if (!profile) return null;
-  const { data: rows } = await sb.from('family_measurements').select('log_date, weight').eq('profile_id', profile.id).order('log_date', { ascending: false }).limit(1);
-  const row = rows && rows[0];
-  if (!row) return null;
-  return { profileName: profile.name, weight: Number(row.weight), date: String(row.log_date).slice(0, 10) };
-}
+// Personal measurements must never be selected through a household/service-role path.
+// Re-enabling requires verified ownership, explicit disclosure and separate acceptance.
+async function lastWeighIn() { return null; }
 
 async function statusText(sb, householdId, today) {
   const horizon = addDaysIso(today, STATUS_HORIZON_DAYS);
-  const [fridge, cart, weigh] = await Promise.all([
+  const [fridge, cart] = await Promise.all([
     sb.from('fridge_items').select('name, expires_on').eq('household_id', householdId).not('expires_on', 'is', null).lte('expires_on', horizon).order('expires_on', { ascending: true }).limit(30),
     sb.from('cart_items').select('name').eq('household_id', householdId).order('created_at', { ascending: true }).limit(30),
-    lastWeighIn(sb, householdId),
   ]);
 
   const lines = ['🧊 Холодильник'];
@@ -87,15 +79,6 @@ async function statusText(sb, householdId, today) {
   const cartNames = (cart.data || []).map(c => c.name);
   lines.push(cartNames.length ? `🛒 Купить (${cartNames.length}):\n${bullets(cartNames.slice(0, 5))}${cartNames.length > 5 ? `\n…и ещё ${cartNames.length - 5}` : ''}` : '🛒 Корзина пуста');
 
-  lines.push('');
-  if (weigh) {
-    const ago = daysBetween(weigh.date, today);
-    const next = WEIGH_EVERY_DAYS - ago;
-    const when = next <= 0 ? 'пора взвеситься' : `следующий через ${next} ${ruDays(next)}`;
-    lines.push(`⚖️ ${weigh.profileName}: ${fmtKg(weigh.weight)} кг (замер ${ago === 0 ? 'сегодня' : `${ago} ${ruDays(ago)} назад`}), ${when}`);
-  } else {
-    lines.push('⚖️ Вес: замеров пока нет');
-  }
   return lines.join('\n');
 }
 

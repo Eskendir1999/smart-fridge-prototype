@@ -6,7 +6,8 @@
     "build": "node build.js",
     "test": "node --test tests/*.test.cjs",
     "test:browser": "node tests/stock-browser.cjs",
-    "test:http": "node tests/stock-http.cjs"
+    "test:http": "node tests/stock-http.cjs",
+    "test:privacy-browser": "node tests/privacy-browser.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
