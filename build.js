@@ -51,4 +51,6 @@ const widgetJs = injectPublicConfig(fs.readFileSync(path.join(srcDir, 'scriptabl
 fs.writeFileSync(path.join(distDir, 'scriptable', 'smart-fridge.js'), widgetJs);
 fs.cpSync(path.join(srcDir, 'icons'), path.join(distDir, 'icons'), { recursive: true });
 
+fs.cpSync(path.join(srcDir, 'personal-data'), path.join(distDir, 'personal-data'), {recursive:true});
+
 console.log('Build complete ->', distDir);

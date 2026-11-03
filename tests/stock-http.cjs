@@ -31,14 +31,12 @@ async function main(){
   const jwtSecret=randomBytes(32).toString('hex');
   const jwt=(as=user,exp=Math.floor(Date.now()/1000)+3600)=>{
     const header=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
-    const payload=Buffer.from(JSON.stringify({role:as?'authenticated':'anon',...(as?{sub:as}:{}),exp})).toString('base64url');
+    const payload=Buffer.from(JSON.stringify({role:as?'authenticated':'anon',...(as?{sub:as,session_id:as}:{}),exp})).toString('base64url');
     return header+'.'+payload+'.'+createHmac('sha256',jwtSecret).update(header+'.'+payload).digest('base64url');
   };
   const check=(name)=>{checks.push(name);console.log('PASS HTTP: '+name);};
   try{
     const f=await createStockDb({database});
-    await pool.query(fs.readFileSync(path.join(root,'supabase-family-profiles-migration.sql'),'utf8'));
-    await pool.query('grant select,insert,update,delete on public.family_profiles,public.family_measurements to authenticated');
     const apiPassword=randomBytes(24).toString('hex');
     await pool.query(`create role sf_api_test login noinherit password '${apiPassword}'; grant authenticated,anon to sf_api_test;`);
     const apiUrl=new URL(url);apiUrl.username='sf_api_test';apiUrl.password=apiPassword;
@@ -214,9 +212,9 @@ async function main(){
     assert.deepEqual(personalRequests,[]);check('production-disabled personal screens perform no profile, measurement or chat HTTP reads');
     await pool.query(fs.readFileSync(path.join(root,'tests/production-db-smoke.sql'),'utf8'));
     check('production rollback-only smoke validates synthetic families and leaves no test records');
-    const privacyReview=await require('./helpers/privacy-http-review.cjs')({pool,root,client,user,other,stranger,household,check});
+    const personalDataAcceptance=await require('./helpers/my-data-http.cjs')({pool,root,client,user,other,stranger,household,check});
     const out=process.env.SF_EVIDENCE_DIR||'/tmp/sf-stock-http-evidence';fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'mobile-real-http-undo.png'),fullPage:true});
-    fs.writeFileSync(path.join(out,'http-summary.json'),JSON.stringify({checks,privacyReview,postgres:(await pool.query('select version()')).rows[0].version,postgrest:logs[0],pageErrors},null,2));
+    fs.writeFileSync(path.join(out,'http-summary.json'),JSON.stringify({checks,personalDataAcceptance,postgres:(await pool.query('select version()')).rows[0].version,postgrest:logs[0],pageErrors},null,2));
     fs.writeFileSync(path.join(out,'postgrest.log'),logs.join(''));
   }finally{
     if(browser)await browser.close();

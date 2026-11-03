@@ -1,5 +1,5 @@
 // Версия кэша: поднимайте при каждом деплое, чтобы старый app shell не залипал у пользователей.
-const CACHE_NAME = 'smart-fridge-nutrition-stage2-safe-20261103';
+const CACHE_NAME = 'smart-fridge-my-data-stage3-20261103';
 const APP_SHELL = [
   '/',
   '/manifest.json',
@@ -30,13 +30,15 @@ self.addEventListener('activate', (event) => {
 // с откатом на кэш офлайн. Запросы к Supabase/CDN/API не трогаем — им нужен реальный ответ.
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin || new URL(req.url).pathname.startsWith('/api/')) return;
 
   event.respondWith(
     fetch(req)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+        if(res.ok && !/no-store/i.test(res.headers.get('Cache-Control') || '')){
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+        }
         return res;
       })
       .catch(() => caches.match(req).then((cached) => cached || caches.match('/')))

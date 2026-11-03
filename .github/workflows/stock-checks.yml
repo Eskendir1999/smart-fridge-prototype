@@ -34,6 +34,9 @@ jobs:
           SUPABASE_URL: https://fixture.supabase.test
           SUPABASE_ANON_KEY: sb_publishable_fixture
       - run: npx playwright install --with-deps chromium
+      - run: npm run test:my-data-browser
+        env:
+          SF_EVIDENCE_DIR: ./test-evidence/my-data
       - run: npm run test:privacy-browser
         env:
           SF_EVIDENCE_DIR: ./test-evidence/privacy
