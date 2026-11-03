@@ -3,7 +3,10 @@
 :root{
   --sf-muted-readable:#526159;
   --sf-focus:#286bba;
+  --muted:#58675d;
+  --warn:#914516;
 }
+#app h1,#app h2,#app h3,#app .display{font-family:Inter,system-ui,-apple-system,Arial,sans-serif;letter-spacing:-.025em}
 #screen-home .sf-home-intro{margin:0;padding:0 2rem 1.25rem;color:var(--sf-muted-readable);font-size:.9375rem;line-height:1.55}
 .sf-home-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,1fr);gap:1rem;align-items:start;padding:0 1rem}
 .sf-home-column{min-width:0;display:flex;flex-direction:column;gap:.5rem}
@@ -58,3 +61,5 @@
   .bottom-nav .nav-item[data-nav="vision"]{display:none}
 }
 @media(prefers-reduced-motion:reduce){.sf-home-grid *,#screen-fridge .sf-stock-tools *{animation:none!important;scroll-behavior:auto!important}}
+
+.sf-manual-error{color:#a52b39;font-size:.875rem;margin:.25rem 0 .625rem}
