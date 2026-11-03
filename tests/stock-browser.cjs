@@ -55,6 +55,16 @@ const {createStockDb,user,household}=require('./helpers/stock-db.cjs');
   const out=process.env.SF_EVIDENCE_DIR||'/tmp/sf-stock-evidence';fs.mkdirSync(out,{recursive:true});
   try{
     await page.goto('http://127.0.0.1:'+port);await page.waitForFunction(()=>userDataLoaded&&document.getElementById('login-screen').style.display==='none');
+    await page.waitForSelector('.sf-home-grid');
+    assert.ok((await page.locator('#screen-home .sf-home-section-title').textContent()).includes('Есть дома'));
+    assert.ok(await page.evaluate(()=>Array.from(document.styleSheets).some(s=>s.href?.includes('/ux/core-flow.css'))));
+    await page.evaluate(()=>showScreen('fridge',false));
+    await page.fill('#sf-stock-search','__not_a_product__');
+    assert.match(await page.textContent('#sf-stock-result'),/Ничего не найдено/);
+    await page.fill('#sf-stock-search','');
+    await page.evaluate(()=>showScreen('home',false));
+    console.log('PASS browser: UX core hierarchy, CSS and stock search');
+
     await page.evaluate(()=>openProduct('fridge',0));await page.fill('#use-product-qty','200');mode='pending';await page.click('#use-product-btn');await message(/Сохраняем/);
     assert.equal((await state()).fridge[0].qtyNum,500);await message(/Сохранено/);assert.equal((await state()).fridge[0].qtyNum,300);assert.equal(await page.textContent('#product-qty'),'300 г');
     await page.screenshot({path:path.join(out,'desktop-partial-use.png'),fullPage:true});
