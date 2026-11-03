@@ -18,6 +18,7 @@ module.exports = async (req, res) => {
     res.status(401).json({ error: 'unauthorized' });
     return;
   }
+  if (process.env.SF_ENABLE_AUTOMATIONS !== '1') { res.status(503).json({ error: 'Раздел временно отключён до завершения проверки.' }); return; }
   if (!process.env.GEMINI_API_KEY) { res.status(503).json({ error: 'GEMINI_API_KEY not set' }); return; }
 
   const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);

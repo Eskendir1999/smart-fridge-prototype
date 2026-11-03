@@ -33,6 +33,7 @@ module.exports = async (req, res) => {
     return;
   }
 
+  if (process.env.SF_ENABLE_NOTIFICATIONS !== '1') { res.status(503).json({ error: 'Раздел временно отключён до завершения проверки.' }); return; }
   const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
   webpush.setVapidDetails(
     'mailto:mr.taisarinov@gmail.com',

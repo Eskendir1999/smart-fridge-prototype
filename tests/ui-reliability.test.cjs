@@ -21,22 +21,34 @@ test('quantity input rejects zero, negatives, non-finite and partially numeric v
   assert.equal(vm.runInContext('positiveQuantity("1.25")', c), 1.25);
 });
 function editFixture(reply, quantity = '1.5') {
-  const p = { _id: 'fixture-product', name: 'before', qtyNum: 1, unit: 'кг', location: 'Средняя полка', expiresOn: '2026-11-05' };
+  const p = { _id: 'fixture-product', emoji:'📦', expiryEstimated:false, name: 'before', qtyNum: 1, unit: 'кг', location: 'Средняя полка', expiresOn: '2026-11-05' };
   const fridge = [p], freezer = [], button = { disabled: false }, calls = [], toasts = [];
-  const nodes = { 'save-edit-btn': button, 'edit-name': { value: 'after' }, 'edit-qty-num': { value: quantity }, 'edit-qty-unit': { value: 'кг' }, 'edit-location': { value: 'Морозилка' }, 'edit-exp': { value: '2026-11-06' } };
-  const c = load(['decimalInput', 'positiveQuantity', 'toDbRow', 'dbUpdateItem', 'saveProductEdit'], {
-    document: { getElementById: id => nodes[id] }, currentUserId: 'fixture-user', foodWriteBusy: false, currentProduct: { list: 'fridge', idx: 0 }, currentCompartment: 'fridge',
+  const nodes = { 'edit-stock-current':{textContent:''}, 'save-edit-btn': button, 'edit-name': { value: 'after' }, 'edit-qty-num': { value: quantity }, 'edit-qty-unit': { value: 'кг' }, 'edit-location': { value: 'Морозилка' }, 'edit-exp': { value: '2026-11-06' } };
+  const c = load(['decimalInput', 'positiveQuantity', 'toDbRow', 'stockExpectedItem', 'productEditDraft', 'setProductEditBaseline', 'saveProductEdit'], {
+    productEditBaseline:null, document: { getElementById: id => nodes[id] }, currentUserId: 'fixture-user', currentProduct: { list: 'fridge', idx: 0 }, currentCompartment: 'fridge',
     getArr: name => name === 'freezer' ? freezer : fridge,
-    sb: { from: () => ({ update(payload) { calls.push(payload); return this; }, eq() { return this; }, select() { return this; }, single: async () => typeof reply === 'function' ? reply() : reply }) },
+    runStockOperation: async (kind,body,onSaved)=>{
+      assert.equal(kind,'edit'); calls.push(body);
+      const result=typeof reply==='function'?await reply():reply;
+      if(result.error||!result.data) return false;
+      Object.assign(p,{name:body.name,qtyNum:body.qty_num,unit:body.unit,location:body.location,expiresOn:body.expires_on});
+      const stillOpen=c.currentProduct && c.currentProduct.list==='fridge' && fridge[c.currentProduct.idx]===p;
+      if(body.compartment==='freezer'){
+        fridge.splice(fridge.indexOf(p),1);freezer.push(p);
+        if(stillOpen)c.currentProduct={list:'freezer',idx:freezer.length-1};
+      }
+      onSaved();return true;
+    },
     updateSummary() {}, renderFridgeList() {}, renderMissingAlert() {}, renderSuggestRow() {}, showToast: (...args) => toasts.push(args), history: ['fridge', 'product', 'edit'], openProduct() {},
   });
-  return { c, p, fridge, freezer, button, calls, toasts, run: () => vm.runInContext('saveProductEdit()', c) };
+  vm.runInContext("setProductEditBaseline(getArr('fridge')[0],'fridge')",c);
+  return { c, p, fridge, freezer, button, calls, toasts, nodes, run: () => vm.runInContext('saveProductEdit()', c) };
 }
 for (const reply of [{ error: { message: 'denied' }, data: null }, { error: null, data: null }]) {
   test('failed/zero-row product update keeps local data and does not report success: ' + JSON.stringify(reply), async () => {
     const f = editFixture(reply); await f.run();
     assert.equal(f.p.name, 'before'); assert.equal(f.p.qtyNum, 1); assert.equal(f.fridge.length, 1); assert.equal(f.freezer.length, 0);
-    assert.equal(f.button.disabled, false); assert.equal(f.toasts[0][1], true); assert.ok(!f.toasts.some(([text]) => text === 'Сохранено'));
+    assert.equal(f.button.disabled, false); assert.ok(!f.toasts.some(([text]) => text === 'Сохранено'));
   });
 }
 test('invalid product quantity never reaches database', async () => {
@@ -156,4 +168,14 @@ test('weight-only save keeps body measurements and handles concurrent daily inse
     await vm.runInContext('saveProfileWeight("fixture-profile", 74.5)', c);
     assert.equal(row.weight, 74.5); assert.equal(row.neck, 32); assert.equal(row.hips, 95); assert.equal(inserts, concurrent ? 1 : 0);
   }
+});
+test('editor keeps the opening baseline even if background inventory refreshes',async()=>{
+  const f=editFixture({data:null,error:{message:'conflict'}});f.p.qtyNum=0.3;
+  await f.run();assert.equal(f.calls[0].expected.qty_num,1);assert.equal(f.calls[0].qty_num,1.5);
+});
+test('typing new edits while a save is pending keeps the new draft after its confirmation',async()=>{
+  let finish,opened=0;const f=editFixture(()=>new Promise(r=>finish=r));f.c.openProduct=()=>opened++;
+  const pending=f.run();await new Promise(setImmediate);f.nodes['edit-name'].value='new unsaved draft';
+  finish({data:{id:'fixture-product'},error:null});await pending;
+  assert.equal(opened,0);assert.equal(f.nodes['edit-name'].value,'new unsaved draft');assert.equal(f.c.history.length,3);
 });

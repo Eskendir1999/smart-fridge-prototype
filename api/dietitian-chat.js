@@ -55,6 +55,7 @@ module.exports = async (req, res) => {
     res.status(auth.status).json({ error: auth.status === 503 ? 'Проверка входа временно недоступна.' : 'Войдите в аккаунт, чтобы открыть диетолога.' });
     return;
   }
+  if (process.env.SF_ENABLE_AI_CHAT !== '1') { res.status(503).json({ error: 'Раздел временно отключён до завершения проверки.' }); return; }
   if (!process.env.GEMINI_API_KEY) {
     res.status(503).json({ error: 'Диетолог временно недоступен: не настроен GEMINI_API_KEY.' });
     return;
