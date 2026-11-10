@@ -54,5 +54,8 @@ fs.cpSync(path.join(srcDir, 'icons'), path.join(distDir, 'icons'), { recursive: 
 
 fs.cpSync(path.join(srcDir, 'personal-data'), path.join(distDir, 'personal-data'), {recursive:true});
 fs.cpSync(path.join(srcDir, 'dinner'), path.join(distDir, 'dinner'), { recursive: true });
+fs.mkdirSync(path.join(distDir, 'ux'), { recursive: true });
+fs.copyFileSync(path.join(srcDir, 'ux', 'core-flow.css'), path.join(distDir, 'ux', 'core-flow.css'));
+fs.copyFileSync(path.join(srcDir, 'ux', 'core-flow.js'), path.join(distDir, 'ux', 'core-flow.js'));
 
 console.log('Build complete ->', distDir);

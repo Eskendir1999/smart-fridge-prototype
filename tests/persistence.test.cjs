@@ -20,10 +20,10 @@ test('batch retry repeats only failed row, leaving confirmed rows unchecked',asy
 });
 test('replaying an older custom add does not clear a newly typed product name',async()=>{
   let n=0,closed=0;const f=fixture({reply:r=>++n===1?{error:{message:'offline'}}:{data:{operation_id:r.op_id,fridge_items:[],cart_items:[]}}});
-  f.node('manual-custom-name').value='old name';f.node('manual-dest-freezer').classList={contains:()=>false};
+  f.node('manual-custom-name').value='old name';f.node('manual-custom-qty').value='3';f.node('manual-custom-unit').value='шт';f.node('manual-custom-expiry').value='';f.node('manual-dest-freezer').classList={contains:()=>false};
   Object.assign(f.c,{findCatalog:()=>null,closeSheet:()=>closed++});load(f,['toDbRow','saveStockItem','addCustomProduct']);
   await f.run('addCustomProduct()');f.node('manual-custom-name').value='new draft';await f.run('executeStockRequest()');
-  assert.equal(f.node('manual-custom-name').value,'new draft');assert.equal(closed,0);assert.match(f.node('stock-save-message').textContent,/Новый ввод/);
+  assert.equal(f.node('manual-custom-name').value,'new draft');assert.equal(f.node('manual-custom-qty').value,'3');assert.equal(closed,0);assert.match(f.node('stock-save-message').textContent,/Новый ввод/);
 });
 test('widget waits for confirmation and leaves failed and unattempted marks pending',async()=>{
   const cleared=[],calls=[];let failed=true;
