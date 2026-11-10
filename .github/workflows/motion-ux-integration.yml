@@ -17,8 +17,9 @@ jobs:
         run: |
           git config user.name "SF QA"
           git config user.email "sf-qa@example.invalid"
+          cp tests/motion-visual-browser.cjs /tmp/sf-motion-visual-browser.cjs
           git fetch origin main
-          git merge --no-edit origin/main
+          git checkout --detach origin/main
           for sha in \
             662d3e92875f07b768e8a5271deac692d1b3b892 \
             beb9e770e9ba8e046547b4742e144c51be8c4f92 \
@@ -29,6 +30,7 @@ jobs:
             ac2a89fa1d517287ed76a1ec1d3fcff7ae057d8f; do
             git cherry-pick --no-edit "$sha"
           done
+          cp /tmp/sf-motion-visual-browser.cjs tests/motion-visual-browser.cjs
           git diff --check HEAD~7 HEAD
       - uses: actions/setup-node@v4
         with:
