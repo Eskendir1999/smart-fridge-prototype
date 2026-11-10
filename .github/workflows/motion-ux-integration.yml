@@ -17,6 +17,8 @@ jobs:
         run: |
           git config user.name "SF QA"
           git config user.email "sf-qa@example.invalid"
+          git fetch origin main
+          git merge --no-edit origin/main
           for sha in \
             662d3e92875f07b768e8a5271deac692d1b3b892 \
             beb9e770e9ba8e046547b4742e144c51be8c4f92 \
@@ -43,6 +45,8 @@ jobs:
         run: node tests/motion-visual-browser.cjs
         env:
           SF_EVIDENCE_DIR: ./test-evidence/motion
+      - name: Privacy browser flows after latest main integration
+        run: npm run test:privacy-browser
       - name: Existing stock browser flows against isolated test database
         run: npm run test:browser
         env:
