@@ -1,0 +1,9 @@
+# Dinner production rollout
+
+The owner-only profile form collects a display name, age and the selected exclusions. It leaves weight, height, sex and household association empty. Only the current permanent account with a live Auth session can create its profile. The server issues a short-lived creation request; retries cannot duplicate or recreate a deleted profile. Unassigned legacy profiles are untouched.
+
+Deploy the two Dinner migrations after My Data Stage3. Do not rerun the older stock or My Data migrations. The new tables and RPCs start with the global Dinner gates disabled. Use a freshly created fixture household and set acceptance_household and acceptance_until on the singleton control row for scoped managed-Auth checks only. Clear both after the checks. Do not add real accounts to that household or connect a shared Preview to production.
+
+Test profile visibility against a second account in the same fixture household, creation and retry, dinner consumption and undo, fresh JSON/CSV export, profile deletion and erased private context, revoked sessions, legacy profile preservation, and the disable procedure. Scope every test write to the fixture IDs. Delete the fixture accounts and household before opening global access. The UI uses the combined My Data contract independently of the Dinner display flag.
+
+For rollback, first disable enabled and profile_privacy_accepted and clear the acceptance fields in sf_private.dinner_release_control. This stops Dinner writes and profile creation. Keep My Data v2 and the additive schema. Promote the same release built with SF_ENABLE_DINNER=0 to remove the UI without losing access to Dinner export or deletion. Do not restore the pre-Dinner frontend once Dinner records exist: its export contract does not cover them. Keep operational records to prevent duplicate consumption. The existing 90-day deletion-ticket policy is unchanged.

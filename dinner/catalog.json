@@ -1,0 +1,190 @@
+{
+  "ingredients": {
+    "egg": {
+      "name": "Яйца",
+      "tags": [
+        "egg"
+      ],
+      "allergensReviewed": true
+    },
+    "cheese": {
+      "name": "Твёрдый сыр",
+      "tags": [
+        "dairy"
+      ],
+      "allergensReviewed": true
+    },
+    "milk": {
+      "name": "Молоко",
+      "tags": [
+        "dairy"
+      ],
+      "allergensReviewed": true
+    },
+    "butter": {
+      "name": "Масло сливочное",
+      "tags": [
+        "dairy"
+      ],
+      "allergensReviewed": true
+    },
+    "herbs": {
+      "name": "Зелень",
+      "tags": [],
+      "allergensReviewed": true
+    },
+    "tomato": {
+      "name": "Помидоры",
+      "tags": [],
+      "allergensReviewed": true
+    },
+    "cucumber": {
+      "name": "Огурцы",
+      "tags": [],
+      "allergensReviewed": true
+    },
+    "oil": {
+      "name": "Оливковое масло",
+      "tags": [],
+      "allergensReviewed": true
+    }
+  },
+  "recipes": [
+    {
+      "id": "cheese-cucumber",
+      "title": "Салат с сыром и огурцом",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "cheese",
+          "quantity": {
+            "value": 30,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "cucumber",
+          "quantity": {
+            "value": 150,
+            "unit": "g"
+          }
+        }
+      ],
+      "steps": [
+        "Подготовьте продукты в указанных количествах.",
+        "Нарежьте огурец и сыр, смешайте.",
+        "Перед списанием укажите фактический расход."
+      ],
+      "version": 1
+    },
+    {
+      "id": "egg-tomato",
+      "title": "Салат с яйцом и помидорами",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "egg",
+          "quantity": {
+            "value": 2,
+            "unit": "pcs"
+          }
+        },
+        {
+          "ingredientId": "tomato",
+          "quantity": {
+            "value": 150,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "oil",
+          "quantity": {
+            "value": 5,
+            "unit": "ml"
+          }
+        }
+      ],
+      "steps": [
+        "Сварите яйца, остудите и очистите.",
+        "Нарежьте яйца и помидоры, добавьте отмеренное масло.",
+        "Перед списанием укажите фактический расход."
+      ],
+      "version": 1
+    },
+    {
+      "id": "vegetable-salad",
+      "title": "Салат из огурцов и помидоров",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "cucumber",
+          "quantity": {
+            "value": 150,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "tomato",
+          "quantity": {
+            "value": 150,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "oil",
+          "quantity": {
+            "value": 5,
+            "unit": "ml"
+          }
+        }
+      ],
+      "steps": [
+        "Подготовьте и отмерьте продукты.",
+        "Нарежьте овощи, смешайте с маслом.",
+        "Перед списанием укажите фактический расход."
+      ],
+      "version": 1
+    },
+    {
+      "id": "egg-cucumber",
+      "title": "Салат с яйцом и огурцом",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "variantOf": "cheese-cucumber",
+      "ingredients": [
+        {
+          "ingredientId": "egg",
+          "quantity": {
+            "value": 2,
+            "unit": "pcs"
+          }
+        },
+        {
+          "ingredientId": "cucumber",
+          "quantity": {
+            "value": 150,
+            "unit": "g"
+          }
+        }
+      ],
+      "steps": [
+        "Сварите яйца, остудите и очистите.",
+        "Нарежьте яйца и огурец, смешайте.",
+        "Перед списанием укажите фактический расход."
+      ],
+      "version": 1
+    }
+  ],
+  "version": 1
+}

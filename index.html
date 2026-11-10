@@ -649,6 +649,7 @@ img{ animation:imgFadeIn .25s ease; }
 #my-data-confirmation{margin-top:1rem;padding:1rem;border:1px solid var(--danger);border-radius:16px}
 #my-data-confirm{padding:0.75rem;margin-top:0.5rem;border:1px solid var(--line);border-radius:10px;font:inherit}
 </style>
+<link rel="stylesheet" href="/dinner/style.css">
 </head>
 <body>
 
@@ -1286,13 +1287,30 @@ img{ animation:imgFadeIn .25s ease; }
         <h2>Мои данные</h2>
         <p>Личные профили и замеры доступны только владельцу аккаунта. Общие запасы и покупки семьи не входят в этот экспорт.</p>
         <p>AI и долговременная память отключены. Подключение и новое согласие пока недоступны.</p>
-        <details><summary>Не вижу старый профиль</summary><p>Профили без подтверждённого владельца закрыты. Имя, семейное членство и создание профиля не доказывают владение. Можно вести новый личный профиль, когда этот раздел будет доступен. Для разбора старых данных обратитесь в поддержку из настроек; не отправляйте вес и замеры в обычную переписку. Автоматическая передача старого профиля не выполняется.</p></details>
+        <details><summary>Не вижу старый профиль</summary><p>Профили без подтверждённого владельца закрыты. Имя, семейное членство и создание профиля не доказывают владение. Если доступно создание профиля для «Ужина», новый профиль будет принадлежать только вам. Старые данные в него не переносятся. Для разбора старых данных обратитесь в поддержку из настроек; не отправляйте вес и замеры в обычную переписку. Автоматическая передача старого профиля не выполняется.</p></details>
         <p id="my-data-status" role="status" aria-live="polite"></p>
         <button class="secondary-btn" id="my-data-refresh">Обновить</button>
         <button class="secondary-btn" id="my-data-json" disabled>Скачать JSON</button>
         <button class="secondary-btn" id="my-data-csv" disabled>Скачать CSV</button>
         <p>Файл сохраняется на ваше устройство и содержит личные сведения. Передавайте его только по своему решению.</p>
         <div id="my-data-content"></div>
+        <form id="own-profile-form" hidden style="margin:1rem 0">
+          <h3>Мой профиль для ужина</h3>
+          <p>Профиль создаётся только для вас. Рост и вес не нужны.</p>
+          <label>Как к вам обращаться <input name="profile_name" required maxlength="60" autocomplete="off"></label>
+          <label>Ваш возраст <input name="profile_age" type="number" required min="18" max="119" step="1"></label>
+          <fieldset style="margin:.75rem 0">
+            <legend>Какие продукты исключать?</legend>
+            <label><input type="checkbox" name="exclusions" value="dairy"> Молочное</label>
+            <label><input type="checkbox" name="exclusions" value="egg"> Яйца</label>
+            <label><input type="checkbox" name="exclusions" value="fish"> Рыба</label>
+            <label><input type="checkbox" name="exclusions" value="nuts"> Орехи</label>
+            <label><input type="checkbox" name="exclusions" value="gluten"> Глютен</label>
+          </fieldset>
+          <label><input type="checkbox" required name="confirmed"> Мне 18 лет или больше, и я указал все свои исключения из списка.</label>
+          <p>Рецепты рассчитаны на обычный рацион взрослых. Состав и маркировку продуктов проверяйте отдельно.</p>
+          <button type="submit" class="secondary-btn">Создать мой профиль</button>
+        </form>
         <div id="my-data-confirmation" hidden>
           <p id="my-data-delete-label"></p>
           <p>Срок удаления резервных копий и ранее переданных внешнему провайдеру данных ещё не подтверждён. Удаление аккаунта целиком в этом экране недоступно.</p>
@@ -1474,6 +1492,7 @@ img{ animation:imgFadeIn .25s ease; }
 <script>
 /* ===================== SUPABASE ===================== */
 const SF_NUTRITION_ENABLED = false;
+const SF_DINNER_ENABLED = '__DINNER_ENABLED__' === '1';
 const SF_NOTIFICATIONS_ENABLED = false;
 const SUPABASE_URL = '__SUPABASE_URL__';
 const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
@@ -1960,7 +1979,7 @@ let history = ['home'];
 
 function showScreen(name, push=true){
   if(name !== 'my-data') window.dispatchEvent(new Event('sf-account-reset'));
-  if(!SF_NUTRITION_ENABLED && /^(diet|recipe|family-form)/.test(name)){
+  if(!SF_NUTRITION_ENABLED && /^(diet|recipe|family-form)/.test(name) && !(typeof SF_DINNER_ENABLED!=='undefined' && SF_DINNER_ENABLED && name==='recipes')){
     name='home';
   }
   screens.forEach(s => s.classList.toggle('active', s.id === 'screen-'+name));
@@ -1972,6 +1991,7 @@ function showScreen(name, push=true){
   if(push) history.push(name);
   if(name === 'vision'){ ensureModel(); } else { stopVisionCamera(); }
   if(name === 'home' && userDataLoaded) playHomeIntro();
+  if(name === 'recipes' && typeof SF_DINNER_ENABLED!=='undefined' && SF_DINNER_ENABLED) globalThis.sfDinner?.refresh();
   dockStockPanel(document.querySelector('.sheet.open'));
 }
 
@@ -2147,6 +2167,16 @@ function urgencyBadgeHtml(r){
   return `<div style="font-size:0.6875rem; font-weight:700; color:var(--danger); margin-top:0.125rem;">🔥 Спасите: ${escapeHtml(r.urgentItem)} (${expiryLabel(r.urgentDays)})</div>`;
 }
 function renderSuggestRow(){
+  if(typeof SF_DINNER_ENABLED!=='undefined' && SF_DINNER_ENABLED){
+  for(const id of ['suggest-row','home-meals-row']){
+    const box=document.getElementById(id); box.replaceChildren();
+    const button=document.createElement('button'); button.className='primary-btn';
+    button.textContent='Ужин из продуктов дома';
+    button.addEventListener('click',()=>{history=['recipes'];showScreen('recipes',false);globalThis.sfDinner?.refresh();});
+    box.append(button);
+  }
+    return;
+  }
   if(!SF_NUTRITION_ENABLED){document.getElementById('suggest-row').innerHTML='';document.getElementById('home-meals-row').innerHTML='';return;}
   const cookable = computeCookable();
   const list = cookable.length ? cookable : recipesData.filter(r => !recipeBlockReason(r)).slice(0,4);
@@ -2170,6 +2200,10 @@ function renderSuggestRow(){
 renderSuggestRow();
 
 function renderRecipesList(){
+  if(typeof SF_DINNER_ENABLED!=='undefined' && SF_DINNER_ENABLED){
+  window.dispatchEvent(new Event('sf:inventory'));
+    return;
+  }
   const cookable = computeCookable();
   const reason = recipeBlockReason(recipesData[0]);
   if(reason){ document.getElementById('recipes-list').textContent = reason; return; }
@@ -2184,6 +2218,10 @@ function renderRecipesList(){
 renderRecipesList();
 
 function openRecipe(id){
+  if(typeof SF_DINNER_ENABLED!=='undefined' && SF_DINNER_ENABLED){
+  history=['recipes']; showScreen('recipes',false); globalThis.sfDinner?.refresh();
+    return;
+  }
   const r = recipesData.find(x=>x.id===id);
   if(!r) return;
   const reason = recipeBlockReason(r);
@@ -2473,6 +2511,7 @@ function applyStockSnapshot(data){
     }
   }
   if(history[history.length-1]==='food-log') renderFoodLog();
+  globalThis.dispatchEvent?.(new Event('sf:inventory'));
 }
 async function executeStockRequest(){
   if(stockBusy || !stockRequest) return false;
@@ -2514,6 +2553,7 @@ async function executeStockRequest(){
 async function runStockOperation(kind, body, onSaved){
   if(!currentUserId || !currentHouseholdId){showToast('Сначала войдите в аккаунт',true);return false;}
   recoverStockOperation();
+  if(globalThis.sfDinner?.pending()){showToast('Сначала завершите сохранение ужина',true);return false;}
   if(stockBusy || stockRequest){showToast('Сначала повторите неподтверждённое сохранение',true);return false;}
   const request={op_id:crypto.randomUUID(),hh_id:currentHouseholdId,kind,body};
   try{localStorage.setItem(stockStorageKey(),JSON.stringify({request,lastId:stockSavedId}));}
@@ -3954,6 +3994,13 @@ function weekRequiredItems(){
   return list; // No unvalidated universal additions that bypass exclusions.
 }
 function renderMissingAlert(){
+  if(typeof SF_DINNER_ENABLED!=='undefined' && SF_DINNER_ENABLED){
+  document.getElementById('missing-title').textContent='Проверьте продукты для выбранного блюда';
+  document.getElementById('missing-sub').textContent='В разделе «Рецепты» учитываются порции, партии и количество на ужин или 7 дней. Старое меню программы не подтверждает наличие продуктов.';
+  document.getElementById('missing-list').replaceChildren();
+  renderLowStock([]);
+    return;
+  }
   if(!SF_NUTRITION_ENABLED){document.getElementById('missing-alert').style.display='none';document.getElementById('low-stock-section').style.display='none';return;}
   const inventory = inventoryNames().map(normFood);
   const missing = weekRequiredItems().filter(req => ![].concat(req.keyword).some(k => inventory.some(n => n.includes(normFood(k)))));
@@ -4509,10 +4556,13 @@ dietitianSendBtn.addEventListener('click', sendDietitianMessage);
 dietitianInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); sendDietitianMessage(); } });
 
 if(!SF_NUTRITION_ENABLED){
-  document.querySelectorAll('[data-nav="diet"],[data-nav="recipes"],#open-dietitian-btn,#meal-timer-btn').forEach(el=>el.style.display='none');
-  document.getElementById('home-meals-row').closest('.section').style.display='none';
-  document.getElementById('suggest-row').style.display='none';
-  document.getElementById('suggest-row').previousElementSibling.style.display='none';
+  document.querySelectorAll('[data-nav="diet"],#open-dietitian-btn,#meal-timer-btn').forEach(el=>el.style.display='none');
+  if(!SF_DINNER_ENABLED){
+    document.querySelectorAll('[data-nav="recipes"]').forEach(el=>el.style.display='none');
+    document.getElementById('home-meals-row').closest('.section').style.display='none';
+    document.getElementById('suggest-row').style.display='none';
+    document.getElementById('suggest-row').previousElementSibling.style.display='none';
+  }
 }
 showScreen('home', false);
 
@@ -4648,6 +4698,7 @@ async function loadUserData(){
   initMealTimerUI();
   loadFamilyProfiles().then(() => queueNativeSync());
   maybeShowOnboarding();
+  window.dispatchEvent(new Event('sf:inventory'));
 }
 
 /* ===================== ОНБОРДИНГ (первый заход) ===================== */
@@ -5183,6 +5234,7 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
     // Keep opaque pending deletion tickets across logout; never persist personal snapshots.
     window.dispatchEvent(new Event('sf-account-reset'));
     resetPrivateContext(); familyProfiles = []; currentUserId = null;
+    globalThis.sfDinner?.clear();
     document.getElementById('family-grid').replaceChildren();
     await sb.auth.signOut();
     biometricCard.style.display = 'none';
@@ -5259,6 +5311,7 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
     // Keep opaque pending deletion tickets across logout; never persist personal snapshots.
     window.dispatchEvent(new Event('sf-account-reset'));
     resetPrivateContext(); familyProfiles = []; currentUserId = null;
+    globalThis.sfDinner?.clear();
     document.getElementById('family-grid').replaceChildren();
     await sb.auth.signOut();
     location.reload();
@@ -5292,6 +5345,7 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
       // Keep opaque pending deletion tickets across logout; never persist personal snapshots.
       window.dispatchEvent(new Event('sf-account-reset'));
       resetPrivateContext(); familyProfiles = []; currentUserId = null;
+      globalThis.sfDinner?.clear();
       document.getElementById('family-grid').replaceChildren();
       document.querySelectorAll('#screen-family-form input, #measurement-sheet input').forEach(el => el.value = '');
       loginScreen.style.display = 'flex';
@@ -5329,5 +5383,16 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
 </script>
 <script src="/personal-data/export.js"></script>
 <script src="/personal-data/ui.js"></script>
+<script src="/dinner/model.js"></script>
+<script src="/dinner/queue.js"></script>
+<script src="/dinner/ui.js"></script>
+<script>
+if(SF_DINNER_ENABLED) globalThis.sfDinner = SFDinnerUI.mount({
+  root: document.getElementById('recipes-list'),
+  session: () => ({sb, userId:currentUserId, householdId:currentHouseholdId, profileId:currentProfileId, ready:userDataLoaded && !!currentUserId && !!currentHouseholdId}),
+  stockLocked: () => stockBusy || !!stockRequest,
+  onSnapshot: data => applyStockSnapshot(data)
+});
+</script>
 </body>
 </html>
