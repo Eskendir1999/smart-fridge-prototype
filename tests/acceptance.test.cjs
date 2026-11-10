@@ -160,16 +160,93 @@ test('toasts write plain text', () => {
   vm.runInContext(browserFn('showToast') + '\nshowToast("<b>fixture</b>")', context);
   assert.equal(output, '✅ <b>fixture</b>');
 });
-test('recovery uses window history and unlocks form on success or load failure', async () => {
+test('password range lookup sends only the prefix and rejects leaked or unverified passwords', async () => {
+  const { createHash, webcrypto } = require('node:crypto');
+  const password = 'Fixture-password-123!';
+  const hash = createHash('sha1').update(password).digest('hex').toUpperCase();
+  let reply;
+  const requests = [];
+  const context = vm.createContext({
+    crypto: webcrypto, TextEncoder, AbortController, setTimeout, clearTimeout, password,
+    fetch: async (url, options) => { requests.push({ url, options }); return reply; },
+  });
+  vm.runInContext(browserFn('newPasswordError'), context);
+  const check = () => vm.runInContext('newPasswordError(password)', context);
+  reply = new Response(hash.slice(5) + ':8\r\n');
+  assert.match(await check(), /найден в базе утечек/);
+  assert.equal(requests[0].url, 'https://api.pwnedpasswords.com/range/' + hash.slice(0, 5));
+  assert.deepEqual(Object.keys(requests[0].options.headers), ['Add-Padding']);
+  assert.equal(requests[0].options.headers['Add-Padding'], 'true');
+  assert.equal(requests[0].options.credentials, 'omit');
+  assert.equal(requests[0].options.referrerPolicy, 'no-referrer');
+  assert.equal(requests[0].options.body, undefined);
+  reply = new Response(hash.slice(5) + ':0\n');
+  assert.equal(await check(), null);
+  for (const response of [new Response('', { status: 503 }), new Response(''), new Response('unexpected response')]) {
+    reply = response;
+    assert.match(await check(), /временно недоступна/);
+  }
+  context.password = 'short';
+  assert.match(await check(), /14 символов/);
+  assert.equal(requests.length, 5);
+});
+test('sign-in never checks leaks or registers and explicit signup requires a verified password', async () => {
+  const start = html.indexOf("loginForm.addEventListener('submit'");
+  const code = html.slice(start, html.indexOf("document.getElementById('logout-btn')", start));
+  let submit, checkResult, signInError;
+  const calls = [], submitBtn = {}, signupBtn = {}, loginError = { classList: { add() {}, remove() {} } };
+  vm.runInNewContext(code, {
+    loginForm: { addEventListener: (event, cb) => { submit = cb; } },
+    submitBtn, signupBtn, loginError, loginInfo: { classList: { add() {}, remove() {} } },
+    recoveryUserId: null, userInput: { value: 'fixture@example.invalid' }, passInput: { value: 'fixture-new-password' },
+    newPasswordError: async () => { calls.push('lookup'); return checkResult; },
+    sb: { auth: {
+      signInWithPassword: async () => { calls.push('login'); return { data: {}, error: signInError }; },
+      signUp: async () => { calls.push('signup'); return { data: { session: null }, error: null }; },
+    } },
+    enterApp: async () => { calls.push('enter'); },
+  });
+  await submit({ preventDefault() {}, submitter: submitBtn });
+  assert.deepEqual(calls.splice(0), ['login', 'enter']);
+  signInError = { code: 'invalid_credentials' };
+  await submit({ preventDefault() {}, submitter: submitBtn });
+  assert.deepEqual(calls.splice(0), ['login']);
+  assert.match(loginError.textContent, /Неверный/);
+  checkResult = 'Не прошёл проверку';
+  await submit({ preventDefault() {}, submitter: signupBtn });
+  assert.deepEqual(calls.splice(0), ['lookup']);
+  assert.equal(loginError.textContent, checkResult);
+  checkResult = null;
+  await submit({ preventDefault() {}, submitter: signupBtn });
+  assert.deepEqual(calls, ['lookup', 'signup']);
+  assert.equal(signupBtn.disabled, false);
+});
+test('recovery only writes a checked password to the active recovery account and unlocks the form', async () => {
   const start = html.indexOf("recoveryForm.addEventListener('submit'"); const code = html.slice(start, html.indexOf('\n})();', start));
-  for (const failLoad of [false, true]) {
-    let submit, entered = false, replaced = false; const button = {}; const errors = [];
-    const context = { recoveryForm: { addEventListener: (event, cb) => { submit = cb; }, querySelector: () => button },
-      recoveryPassInput: { value: 'fixture-new-password' }, recoveryError: { classList: { remove() {}, add(v) { errors.push(v); } } },
+  for (const scenario of ['success', 'load-failure', 'breached', 'different-session']) {
+    let submit, entered = false, replaced = false, writes = 0;
+    const button = {}, errors = [];
+    const errorBox = () => ({ classList: { remove() {}, add(v) { errors.push(v); } } });
+    const context = {
+      recoveryForm: { addEventListener: (event, cb) => { submit = cb; } }, recoverySubmitBtn: button,
+      recoveryPassInput: { value: 'fixture-new-password' }, recoveryError: errorBox(), loginError: errorBox(),
+      recoveryCard: { style: {} }, loginCard: { style: {} }, recoveryUserId: 'fixture-user',
+      newPasswordError: async () => scenario === 'breached' ? 'Найден в базе' : null,
       history: ['home'], window: { history: { replaceState() { replaced = true; } } }, location: { pathname: '/', search: '' },
-      sb: { auth: { updateUser: async () => ({ error: null }) } }, enterApp: async () => { if (failLoad) throw Error('fixture failure'); entered = true; } };
+      sb: { auth: {
+        getSession: async () => ({ data: { session: { user: { id: scenario === 'different-session' ? 'other-user' : 'fixture-user' } } } }),
+        updateUser: async () => { writes++; return { error: null }; },
+      } },
+      enterApp: async () => { if (scenario === 'load-failure') throw Error('fixture failure'); entered = true; },
+    };
     vm.runInNewContext(code, context); await submit({ preventDefault() {} });
-    assert.equal(replaced, true); assert.equal(entered, !failLoad); assert.equal(button.disabled, false); assert.equal(errors.length, failLoad ? 1 : 0);
+    const changed = ['success', 'load-failure'].includes(scenario);
+    assert.equal(writes, changed ? 1 : 0);
+    assert.equal(replaced, changed);
+    assert.equal(entered, scenario === 'success');
+    assert.equal(button.disabled, false);
+    assert.equal(errors.length, scenario === 'success' ? 0 : 1);
+    if (changed) assert.equal(context.loginCard.style.display, 'block');
   }
 });
 test('new account uses existing RPC and handles denied RPC without null dereference', async () => {
