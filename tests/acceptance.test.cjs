@@ -209,7 +209,7 @@ test('all inline scripts and server files parse', () => {
 
 function buildFixture(env) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-build-'));
-  for (const name of ['build.js', 'index.html', 'manifest.json', 'sw.js', 'privacy.html', 'support.html', 'widgets.html', 'scriptable', 'icons', 'personal-data']) fs.cpSync(path.join(root, name), path.join(dir, name), { recursive: true });
+  for (const name of ['build.js', 'index.html', 'manifest.json', 'sw.js', 'privacy.html', 'support.html', 'widgets.html', 'scriptable', 'icons', 'personal-data','dinner']) fs.cpSync(path.join(root, name), path.join(dir, name), { recursive: true });
   const inherited = { ...process.env }; for (const k of ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'VAPID_PUBLIC_KEY', 'TELEGRAM_BOT_USERNAME']) delete inherited[k];
   const result = cp.spawnSync(process.execPath, ['build.js'], { cwd: dir, env: { ...inherited, ...env }, encoding: 'utf8' });
   return { dir, result, cleanup() { fs.rmSync(dir, { recursive: true, force: true }); } };
@@ -228,7 +228,7 @@ test('public fixture config builds assets, prevents script-breakout, and remains
     assert.equal(f.result.status, 0, f.result.stderr); const built = fs.readFileSync(path.join(f.dir, 'dist/index.html'), 'utf8');
     assert.ok(!built.includes('__SUPABASE_')); assert.ok(!built.includes('</script><script>fixture()'));
     for (const m of built.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) if (!m[1].includes('src=')) new vm.Script(m[2]);
-    for (const file of ['manifest.json', 'sw.js', 'scriptable/smart-fridge.js', 'icons/icon-512.png', 'personal-data/export.js', 'personal-data/ui.js']) assert.ok(fs.existsSync(path.join(f.dir, 'dist', file)));
+    for (const file of ['manifest.json', 'sw.js', 'scriptable/smart-fridge.js', 'icons/icon-512.png', 'personal-data/export.js', 'personal-data/ui.js','dinner/model.js','dinner/queue.js','dinner/ui.js','dinner/catalog.json']) assert.ok(fs.existsSync(path.join(f.dir, 'dist', file)));
   } finally { f.cleanup(); }
 });
 test('production AI and scheduled handlers fail closed before provider or database work',async()=>{
@@ -240,8 +240,17 @@ test('production AI and scheduled handlers fail closed before provider or databa
   const cfg=JSON.parse(fs.readFileSync(path.join(root,'vercel.json'),'utf8'));assert.deepEqual(cfg.crons,[]);
 });
 test('release status reports disabled nutrition, AI and broadcasts without secrets',async()=>{
-  const f=fixture({env:{SF_ENABLE_AI_CHAT:'',SF_ENABLE_AUTOMATIONS:'',SF_ENABLE_NOTIFICATIONS:'',VERCEL_GIT_COMMIT_SHA:'fixture-sha'}}),r=response();
+  const f=fixture({env:{SF_ENABLE_AI_CHAT:'',SF_ENABLE_DINNER:'',SF_ENABLE_AUTOMATIONS:'',SF_ENABLE_NOTIFICATIONS:'',VERCEL_GIT_COMMIT_SHA:'fixture-sha'}}),r=response();
   await f.load('api/release-status.js')({method:'GET'},r);assert.equal(r.statusCode,200);assert.equal(r.body.commit,'fixture-sha');
-  for(const key of ['nutritionEnabled','aiEnabled','notificationsEnabled','automationsEnabled'])assert.equal(r.body[key],false);
+  for(const key of ['nutritionEnabled','dinnerEnabled','aiEnabled','notificationsEnabled','automationsEnabled'])assert.equal(r.body[key],false);
   assert.ok(!JSON.stringify(r.body).includes('fixture-cron'));
+});
+test('dinner is separately opt-in and does not enable nutrition or notifications',()=>{
+  for(const flag of ['', '1']){
+    const f=buildFixture({SUPABASE_URL:'https://audit.invalid',SUPABASE_ANON_KEY:'sb_publishable_fixture',SF_ENABLE_DINNER:flag});
+    try{assert.equal(f.result.status,0,f.result.stderr);const built=fs.readFileSync(path.join(f.dir,'dist/index.html'),'utf8');
+      assert.ok(built.includes('const SF_DINNER_ENABLED = '+JSON.stringify(flag==='1'?'1':'0')+" === '1';"));
+      assert.ok(built.includes('const SF_NUTRITION_ENABLED = false;'));assert.ok(built.includes('const SF_NOTIFICATIONS_ENABLED = false;'));
+    }finally{f.cleanup()}
+  }
 });

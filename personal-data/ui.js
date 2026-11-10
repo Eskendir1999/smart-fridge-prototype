@@ -3,20 +3,46 @@
  'use strict';
  let generation=0,snapshot=null,busy=false,pending=null;
  const el=id=>document.getElementById(id);
+ const profileForm=el('own-profile-form');
  const status=text=>el('my-data-status').textContent=text;
- function reset(){generation++;snapshot=null;pending=null;busy=false;el('my-data-content').replaceChildren();el('my-data-confirmation').hidden=true;el('my-data-confirm').value='';el('my-data-delete-label').textContent='';status('');updateButtons();}
- function updateButtons(){for(const id of ['my-data-json','my-data-csv'])el(id).disabled=busy||!snapshot||!!pending?.sent;el('my-data-delete').disabled=busy;}
+ function reset(){profileForm.reset();profileForm.hidden=true;generation++;snapshot=null;pending=null;busy=false;el('my-data-content').replaceChildren();el('my-data-confirmation').hidden=true;el('my-data-confirm').value='';el('my-data-delete-label').textContent='';status('');updateButtons();}
+ function updateButtons(){for(const id of ['my-data-json','my-data-csv'])el(id).disabled=busy||!snapshot||!!pending?.sent;el('my-data-delete').disabled=busy;profileForm.querySelector('button').disabled=busy||!!pending;}
  function download(name,type,text){const u=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
  async function read(){
-  const actor=currentUserId,version=++generation;snapshot=null;el('my-data-content').replaceChildren();busy=true;updateButtons();status('Загружаем только ваши данные…');
+  const actor=currentUserId,version=++generation;snapshot=null;profileForm.hidden=true;el('my-data-content').replaceChildren();busy=true;updateButtons();status('Загружаем только ваши данные…');
   try{
-   const {data,error}=await sb.rpc('sf_my_data',{action:'read'});
+   const {data,error}=await sb.rpc('sf_my_data',{action:'read_v2'});
    if(actor!==currentUserId||version!==generation)return;
-   if(error||!data||data.version!==1)throw Error('unavailable');
-   snapshot=data;render();status('Данные загружены. Доступ к личным сведениям — только у вашего аккаунта.');return data;
+   if(error||!data||data.version!==1||data.export_contract!==2||data.dinner?.version!==1)throw Error('unavailable');
+   snapshot=data;profileForm.hidden=typeof SF_DINNER_ENABLED==='undefined'||!SF_DINNER_ENABLED||data.profiles.length!==0;render();status('Данные загружены. Доступ к личным сведениям — только у вашего аккаунта.');return data;
   }catch{if(actor===currentUserId&&version===generation)status('Не удалось загрузить данные. Доступ или схема ещё не готовы. Экспорт недоступен; чужие профили не запрашиваются.');}
   finally{if(actor===currentUserId&&version===generation){busy=false;updateButtons();}}
  }
+ profileForm.onsubmit=async event=>{
+  event.preventDefault();
+  if(busy||pending||!snapshot||profileForm.hidden)return;
+  const actor=currentUserId,version=++generation,values=new FormData(profileForm);
+  const current=()=>actor===currentUserId&&version===generation;
+  busy=true;updateButtons();status('Создаём ваш профиль…');
+  try{
+   const {data:ticket,error:prepareError}=await sb.rpc('sf_create_own_dinner_profile',{action:'prepare'});
+   if(!current())return;
+   if(prepareError?.code==='23505'){await read();return;}
+   if(prepareError||ticket?.status!=='ready'||!ticket.request_id)throw Error('unavailable');
+   const {data,error}=await sb.rpc('sf_create_own_dinner_profile',{
+    action:'create',request_id:ticket.request_id,profile_name:values.get('profile_name'),
+    profile_age:Number(values.get('profile_age')),exclusions:values.getAll('exclusions')
+   });
+   if(!current())return;
+   if(error||data?.status!=='created'||data.profile_id!==ticket.request_id)throw Error('unconfirmed');
+   profileForm.reset();
+   const fresh=await read();
+   if(actor!==currentUserId||!fresh||snapshot!==fresh)return;
+   status('Ваш личный профиль создан. Теперь его можно выбрать в «Ужине».');
+   globalThis.sfDinner?.refresh();
+  }catch{if(current())status('Сохранение не подтверждено. Обновите данные или повторите попытку.');}
+  finally{if(current()){busy=false;updateButtons();}}
+ };
  function pendingKey(){return 'sf_data_delete_'+currentUserId;}
  function restorePending(){
   try{
@@ -40,6 +66,7 @@
   }
   if(!snapshot.profiles.length){const p=document.createElement('p');p.textContent='Подтверждённых личных профилей нет. Старые профили не присваиваются автоматически.';box.append(p);}
   const records=document.createElement('details');const title=document.createElement('summary');title.textContent='Мои замеры';records.append(title);for(const m of snapshot.measurements){const line=document.createElement('p');line.textContent=m.log_date+' · '+(snapshot.profiles.find(p=>p.id===m.profile_id)?.name||'Личный профиль')+' · вес: '+(m.weight??'не указан')+' кг · шея: '+(m.neck??'—')+' · грудь: '+(m.chest??'—')+' · живот: '+(m.belly??'—')+' · бёдра: '+(m.hips??'—')+' см';records.append(line);}box.append(records);
+  const dinners=document.createElement('details'),dinnerTitle=document.createElement('summary');dinnerTitle.textContent='Мои действия в «Ужине»: '+snapshot.dinner.operations.length;dinners.append(dinnerTitle);const dinnerNote=document.createElement('p');dinnerNote.textContent='Полные собственные записи входят в JSON и CSV. Личный контекст ужина очищается вместе с профилем; общий журнал запасов и квитанции для безопасного повтора сохраняются.';dinners.append(dinnerNote);for(const o of snapshot.dinner.operations){const line=document.createElement('p');const labels={consume:'Подтверждённый расход',undo:'Отмена расхода',shopping:'Добавление покупок',buy:'Покупка',confirm_lot:'Подтверждение партии',exclude_lot:'Исключение партии',cancelled:'Запрос отменён'};line.textContent=o.created_at+' · '+(labels[o.kind]||'Действие с запасами')+(o.undone?' · отменено':'');dinners.append(line);}box.append(dinners);
   const old=document.createElement('details'),oldTitle=document.createElement('summary');oldTitle.textContent='Старые замеры аккаунта: '+snapshot.legacy_measurements.length;old.append(oldTitle);for(const m of snapshot.legacy_measurements){const line=document.createElement('p');line.textContent=m.log_date+' · вес: '+(m.weight??'—')+' кг · шея: '+(m.neck??'—')+' · грудь: '+(m.chest??'—')+' · живот: '+(m.belly??'—')+' · бёдра: '+(m.hips??'—')+' см';old.append(line);}const oldDelete=document.createElement('button');oldDelete.type='button';oldDelete.className='secondary-btn';oldDelete.textContent='Удалить старые замеры аккаунта';oldDelete.onclick=()=>prepare('legacy_measurements',null,'Старые замеры аккаунта');old.append(oldDelete);box.append(old);
   const archive=document.createElement('details');const heading=document.createElement('summary');heading.textContent='Старый архив аккаунта: '+snapshot.legacy_messages.length+' сообщений, '+snapshot.legacy_summaries.length+' выжимок';archive.append(heading);
   const note=document.createElement('p');note.textContent='Архив не относится автоматически к выбранному профилю. Он не используется AI.';archive.append(note);
@@ -66,7 +93,7 @@
   const request=pending,version=++generation,actor=currentUserId;pending.sent=true;window.dispatchEvent(new Event('sf:personal-data-deleting'));busy=true;updateButtons();status('Удаляем. При потере ответа можно повторить тот же запрос.');
   try { sessionStorage.setItem(pendingKey(),JSON.stringify({...request,sent:true})); } catch {}
   // Invalidate any downloadable snapshot immediately; no stale export while deletion is uncertain.
-  snapshot=null;el('my-data-content').replaceChildren();
+  snapshot=null;profileForm.hidden=true;el('my-data-content').replaceChildren();
   try{
    const {data,error}=await sb.rpc('sf_my_data',{action:'delete',scope:request.scope,profile_id:request.profile_id,request_id:request.request_id});
    if(version!==generation||actor!==currentUserId)return;
@@ -76,6 +103,7 @@
    pending=null;el('my-data-confirmation').hidden=true;
    resetPrivateContext();familyProfiles=[];
    await read();
+   if(actor===currentUserId&&globalThis.sfDinner?.refresh)await globalThis.sfDinner.refresh();
    if(actor===currentUserId)status('Удаление из активной базы подтверждено. Удаление из резервных копий и у внешнего провайдера не подтверждено.');
   }catch{if(version===generation&&actor===currentUserId)status('Удаление не подтверждено. Нажмите «Удалить» ещё раз для безопасной проверки результата.');}
   finally{if(actor===currentUserId){busy=false;updateButtons();}}

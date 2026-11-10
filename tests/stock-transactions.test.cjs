@@ -23,7 +23,7 @@ test('undo partial use restores exact product, stats and journal; undo retry is 
   const stats=(await f.db.query('select * from food_stats where user_id=$1',[user])).rows[0];
   await f.rpc('used',spend(id),{id:op});
   await f.rpc('undo',{operation_id:op},{id:undo});await f.rpc('undo',{operation_id:op},{id:undo});
-  assert.deepEqual((await f.db.query('select to_jsonb(f) r from fridge_items f where id=$1',[id])).rows[0].r,before);
+  assert.deepEqual((await f.db.query('select to_jsonb(f) r from fridge_items f where id=$1',[id])).rows[0].r,{...before,dinner_version:Number(before.dinner_version)+2});
   assert.deepEqual((await f.db.query('select * from food_stats where user_id=$1',[user])).rows[0],stats);
   assert.equal(await scalar(`select count(*)::int n from food_events where id='${op}'`),0);
 });
@@ -177,7 +177,7 @@ test('release migration snapshots existing rows before metadata changes without 
     const before=(await isolated.db.query("select row_data from sf_private.stock_release_backup where source_table='fridge_items' and source_id=$1",[id])).rows[0].row_data;
     assert.equal(before.qty_num,500);assert.equal(before.expiry_estimated,undefined);
     const after=(await isolated.db.query('select to_jsonb(f) r from fridge_items f where id=$1',[id])).rows[0].r;
-    delete after.expiry_estimated;assert.deepEqual(after,before);
+    for(const key of ['expiry_estimated','ingredient_id','quantity_source','date_source','dinner_version','dinner_excluded']) delete after[key];assert.deepEqual(after,before);
     assert.equal((await isolated.db.query("select has_table_privilege('authenticated','sf_private.stock_release_backup','select') allowed")).rows[0].allowed,false);
   }finally{await isolated.db.close();}
 });
