@@ -1,5 +1,5 @@
 // Версия кэша: поднимайте при каждом деплое, чтобы старый app shell не залипал у пользователей.
-const CACHE_NAME = 'smart-fridge-my-data-stage3-20261103';
+const CACHE_NAME = 'smart-fridge-account-erasure-20261110';
 const APP_SHELL = [
   '/',
   '/manifest.json',

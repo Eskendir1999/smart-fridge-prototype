@@ -4,7 +4,7 @@ const {createStockDb,user,other,stranger,household,otherHousehold}=require('./he
 let engine;
 test.before(async()=>{engine=await PGlite.create()});test.after(async()=>engine?.close());
 async function fixture(){
- await engine.exec('drop schema public cascade;drop schema if exists sf_private cascade;drop schema if exists auth cascade;create schema public');
+ await engine.exec('drop schema if exists sf_erasure cascade; drop schema public cascade;drop schema if exists sf_private cascade;drop schema if exists auth cascade;create schema public');
  const database={exec:(...a)=>engine.exec(...a),query:(...a)=>engine.query(...a),transaction:fn=>engine.transaction(fn)};
  const f=await createStockDb({database,enableDinner:true});
  const profile=randomUUID();await engine.query("insert into family_profiles(id,household_id,created_by,profile_owner_user_id,name,sex,age,height_cm,start_weight_kg) values($1,$2,$3,$3,'Private owner','male',30,170,70)",[profile,household,user]);
