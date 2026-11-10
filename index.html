@@ -593,7 +593,7 @@ img{ animation:imgFadeIn .25s ease; }
 @media (prefers-reduced-motion: reduce){ #stock-save-panel{ transition:none !important; } }
 /* ===== Login gate ===== */
 .login-screen{ position:fixed; inset:0; z-index:300; background:linear-gradient(160deg,#1F2A24,#2E3E33); display:flex; align-items:center; justify-content:center; padding:calc(1.25rem + var(--safe-t)) 1.25rem calc(1.25rem + var(--safe-b)) 1.25rem; }
-.login-card{ width:100%; max-width:360px; background:var(--surface); border-radius:var(--radius-lg); padding:2rem 1.625rem; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
+.login-card{ width:100%; max-width:360px; max-height:100%; overflow-y:auto; background:var(--surface); border-radius:var(--radius-lg); padding:2rem 1.625rem; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
 .login-logo{ font-size:2.125rem; text-align:center; margin-bottom:0.375rem; }
 .login-card h1{ font-size:1.3125rem; font-weight:600; text-align:center; margin-bottom:0.25rem; }
 .login-card .sub{ font-size:0.8125rem; color:var(--muted); text-align:center; margin-bottom:1.375rem; }
@@ -602,6 +602,7 @@ img{ animation:imgFadeIn .25s ease; }
 .login-info{ font-size:0.7812rem; color:var(--fresh); background:var(--fresh-soft); border-radius:var(--radius-sm); padding:0.625rem 0.75rem; margin-bottom:0.875rem; display:none; text-align:center; }
 .login-info.show{ display:block; }
 .login-submit{ margin-top:0.375rem; }
+.password-check-note{ margin:0.625rem 0; color:var(--ink-soft); font-size:0.7812rem; }
 .login-forgot{ display:block; width:100%; margin-top:1rem; background:none; border:none; color:var(--ink); font-weight:600; font-size:0.8125rem; font-family:'Inter',sans-serif; text-align:center; text-decoration:underline; }
 .login-forgot:disabled{ opacity:0.6; }
 
@@ -672,22 +673,24 @@ img{ animation:imgFadeIn .25s ease; }
   <div class="login-card" id="login-card">
     <div class="login-logo">🧊</div>
     <h1>Smart Fridge</h1>
-    <div class="sub">Нет аккаунта? Просто введите email и пароль — создадим его автоматически</div>
-    <div class="login-error" id="login-error">Неверный email или пароль</div>
-    <div class="login-info" id="login-info"></div>
+    <div class="sub">Войдите или зарегистрируйте новый аккаунт</div>
+    <div class="login-error" id="login-error" role="alert">Неверный email или пароль</div>
+    <div class="login-info" id="login-info" role="status"></div>
     <form id="login-form">
       <div class="form-field">
-        <label>Email</label>
+        <label for="login-username">Email</label>
         <input type="email" id="login-username" autocomplete="email" placeholder="you@example.com" required>
       </div>
       <div class="form-field" style="margin-bottom:0.375rem">
-        <label>Пароль</label>
+        <label for="login-password">Пароль</label>
         <div class="password-field">
           <input type="password" id="login-password" autocomplete="current-password" required>
           <button type="button" class="password-toggle" id="login-password-toggle" aria-label="Показать пароль">👁</button>
         </div>
       </div>
       <button type="submit" class="primary-btn login-submit">Войти</button>
+      <button type="submit" class="secondary-btn" id="signup-btn" aria-describedby="signup-password-check">Зарегистрироваться</button>
+      <p class="password-check-note" id="signup-password-check">При регистрации проверяем новый пароль по базе утечек. <a href="/privacy.html#password-check" target="_blank" rel="noopener">Как это работает</a></p>
     </form>
     <button type="button" class="login-forgot" id="login-forgot-btn">Забыли пароль?</button>
     <details id="account-erasure-receipt">
@@ -704,15 +707,16 @@ img{ animation:imgFadeIn .25s ease; }
     <div class="login-logo">🔑</div>
     <h1>Новый пароль</h1>
     <div class="sub">Придумайте новый пароль для входа</div>
-    <div class="login-error" id="recovery-error"></div>
+    <div class="login-error" id="recovery-error" role="alert"></div>
     <form id="recovery-form">
       <div class="form-field" style="margin-bottom:0.375rem">
-        <label>Новый пароль</label>
+        <label for="recovery-password">Новый пароль</label>
         <div class="password-field">
           <input type="password" id="recovery-password" autocomplete="new-password" minlength="14" required>
           <button type="button" class="password-toggle" id="recovery-password-toggle" aria-label="Показать пароль">👁</button>
         </div>
       </div>
+      <p class="password-check-note">Перед сохранением проверяем новый пароль по базе утечек. <a href="/privacy.html#password-check" target="_blank" rel="noopener">Как это работает</a></p>
       <button type="submit" class="primary-btn login-submit">Сохранить и войти</button>
     </form>
   </div>
@@ -5269,6 +5273,31 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
 });
 
 /* ===================== LOGIN GATE (Supabase Auth) ===================== */
+async function newPasswordError(password){
+  if(password.length < 14) return 'Пароль должен быть не короче 14 символов.';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try{
+    const digest = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(password));
+    const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+    const response = await fetch('https://api.pwnedpasswords.com/range/' + hash.slice(0, 5), {
+      headers: { 'Add-Padding': 'true' }, credentials: 'omit', referrerPolicy: 'no-referrer',
+      cache: 'no-store', redirect: 'error', signal: controller.signal,
+    });
+    if(!response.ok) throw Error('password_check_unavailable');
+    const rows = (await response.text()).trim().split(/\r?\n/);
+    if(rows.some(row => !/^[A-F0-9]{35}:\d+$/.test(row))) throw Error('invalid_password_check');
+    if(rows.some(row => row.startsWith(hash.slice(5) + ':') && Number(row.slice(36)) > 0)){
+      return 'Этот пароль найден в базе утечек. Выберите другой.';
+    }
+    return null;
+  }catch{
+    return 'Проверка пароля временно недоступна. Попробуйте ещё раз.';
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
 (function(){
   const loginScreen = document.getElementById('login-screen');
   const loginForm = document.getElementById('login-form');
@@ -5283,6 +5312,10 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
   const recoveryError = document.getElementById('recovery-error');
   const recoveryPassInput = document.getElementById('recovery-password');
   const submitBtn = loginForm.querySelector('button[type=submit]');
+  const signupBtn = document.getElementById('signup-btn');
+  const recoverySubmitBtn = recoveryForm.querySelector('button[type=submit]');
+  const recoveryLink = new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery';
+  let recoveryUserId = null;
   const biometricCard = document.getElementById('biometric-card');
   const biometricError = document.getElementById('biometric-error');
   const biometricLockSub = document.getElementById('biometric-lock-sub');
@@ -5313,7 +5346,7 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
   }
 
   sb.auth.getSession().then(({data})=>{
-    if(!data || !data.session) return;
+    if(!data || !data.session || recoveryLink || recoveryUserId) return;
     const user = data.session.user;
     if(biometricEnabledFor(user.id)){ showBiometricLock(user.id, user.email); }
     else { enterApp().catch(()=>{
@@ -5345,6 +5378,9 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
 
   loginForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
+    if(submitBtn.disabled || recoveryUserId) return;
+    const isNewSignup = e.submitter === signupBtn;
+    const button = isNewSignup ? signupBtn : submitBtn;
     const email = userInput.value.trim().toLowerCase();
     const password = passInput.value;
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
@@ -5352,34 +5388,45 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
       loginError.classList.add('show');
       return;
     }
-    submitBtn.disabled = true; submitBtn.textContent = 'Входим…';
+    submitBtn.disabled = signupBtn.disabled = true;
+    button.textContent = isNewSignup ? 'Проверяем пароль…' : 'Входим…';
     loginError.classList.remove('show');
-    let { error, data: signInData } = await sb.auth.signInWithPassword({ email, password });
-    let isNewSignup = false;
-    let userForBiometric = signInData?.user || null;
-    if(error){
-      const signUp = await sb.auth.signUp({ email, password });
-      if(signUp.error || !signUp.data.session){
-        // signInWithPassword ошибка одинакова и для "нет такого email", и для
-        // "неверный пароль" (защита от перебора email в Supabase Auth), поэтому
-        // сюда мы попадаем и для реально нового email, и для опечатки в пароле
-        // существующего аккаунта. Если signUp говорит "уже зарегистрирован" —
-        // значит email существовал с самого начала, и исходная ошибка была
-        // именно неверным паролем, а не поводом регистрировать заново.
-        const alreadyRegistered = /already registered|user_already_exists/i.test(signUp.error?.message || signUp.error?.code || '');
-        loginError.textContent = signUp.error?.code === 'weak_password'
-          ? 'Для нового аккаунта нужен пароль от 14 символов со строчными и заглавными буквами, цифрой и специальным символом.'
-          : alreadyRegistered
-          ? 'Неверный email или пароль. Если забыли пароль — восстановите его ниже.'
-          : (signUp.error ? ('Не удалось войти: ' + signUp.error.message) : 'Подтвердите почту по письму, затем войдите снова.');
-        loginError.classList.add('show');
-        submitBtn.disabled = false; submitBtn.textContent = 'Войти';
+    loginInfo.classList.remove('show');
+    let userForBiometric;
+    try{
+      if(isNewSignup){
+        const message = await newPasswordError(password);
+        if(recoveryUserId || passInput.value !== password || userInput.value.trim().toLowerCase() !== email) return;
+        if(message){
+          loginError.textContent = message;
+          loginError.classList.add('show');
+          return;
+        }
+        button.textContent = 'Регистрируем…';
+      }
+      const { data, error } = isNewSignup
+        ? await sb.auth.signUp({ email, password })
+        : await sb.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+      if(isNewSignup && !data.session){
+        loginInfo.textContent = 'Если регистрация доступна для этого адреса, придёт письмо с подтверждением.';
+        loginInfo.classList.add('show');
         return;
       }
-      isNewSignup = true;
-      userForBiometric = signUp.data.user;
+      userForBiometric = data.user;
+    }catch(error){
+      loginError.textContent = isNewSignup && error?.code === 'weak_password'
+        ? 'Для нового аккаунта нужен пароль от 14 символов со строчными и заглавными буквами, цифрой и специальным символом.'
+        : error?.code === 'invalid_credentials'
+          ? 'Неверный email или пароль. Если забыли пароль, восстановите его ниже.'
+          : isNewSignup ? 'Не удалось зарегистрироваться. Попробуйте ещё раз.' : 'Не удалось войти. Попробуйте ещё раз.';
+      loginError.classList.add('show');
+      return;
+    }finally{
+      submitBtn.disabled = signupBtn.disabled = false;
+      submitBtn.textContent = 'Войти';
+      signupBtn.textContent = 'Зарегистрироваться';
     }
-    submitBtn.disabled = false; submitBtn.textContent = 'Войти';
     try{ await enterApp(); }
     catch{
       loginError.textContent = 'Не удалось загрузить данные. Попробуйте войти ещё раз.';
@@ -5445,6 +5492,12 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
   // Ссылка из письма сброса пароля открывает приложение с токеном восстановления
   // в URL — supabase-js подхватывает его сам (detectSessionInUrl) и шлёт это событие.
   sb.auth.onAuthStateChange((event, session)=>{
+    if(recoveryUserId && (event === 'SIGNED_OUT' || (session?.user && session.user.id !== recoveryUserId))){
+      recoveryUserId = null;
+      recoveryPassInput.value = '';
+      recoveryCard.style.display = 'none';
+      loginCard.style.display = 'block';
+    }
     if(event === 'SIGNED_OUT' || (currentUserId && session?.user?.id && session.user.id !== currentUserId)){
       // Keep opaque pending deletion tickets across logout; never persist personal snapshots.
       window.dispatchEvent(new Event('sf-account-reset'));
@@ -5454,35 +5507,54 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
       document.querySelectorAll('#screen-family-form input, #measurement-sheet input').forEach(el => el.value = '');
       loginScreen.style.display = 'flex';
     }
-    if(event === 'PASSWORD_RECOVERY'){
+    if(event === 'PASSWORD_RECOVERY' && session?.user){
+      recoveryUserId = session.user.id;
+      loginScreen.style.display = 'flex';
       loginCard.style.display = 'none';
+      biometricCard.style.display = 'none';
       recoveryCard.style.display = 'block';
     }
   });
 
   recoveryForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
+    const userId = recoveryUserId;
+    if(!userId || recoverySubmitBtn.disabled) return;
     const newPassword = recoveryPassInput.value;
-    if(newPassword.length < 14){
-      recoveryError.textContent = 'Пароль должен быть не короче 14 символов';
-      recoveryError.classList.add('show');
-      return;
-    }
-    const recoverySubmitBtn = recoveryForm.querySelector('button[type=submit]');
-    recoverySubmitBtn.disabled = true; recoverySubmitBtn.textContent = 'Сохраняем…';
+    recoverySubmitBtn.disabled = true; recoverySubmitBtn.textContent = 'Проверяем пароль…';
     recoveryError.classList.remove('show');
     try{
+      const message = await newPasswordError(newPassword);
+      if(userId !== recoveryUserId || recoveryPassInput.value !== newPassword) return;
+      if(message){
+        recoveryError.textContent = message;
+        recoveryError.classList.add('show');
+        return;
+      }
+      const { data } = await sb.auth.getSession();
+      if(userId !== recoveryUserId || recoveryPassInput.value !== newPassword) return;
+      if(data?.session?.user?.id !== userId) throw Error('recovery_session_changed');
+      recoverySubmitBtn.textContent = 'Сохраняем…';
       const { error } = await sb.auth.updateUser({ password: newPassword });
       if(error) throw error;
+      recoveryUserId = null;
+      recoveryPassInput.value = '';
       window.history.replaceState(null, '', location.pathname + location.search);
-      await enterApp();
+      recoveryCard.style.display = 'none';
+      loginCard.style.display = 'block';
     }catch(error){
       recoveryError.textContent = error?.code === 'weak_password'
         ? 'Добавьте строчные и заглавные буквы, цифру и специальный символ.'
-        : 'Не удалось завершить вход. Попробуйте войти с новым паролем.';
+        : 'Не удалось завершить сброс. Попробуйте ещё раз или запросите новую ссылку.';
       recoveryError.classList.add('show');
+      return;
     }finally{
       recoverySubmitBtn.disabled = false; recoverySubmitBtn.textContent = 'Сохранить и войти';
+    }
+    try{ await enterApp(); }
+    catch{
+      loginError.textContent = 'Пароль сохранён. Не удалось загрузить данные. Попробуйте войти с новым паролем.';
+      loginError.classList.add('show');
     }
   });
 })();
