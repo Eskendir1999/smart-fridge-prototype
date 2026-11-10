@@ -148,6 +148,16 @@ async function main(){
   await pool.query('insert into auth.sessions(id,user_id) values($1,$1)',[user]);
   check('revoked session rejects dinner snapshot, own dinner export and combined My Data despite a valid signed JWT');
   fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify({checks,postgres:(await pool.query('select version()')).rows[0].version,errors,requests:requests.map(({op_id,kind})=>({op_id,kind}))},null,2));
- }finally{if(browser)await browser.close();if(server)await new Promise(r=>server.close(r));if(pgrst&&pgrst.exitCode===null){pgrst.kill('SIGTERM');await exit;}if(pool)await pool.end();await admin.query('drop database if exists '+name+' with(force)');await admin.end();}
+ }finally{
+  try{
+   if(browser)await browser.close();
+   if(server)await new Promise(r=>server.close(r));
+   if(pgrst&&pgrst.exitCode===null&&pgrst.signalCode===null){pgrst.kill('SIGTERM');await exit;}
+   if(pool)await pool.end();
+   // Do not terminate still-closing clients: a forced drop can race node-postgres
+   // socket shutdown and surface a fatal 57P01 after all scenarios have passed.
+   await admin.query('drop database if exists '+name);
+  }finally{await admin.end();}
+ }
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
