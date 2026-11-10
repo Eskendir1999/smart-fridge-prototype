@@ -136,6 +136,7 @@
     });
     if(typeof SF_NUTRITION_ENABLED!=='undefined' && !SF_NUTRITION_ENABLED){
       document.querySelectorAll('.side-item[data-nav="diet"],.side-item[data-nav="recipes"],.nav-item[data-nav="diet"],.nav-item[data-nav="recipes"]').forEach(button=>{
+        if(button.dataset.nav==='recipes' && typeof SF_DINNER_ENABLED!=='undefined' && SF_DINNER_ENABLED)return;
         button.disabled=true;
         button.title='Функция пока проходит проверку';
         button.setAttribute('aria-label',button.textContent.trim()+' — пока недоступно');
