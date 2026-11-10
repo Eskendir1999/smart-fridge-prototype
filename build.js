@@ -46,10 +46,8 @@ fs.copyFileSync(path.join(srcDir, 'privacy.html'), path.join(distDir, 'privacy.h
 fs.copyFileSync(path.join(srcDir, 'support.html'), path.join(distDir, 'support.html'));
 fs.copyFileSync(path.join(srcDir, 'widgets.html'), path.join(distDir, 'widgets.html'));
 
-// Скрипт для Scriptable получает те же публичные ключи Supabase, что и веб-версия.
 fs.mkdirSync(path.join(distDir, 'scriptable'), { recursive: true });
-const widgetJs = injectPublicConfig(fs.readFileSync(path.join(srcDir, 'scriptable', 'smart-fridge.js'), 'utf8'));
-fs.writeFileSync(path.join(distDir, 'scriptable', 'smart-fridge.js'), widgetJs);
+fs.copyFileSync(path.join(srcDir, 'scriptable', 'smart-fridge.js'), path.join(distDir, 'scriptable', 'smart-fridge.js'));
 fs.cpSync(path.join(srcDir, 'icons'), path.join(distDir, 'icons'), { recursive: true });
 
 fs.cpSync(path.join(srcDir, 'personal-data'), path.join(distDir, 'personal-data'), {recursive:true});

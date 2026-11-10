@@ -8,7 +8,7 @@ test.after(async()=>{await engine?.close()});
 const profileId='30000000-0000-4000-8000-000000000001';
 async function fixture(){
  // Each case gets a clean schema; reuse the initialized WASM engine, not its data.
- await engine.exec('drop schema public cascade; drop schema if exists sf_private cascade; drop schema if exists auth cascade; create schema public');
+ await engine.exec('drop schema if exists sf_erasure cascade; drop schema public cascade; drop schema if exists sf_private cascade; drop schema if exists auth cascade; create schema public');
  const database={exec:(...a)=>engine.exec(...a),query:(...a)=>engine.query(...a),transaction:fn=>engine.transaction(fn),close:async()=>{}};
  const f=await createStockDb({database,enableDinner:true});
  await f.db.query(`insert into family_profiles(id,household_id,created_by,profile_owner_user_id,name,sex,age,height_cm,start_weight_kg) values($1,$2,$3,$3,'Test','male',30,170,70)`,[profileId,household,user]);

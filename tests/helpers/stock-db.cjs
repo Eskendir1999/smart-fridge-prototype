@@ -12,7 +12,10 @@ async function createStockDb({database,beforeStockMigration,enableDinner=false}=
   const db=database||await PGlite.create();
   await db.exec(`do $$begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if; if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if; end$$; create schema auth;
     create table auth.users(id uuid primary key,is_anonymous boolean not null default false);
-    create table auth.sessions(id uuid primary key,user_id uuid not null references auth.users(id) on delete cascade,not_after timestamptz);
+    create table auth.sessions(id uuid primary key,user_id uuid not null references auth.users(id) on delete cascade,not_after timestamptz,created_at timestamptz not null default clock_timestamp());
+    create table auth.flow_state(id uuid primary key,user_id uuid,linking_target_id uuid);
+    create table auth.mfa_factors(id uuid primary key,user_id uuid references auth.users on delete cascade,status text not null);
+    create function auth.jwt() returns jsonb language sql stable as $$select nullif(current_setting('request.jwt.claims',true),'')::jsonb$$;
     create function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;
     create function auth.role() returns text language sql stable as $$select current_user::text$$;
     grant usage on schema auth to authenticated,anon;

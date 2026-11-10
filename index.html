@@ -690,6 +690,15 @@ img{ animation:imgFadeIn .25s ease; }
       <button type="submit" class="primary-btn login-submit">Войти</button>
     </form>
     <button type="button" class="login-forgot" id="login-forgot-btn">Забыли пароль?</button>
+    <details id="account-erasure-receipt">
+      <summary>Проверить удаление аккаунта</summary>
+      <form id="account-erasure-check">
+        <label for="account-erasure-code">Код квитанции</label>
+        <input id="account-erasure-code" autocomplete="off" maxlength="36" required>
+        <button type="submit" class="secondary-btn">Проверить</button>
+      </form>
+      <p id="account-erasure-result" role="status"></p>
+    </details>
   </div>
   <div class="login-card" id="recovery-card" style="display:none">
     <div class="login-logo">🔑</div>
@@ -700,7 +709,7 @@ img{ animation:imgFadeIn .25s ease; }
       <div class="form-field" style="margin-bottom:0.375rem">
         <label>Новый пароль</label>
         <div class="password-field">
-          <input type="password" id="recovery-password" autocomplete="new-password" minlength="6" required>
+          <input type="password" id="recovery-password" autocomplete="new-password" minlength="14" required>
           <button type="button" class="password-toggle" id="recovery-password-toggle" aria-label="Показать пароль">👁</button>
         </div>
       </div>
@@ -1328,12 +1337,34 @@ img{ animation:imgFadeIn .25s ease; }
         </form>
         <div id="my-data-confirmation" hidden>
           <p id="my-data-delete-label"></p>
-          <p>Срок удаления резервных копий и ранее переданных внешнему провайдеру данных ещё не подтверждён. Удаление аккаунта целиком в этом экране недоступно.</p>
+          <p>Срок удаления резервных копий и ранее переданных внешнему провайдеру данных ещё не подтверждён. Это подтверждение относится только к выбранным личным данным.</p>
           <label for="my-data-confirm">Введите УДАЛИТЬ</label>
           <input id="my-data-confirm" autocomplete="off" style="width:100%;max-width:100%;box-sizing:border-box">
           <button class="secondary-btn" id="my-data-delete">Удалить</button>
           <button class="secondary-btn" id="my-data-cancel">Отмена</button>
         </div>
+        <details id="account-erasure-panel" hidden>
+          <summary>Удалить мой аккаунт</summary>
+          <p>Аккаунт, все его входы и личные записи будут удалены из рабочей базы. Другие участники сохранят общие запасы, покупки и журнал без указания вашего аккаунта. Если в семье больше никого нет, её запасы и покупки будут удалены.</p>
+          <p>Старые профили без подтверждённого владельца останутся закрытыми. У этого проекта нет автоматических копий Supabase. Удаление ранее переданных внешнему провайдеру данных не подтверждено. Скачанные копии на ваших устройствах остаются у вас.</p>
+          <form id="account-erasure-form">
+            <div class="form-field">
+              <label for="account-erasure-confirm">Введите УДАЛИТЬ АККАУНТ</label>
+              <input id="account-erasure-confirm" autocomplete="off" required>
+            </div>
+            <div class="form-field">
+              <label for="account-erasure-password">Ваш текущий пароль</label>
+              <input id="account-erasure-password" type="password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="secondary-btn">Удалить аккаунт без восстановления</button>
+          </form>
+          <p id="account-erasure-status" role="status"></p>
+          <div id="account-erasure-pending" hidden>
+            <label for="account-erasure-secret">Код для проверки в течение 90 дней. Сохраните его у себя.</label>
+            <input id="account-erasure-secret" readonly>
+            <button type="button" id="account-erasure-verify" class="secondary-btn">Проверить результат</button>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -5336,7 +5367,9 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
         // значит email существовал с самого начала, и исходная ошибка была
         // именно неверным паролем, а не поводом регистрировать заново.
         const alreadyRegistered = /already registered|user_already_exists/i.test(signUp.error?.message || signUp.error?.code || '');
-        loginError.textContent = alreadyRegistered
+        loginError.textContent = signUp.error?.code === 'weak_password'
+          ? 'Для нового аккаунта нужен пароль от 14 символов со строчными и заглавными буквами, цифрой и специальным символом.'
+          : alreadyRegistered
           ? 'Неверный email или пароль. Если забыли пароль — восстановите его ниже.'
           : (signUp.error ? ('Не удалось войти: ' + signUp.error.message) : 'Подтвердите почту по письму, затем войдите снова.');
         loginError.classList.add('show');
@@ -5430,8 +5463,8 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
   recoveryForm.addEventListener('submit', async (e)=>{
     e.preventDefault();
     const newPassword = recoveryPassInput.value;
-    if(newPassword.length < 6){
-      recoveryError.textContent = 'Пароль должен быть не короче 6 символов';
+    if(newPassword.length < 14){
+      recoveryError.textContent = 'Пароль должен быть не короче 14 символов';
       recoveryError.classList.add('show');
       return;
     }
@@ -5444,7 +5477,9 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
       window.history.replaceState(null, '', location.pathname + location.search);
       await enterApp();
     }catch(error){
-      recoveryError.textContent = 'Не удалось завершить вход. Попробуйте войти с новым паролем.';
+      recoveryError.textContent = error?.code === 'weak_password'
+        ? 'Добавьте строчные и заглавные буквы, цифру и специальный символ.'
+        : 'Не удалось завершить вход. Попробуйте войти с новым паролем.';
       recoveryError.classList.add('show');
     }finally{
       recoverySubmitBtn.disabled = false; recoverySubmitBtn.textContent = 'Сохранить и войти';
@@ -5454,6 +5489,7 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
 </script>
 <script src="/personal-data/export.js"></script>
 <script src="/personal-data/ui.js"></script>
+<script src="/personal-data/account.js"></script>
 <script src="/dinner/model.js"></script>
 <script src="/dinner/queue.js"></script>
 <script src="/dinner/ui.js"></script>
