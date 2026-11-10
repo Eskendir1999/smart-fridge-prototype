@@ -33,7 +33,14 @@ jobs:
         env:
           SUPABASE_URL: https://fixture.supabase.test
           SUPABASE_ANON_KEY: sb_publishable_fixture
-      - run: npx playwright install --with-deps chromium
+      - name: Prepare Chrome for browser checks
+        shell: bash
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
       - run: npm run test:my-data-browser
         env:
           SF_EVIDENCE_DIR: ./test-evidence/my-data
