@@ -3,7 +3,7 @@
 //
 // Возвращает { ok, gone }. gone = true, если чат больше недоступен (пользователь заблокировал
 // бота или удалил чат): такую привязку нужно убрать, иначе cron будет стучаться вечно.
-async function sendTelegramMessage(chatId, text) {
+async function sendTelegramMessage(chatId, text, markup) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return { ok: false, gone: false, reason: 'no-token' };
 
@@ -12,7 +12,9 @@ async function sendTelegramMessage(chatId, text) {
     res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true,
+        ...(markup ? { reply_markup: markup, protect_content: true } : {}) }),
+      signal: AbortSignal.timeout(5000),
     });
   } catch (e) {
     return { ok: false, gone: false, reason: 'network' };

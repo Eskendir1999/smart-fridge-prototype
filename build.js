@@ -31,6 +31,7 @@ function injectPublicConfig(text) {
     .replaceAll("'__SUPABASE_URL__'", jsLiteral(supabaseUrl))
     .replaceAll("'__SUPABASE_ANON_KEY__'", jsLiteral(publicKey))
     .replaceAll("'__VAPID_PUBLIC_KEY__'", jsLiteral(process.env.VAPID_PUBLIC_KEY || ''))
+    .replaceAll("'__TELEGRAM_ENABLED__'", jsLiteral(process.env.SF_ENABLE_TELEGRAM === '1' ? '1' : '0'))
     .replaceAll("'__TELEGRAM_BOT_USERNAME__'", jsLiteral(botUsername));
 }
 
