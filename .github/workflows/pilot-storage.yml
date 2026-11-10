@@ -1,0 +1,33 @@
+name: Pilot storage acceptance
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: sf_pilot_test
+          POSTGRES_PASSWORD: local-fixture-only
+          POSTGRES_DB: sf_pilot_test_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sf_pilot_test -d sf_pilot_test_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node --test tests/pilot-*.test.cjs
+      - run: node tests/pilot-server.cjs
+        env:
+          SF_PILOT_TEST_DATABASE_URL: postgresql://sf_pilot_test:local-fixture-only@127.0.0.1:5432/sf_pilot_test_ci
