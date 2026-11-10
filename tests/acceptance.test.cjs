@@ -209,7 +209,7 @@ test('all inline scripts and server files parse', () => {
 
 function buildFixture(env) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-build-'));
-  for (const name of ['build.js', 'index.html', 'manifest.json', 'sw.js', 'privacy.html', 'support.html', 'widgets.html', 'scriptable', 'icons', 'personal-data','dinner']) fs.cpSync(path.join(root, name), path.join(dir, name), { recursive: true });
+  for (const name of ['build.js', 'index.html', 'manifest.json', 'sw.js', 'privacy.html', 'support.html', 'widgets.html', 'scriptable', 'icons', 'personal-data','dinner','ux']) fs.cpSync(path.join(root, name), path.join(dir, name), { recursive: true });
   const inherited = { ...process.env }; for (const k of ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'VAPID_PUBLIC_KEY', 'TELEGRAM_BOT_USERNAME']) delete inherited[k];
   const result = cp.spawnSync(process.execPath, ['build.js'], { cwd: dir, env: { ...inherited, ...env }, encoding: 'utf8' });
   return { dir, result, cleanup() { fs.rmSync(dir, { recursive: true, force: true }); } };

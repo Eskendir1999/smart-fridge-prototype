@@ -34,7 +34,7 @@ const {createStockDb,user,household}=require('./helpers/stock-db.cjs');
       if(url.pathname==='/fixture/supabase.js'){res.setHeader('Content-Type','application/javascript');return res.end(stub);}
       const file=url.pathname==='/'?'dist/index.html':'dist'+url.pathname;
       if(!fs.existsSync(path.join(__dirname,'..',file))){res.statusCode=404;return res.end();}
-      res.setHeader('Content-Type',file.endsWith('html')?'text/html':file.endsWith('js')?'application/javascript':file.endsWith('json')?'application/json':'image/png');
+      res.setHeader('Content-Type',file.endsWith('html')?'text/html':file.endsWith('js')?'application/javascript':file.endsWith('css')?'text/css':file.endsWith('json')?'application/json':'image/png');
       res.end(fs.readFileSync(path.join(__dirname,'..',file)));
     }catch(e){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data:null,error:{message:e.message,code:e.code}}));}
   });
@@ -55,6 +55,17 @@ const {createStockDb,user,household}=require('./helpers/stock-db.cjs');
   const out=process.env.SF_EVIDENCE_DIR||'/tmp/sf-stock-evidence';fs.mkdirSync(out,{recursive:true});
   try{
     await page.goto('http://127.0.0.1:'+port);await page.waitForFunction(()=>userDataLoaded&&document.getElementById('login-screen').style.display==='none');
+    await page.waitForSelector('.sf-home-grid');
+    assert.match(await page.locator('#screen-home .sf-home-section-title').textContent(),/Есть дома/);
+    assert.ok(await page.locator('.sf-home-disabled').isVisible());
+    assert.equal(await page.locator('.side-item[data-nav="diet"]').isDisabled(),true);
+    assert.equal(await page.locator('.side-item[data-nav="recipes"]').isDisabled(),true);
+    await page.evaluate(()=>showScreen('fridge',false));
+    await page.fill('#sf-stock-search','__not_a_product__');
+    assert.match(await page.textContent('#sf-stock-result'),/Ничего не найдено/);
+    await page.fill('#sf-stock-search','');
+    await page.evaluate(()=>showScreen('home',false));
+    console.log('PASS browser: accessible core flow, disabled nutrition and safe search');
     await page.evaluate(()=>openProduct('fridge',0));await page.fill('#use-product-qty','200');mode='pending';await page.click('#use-product-btn');await message(/Сохраняем/);
     assert.equal((await state()).fridge[0].qtyNum,500);await message(/Сохранено/);assert.equal((await state()).fridge[0].qtyNum,300);assert.equal(await page.textContent('#product-qty'),'300 г');
     await page.screenshot({path:path.join(out,'desktop-partial-use.png'),fullPage:true});
@@ -73,11 +84,11 @@ const {createStockDb,user,household}=require('./helpers/stock-db.cjs');
     console.log('PASS browser: lost response + reload + replay creates no duplicate');
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(()=>{populateManualChecklist();openSheet(manualSheet);});
-    await page.fill('#manual-custom-name','Неизвестный тестовый продукт');mode='fail-before';await page.click('#manual-custom-add-btn');await message(/Не удалось/);
+    await page.fill('#manual-custom-name','Неизвестный тестовый продукт');await page.fill('#manual-custom-qty','250');await page.selectOption('#manual-custom-unit','г');mode='fail-before';await page.click('#manual-custom-add-btn');await message(/Не удалось/);
     assert.equal(await page.inputValue('#manual-custom-name'),'Неизвестный тестовый продукт');
     await page.screenshot({path:path.join(out,'mobile-preserved-input.png'),fullPage:true});
     await page.click('#stock-retry-btn');await message(/Сохранено/);assert.equal(await page.inputValue('#manual-custom-name'),'');
-    const unknown=(await state()).fridge.find(p=>p.name==='Неизвестный тестовый продукт');assert.equal(unknown.expiresOn,null);assert.equal(unknown.expiryEstimated,false);
+    const unknown=(await state()).fridge.find(p=>p.name==='Неизвестный тестовый продукт');assert.equal(unknown.expiresOn,null);assert.equal(unknown.expiryEstimated,false);assert.equal(unknown.qtyNum,250);assert.equal(unknown.unit,'г');
     await page.evaluate(id=>{history=['fridge'];openProduct('fridge',fridgeData.findIndex(p=>p._id===id));},unknown._id);
     assert.match(await page.textContent('#product-exp'),/упаковке/);
     await page.locator('#use-product-btn').click({trial:true});
