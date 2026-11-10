@@ -4964,49 +4964,62 @@ async function togglePushSubscription(){
 }
 document.getElementById('push-toggle-btn').addEventListener('click', togglePushSubscription);
 
-/* ===================== TELEGRAM-УВЕДОМЛЕНИЯ ===================== */
-// Бот присылает напоминания о сроках годности и взвешивании (cron на сервере) и отвечает на /status.
-// Кнопка скрыта, пока не задан бот (TELEGRAM_BOT_USERNAME при сборке) и не выполнена миграция.
+/* ===================== TELEGRAM ПО ЗАПРОСУ ===================== */
+const SF_TELEGRAM_ENABLED = '__TELEGRAM_ENABLED__' === '1';
 const TELEGRAM_BOT_USERNAME = '__TELEGRAM_BOT_USERNAME__';
-let telegramLinked = false, telegramUnlinkArmed = null;
+const telegramBtn = document.getElementById('telegram-btn');
+let telegramLinked = false, telegramUnlinkArmed = null, telegramRevision = 0;
 function telegramAvailable(){
-  return !isNativeApp() && /^[A-Za-z][A-Za-z0-9_]{3,30}bot$/i.test(TELEGRAM_BOT_USERNAME);
+  return SF_TELEGRAM_ENABLED && !isNativeApp() && TELEGRAM_BOT_USERNAME.toLowerCase() === 'smart_fridge_t_bot';
 }
 function renderTelegramBtn(){
-  const btn = document.getElementById('telegram-btn');
-  if(!telegramAvailable()){ btn.style.display = 'none'; return; }
-  btn.style.display = '';
-  btn.textContent = telegramUnlinkArmed ? 'Нажмите ещё раз, чтобы отключить'
+  if(!telegramAvailable()){ telegramBtn.style.display = 'none'; return; }
+  telegramBtn.style.display = '';
+  telegramBtn.textContent = telegramUnlinkArmed ? 'Нажмите ещё раз, чтобы отключить'
     : telegramLinked ? '✈️ Telegram подключён · отключить' : '✈️ Подключить Telegram';
 }
 async function refreshTelegramStatus(){
-  if(!SF_NOTIFICATIONS_ENABLED){document.getElementById('telegram-btn').style.display='none';return;}
-  if(!telegramAvailable() || !currentUserId) return;
-  const { data, error } = await sb.from('telegram_links').select('chat_id').eq('user_id', currentUserId).maybeSingle();
-  if(error){ document.getElementById('telegram-btn').style.display = 'none'; return; } // миграция ещё не выполнена
+  const actor = currentUserId;
+  if(!telegramAvailable() || !actor){ telegramBtn.style.display = 'none'; return; }
+  if(telegramBtn.disabled) return;
+  const revision = ++telegramRevision;
+  const { data, error } = await sb.from('telegram_links').select('chat_id').eq('user_id', actor).maybeSingle();
+  if(actor !== currentUserId || revision !== telegramRevision) return;
+  if(error){ telegramBtn.style.display = 'none'; return; }
   telegramLinked = !!(data && data.chat_id);
   renderTelegramBtn();
 }
-document.getElementById('telegram-btn').addEventListener('click', async () => {
-  if(telegramLinked){
-    // Двойное нажатие вместо диалога: случайный тап ничего не отключит.
-    if(!telegramUnlinkArmed){
-      telegramUnlinkArmed = setTimeout(() => { telegramUnlinkArmed = null; renderTelegramBtn(); }, 4000);
-      renderTelegramBtn();
-      return;
-    }
-    clearTimeout(telegramUnlinkArmed); telegramUnlinkArmed = null;
-    const { error } = await sb.rpc('unlink_telegram');
-    if(error){ showToast('Не удалось отключить Telegram', true); renderTelegramBtn(); return; }
-    telegramLinked = false;
+telegramBtn.addEventListener('click', async () => {
+  const actor = currentUserId;
+  if(!telegramAvailable() || !actor || telegramBtn.disabled) return;
+  if(telegramLinked && telegramUnlinkArmed?.actor !== actor){
+    clearTimeout(telegramUnlinkArmed?.timer);
+    const timer = setTimeout(() => { telegramUnlinkArmed = null; renderTelegramBtn(); }, 4000);
+    telegramUnlinkArmed = { actor, timer };
     renderTelegramBtn();
-    showToast('Telegram отключён');
     return;
   }
-  const { data: token, error } = await sb.rpc('generate_telegram_link_token');
-  if(error || !token){ showToast('Не удалось начать подключение', true); return; }
-  // Переход вместо window.open: после await Safari блокирует всплывающие окна.
-  window.location.href = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${token}`;
+  clearTimeout(telegramUnlinkArmed?.timer);
+  telegramUnlinkArmed = null;
+  telegramRevision++;
+  telegramBtn.disabled = true;
+  try{
+    if(telegramLinked){
+      const { error } = await sb.rpc('unlink_telegram');
+      if(actor !== currentUserId) return;
+      if(error){ showToast('Не удалось отключить Telegram', true); return; }
+      telegramLinked = false;
+      showToast('Telegram отключён');
+    }else{
+      const { data: token, error } = await sb.rpc('generate_telegram_link_token');
+      if(actor !== currentUserId) return;
+      if(error || !/^[0-9a-f]{32}$/.test(token || '')){ showToast('Не удалось начать подключение', true); return; }
+      window.location.href = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${token}`;
+    }
+  }finally{
+    telegramBtn.disabled = false;
+    if(actor === currentUserId) renderTelegramBtn();
+  }
 });
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') refreshTelegramStatus(); });
 
@@ -5335,6 +5348,13 @@ async function newPasswordError(password){
   async function enterApp(){
     await loadUserData();
     loginScreen.style.display = 'none';
+    const url = new URL(location.href);
+    if(SF_DINNER_ENABLED && url.searchParams.get('open') === 'dinner'){
+      history = ['recipes'];
+      showScreen('recipes', false);
+      url.searchParams.delete('open');
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
   }
 
   function showBiometricLock(userId, email){

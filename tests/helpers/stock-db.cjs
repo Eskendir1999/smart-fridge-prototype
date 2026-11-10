@@ -10,7 +10,7 @@ const household='20000000-0000-4000-8000-000000000001';
 const otherHousehold='20000000-0000-4000-8000-000000000002';
 async function createStockDb({database,beforeStockMigration,enableDinner=false}={}){
   const db=database||await PGlite.create();
-  await db.exec(`do $$begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if; if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if; end$$; create schema auth;
+  await db.exec(`do $$begin if not exists(select 1 from pg_roles where rolname='anon') then create role anon; end if; if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if; if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role; end if; end$$; create schema auth;
     create table auth.users(id uuid primary key,is_anonymous boolean not null default false);
     create table auth.sessions(id uuid primary key,user_id uuid not null references auth.users(id) on delete cascade,not_after timestamptz,created_at timestamptz not null default clock_timestamp());
     create table auth.flow_state(id uuid primary key,user_id uuid,linking_target_id uuid);
@@ -20,7 +20,7 @@ async function createStockDb({database,beforeStockMigration,enableDinner=false}=
     create function auth.role() returns text language sql stable as $$select current_user::text$$;
     grant usage on schema auth to authenticated,anon;
     grant execute on all functions in schema auth to authenticated,anon;`);
-  for(const file of ['supabase-schema.sql','supabase-household-migration.sql','supabase-household-security-migration.sql','supabase-food-log-migration.sql','supabase-family-profiles-migration.sql','supabase-diet-mode-migration.sql','supabase-dietitian-migration.sql',
+  for(const file of ['supabase-schema.sql','supabase-household-migration.sql','supabase-household-security-migration.sql','supabase-food-log-migration.sql','supabase-family-profiles-migration.sql','supabase-diet-mode-migration.sql','supabase-dietitian-migration.sql','supabase-telegram-migration.sql',
     ...fs.readdirSync(path.join(root,'supabase/migrations')).sort().filter(f=>!f.includes('_deletion_receipt_cron')).map(f=>'supabase/migrations/'+f)]){
     if(file.startsWith('supabase/migrations/') && beforeStockMigration){await beforeStockMigration(db);beforeStockMigration=null;}
     await db.exec(fs.readFileSync(path.join(root,file),'utf8'));
@@ -28,7 +28,7 @@ async function createStockDb({database,beforeStockMigration,enableDinner=false}=
   await db.exec(`insert into auth.users(id) values('${user}'),('${other}'),('${stranger}');
     insert into public.households(id,invite_code) values('${household}','FIRST1'),('${otherHousehold}','OTHER2');
     insert into public.household_members(user_id,household_id) values('${user}','${household}'),('${other}','${household}'),('${stranger}','${otherHousehold}');
-    grant usage on schema public to authenticated,anon;
+    grant usage on schema public to authenticated,anon,service_role;
     insert into auth.sessions(id,user_id) select id,id from auth.users;
     grant select on public.fridge_items,public.cart_items,public.food_stats,public.food_events,public.households,public.household_members to authenticated;`);
   if(enableDinner)await db.exec("update sf_private.dinner_release_control set enabled=true,profile_privacy_accepted=true");
