@@ -83,3 +83,58 @@ test('webhook accepts private known commands only and passes no personal data in
   await handleUpdate(db,message('/buy'),send);
   assert.equal(sent.length,2);
 });
+
+test('linked Telegram users get a persistent menu and can return from the cooking choices', async () => {
+  const chatId = 101;
+  const token = 'a'.repeat(32);
+  const sent = [];
+  let updateId = 0;
+  let linked = false;
+  const db = { rpc: async (name, args) => {
+    assert.equal(name, 'sf_telegram_update');
+    assert.equal(args.p_chat_id, chatId);
+    assert.equal(args.p_update_id, updateId);
+    if(args.p_action === 'link'){
+      assert.equal(args.p_token, token);
+      linked = true;
+      return { data: { status: 'linked' } };
+    }
+    if(!linked) return { data: { status: 'not_linked' } };
+    if(args.p_action === 'unlink'){
+      linked = false;
+      return { data: { status: 'unlinked' } };
+    }
+    assert.ok(['help', 'buy', 'expiry', 'dinner'].includes(args.p_action));
+    return { data: { status: 'ok', today: '2026-11-11', cart: [{ name: 'Лунные яблоки', qty_num: 3, unit: 'шт' }],
+      expiry: [{ name: 'Облачный сыр', expires_on: '2026-11-12' }] } };
+  } };
+  async function press(text){
+    await handleUpdate(db, { update_id: ++updateId, message: { text, date: Math.floor(Date.now()/1000),
+      chat: { id: chatId, type: 'private' }, from: { id: chatId, is_bot: false } } },
+    async (...args) => sent.push(args));
+    assert.equal(sent.length, updateId);
+    const [, reply, markup] = sent.at(-1);
+    return { reply, markup };
+  }
+  function expectKeyboard(markup, buttons){
+    assert.deepEqual(markup, { keyboard: buttons.map(text => [{ text }]), resize_keyboard: true, is_persistent: true });
+  }
+
+  const home = ['Что купить', 'Что скоро истекает', 'Что приготовить?'];
+  assert.deepEqual((await press('Что приготовить?')).markup, { remove_keyboard: true });
+  const welcome = await press('/start ' + token);
+  assert.match(welcome.reply, /Smart Fridge подключён/);
+  assert.doesNotMatch(welcome.reply, /\//);
+  expectKeyboard(welcome.markup, home);
+  assert.doesNotMatch((await press('/start')).reply, /\//);
+  const shopping = await press(home[0]);
+  assert.match(shopping.reply, /Лунные яблоки — 3 шт/);
+  expectKeyboard(shopping.markup, home);
+  assert.match((await press(home[1])).reply, /Облачный сыр — [Зз]автра/);
+  expectKeyboard((await press(home[2])).markup, ['Ужин', 'В главное меню']);
+  assert.match((await press('Ужин')).markup.inline_keyboard[0][0].url, /\?open=dinner$/);
+  expectKeyboard((await press('В главное меню')).markup, home);
+  assert.match((await press('/help')).reply, /\/unlink/);
+  assert.deepEqual((await press('/unlink')).markup, { remove_keyboard: true });
+  assert.deepEqual((await press('Ужин')).markup, { remove_keyboard: true });
+});
