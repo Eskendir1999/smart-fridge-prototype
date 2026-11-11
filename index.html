@@ -5350,9 +5350,10 @@ async function newPasswordError(password){
     loginScreen.style.display = 'none';
     const url = new URL(location.href);
     if(SF_DINNER_ENABLED && url.searchParams.get('open') === 'dinner'){
+      globalThis.sfDinner?.openSelection(url.search);
       history = ['recipes'];
       showScreen('recipes', false);
-      url.searchParams.delete('open');
+      for(const key of ['open','meal','cuisine','portions']) url.searchParams.delete(key);
       window.history.replaceState(null, '', url.pathname + url.search + url.hash);
     }
   }

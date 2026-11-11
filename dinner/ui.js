@@ -7,33 +7,42 @@ const field=(parent,title,input)=>{const label=E('label',title);label.append(inp
 const factor=unit=>({'г':1000,'кг':1000000,'мл':1000,'л':1000000,'шт':1000})[unit];
 const dayPlus=(day,n)=>new Date(Date.parse(day+'T00:00Z')+n*86400000).toISOString().slice(0,10);
 root.SFDinnerUI={mount({root:host,session,onSnapshot,stockLocked}){
- let catalog=null,snapshot=null,loadedScope='',loading=false,needsRefresh=false,generation=0,error='',selected=[],portions=1,recipeId=null,step=0,actual=null,drafts={},actualDraft={},purchaseDraft={},queue;
+ let catalog=null,snapshot=null,loadedScope='',loading=false,needsRefresh=false,generation=0,error='',selected=[],selection=M.mealSelection(),selectionNotice='',recipeId=null,step=0,actual=null,drafts={},actualDraft={},purchaseDraft={},queue;
  const scope=()=>{const s=session();return s?.ready?{userId:s.userId,householdId:s.householdId}:null;};
  const key=()=>{const s=scope();return s?s.userId+':'+s.householdId:'';};
  const safe=fn=>async()=>{try{await fn();}catch(e){error=e.message||'Не удалось выполнить действие';render();}};
  queue=root.SFDinnerQueue.create({storage:localStorage,scope,blocked:stockLocked,rpc:req=>session().sb.rpc('dinner_mutate',req),
   onSaved:(data,request)=>{generation++;if(loadedScope!==key()){
     selected=(request.body.profiles||[]).map(p=>p.id).filter(id=>data.profiles.some(p=>p.id===id));
-    recipeId=request.body.meals?.[0]?.recipe_id||null;portions=request.body.meals?.[0]?.portions||1;loadedScope=key();
+    restoreChoice(request.body);loadedScope=key();
    }snapshot=data;actual=null;actualDraft={};error='';onSnapshot(data);},onChange:()=>render()});
  function context(){if(selected.some(id=>sessionStorage.getItem('sf_restrictions_pending_'+scope().userId+'_'+id)==='1'))throw Error('Сначала подтвердите изменения ограничений профиля.');
   return {householdId:scope().householdId,lots:M.adaptInventory({rows:snapshot.fridge_items,householdId:scope().householdId,confirmed:true}),
   profiles:M.adaptProfiles({rows:snapshot.profiles,householdId:scope().householdId,profileIds:selected,userId:scope().userId}),ingredients:catalog.ingredients};}
  function recipe(){return catalog.recipes.find(r=>r.id===recipeId);}
- function meals(count=1){return Array.from({length:count},(_,i)=>({id:'dinner-'+dayPlus(snapshot.today,i),day:dayPlus(snapshot.today,i),portions,recipe:recipe()}));}
+ function meals(count=1){return Array.from({length:count},(_,i)=>{const day=dayPlus(snapshot.today,i);return {id:selection.meal+'-'+day,day,portions:selection.portions,recipe:recipe()};});}
  const wireMeals=ms=>ms.map(m=>({id:m.id,day:m.day,portions:m.portions,recipe_id:m.recipe.id,recipe_version:m.recipe.version}));
  function profiles(){return context().profiles.map(p=>({id:p.id,mode:p.mode,exclusions:p.exclusions}));}
+ function restoreChoice(body){const saved=body?.meals?.[0];if(!saved)return;
+  const meal=/^(breakfast|lunch|dinner)-/.exec(saved.id)?.[1]||'dinner';
+  selection=M.mealSelection({meal,portions:saved.portions});recipeId=saved.recipe_id||null;}
  async function load(){const s=scope();if(!s)return render();const target=key();if(loading){needsRefresh=true;return;}
   loading=true;const seq=++generation;render();try{if(!catalog){const response=await fetch('/dinner/catalog.json');if(!response.ok)throw Error('Каталог временно недоступен');catalog=await response.json();}
    const {data,error:err}=await session().sb.rpc('dinner_mutate',{op_id:null,hh_id:s.householdId,kind:'snapshot',body:{}});
    if(target!==key()||seq!==generation)return;if(err||!data?.today||!Array.isArray(data.profiles))throw Error('Не удалось загрузить подтверждённые запасы. Обновите данные.');
    if(loadedScope!==target){const pending=queue.view().request?.body;loadedScope=target;
     selected=pending?.profiles?.map(p=>p.id).filter(id=>data.profiles.some(p=>p.id===id))||(session().profileId&&data.profiles.some(p=>p.id===session().profileId)?[session().profileId]:[]);
-    recipeId=pending?.meals?.[0]?.recipe_id||null;portions=pending?.meals?.[0]?.portions||1;actual=null;drafts={};purchaseDraft={};step=0;}
+    recipeId=null;restoreChoice(pending);actual=null;drafts={};purchaseDraft={};step=0;}
    snapshot=data;selected=selected.filter(id=>data.profiles.some(p=>p.id===id));error='';
   }catch(e){if(target===key())error=e.message;}finally{loading=false;render();if(needsRefresh){needsRefresh=false;Promise.resolve().then(load);}}}
  function resetCooking(){actual=null;actualDraft={};step=0;}
- function render(){host.replaceChildren();host.classList.add('dinner-panel');host.append(E('h2','Ужин из продуктов дома'),E('p','Проверьте состав и этикетки продуктов. Каталог не подтверждает безопасность при аллергии.'));
+ function changeSelection(patch){selection=M.mealSelection({...selection,...patch});selectionNotice='';error='';recipeId=null;resetCooking();render();}
+ function openSelection(search){
+  if(queue.pending())return;
+  try{changeSelection(M.mealSelectionFromQuery(search));}
+  catch{selection=M.mealSelection();recipeId=null;resetCooking();selectionNotice='Параметры ссылки не распознаны. Выберите приём пищи, кухню и порции.';render();}
+ }
+ function render(){host.replaceChildren();host.classList.add('dinner-panel');host.append(E('h2','Блюда из продуктов дома'),E('p','Проверьте состав и этикетки продуктов. Каталог не подтверждает безопасность при аллергии.'));
   if(!scope()){host.append(E('p','Войдите, чтобы проверить свои запасы.'));return;}
   const q=queue.view(),status=E('p',q.busy?'Сохраняем…':loading?'Проверяем данные…':error||q.message||(q.request?'Результат сохранения пока неизвестен. Повторите ту же операцию.':''),{id:'dinner-status',role:'status','aria-live':'polite'});host.append(status);
   if(q.corrupt)host.append(E('p','Не удалось прочитать сохранённую операцию на устройстве. Сверьте остатки перед дальнейшими изменениями.'));
@@ -53,22 +62,27 @@ root.SFDinnerUI={mount({root:host,session,onSnapshot,stockLocked}){
    const names={dairy:'молочное',egg:'яйца',fish:'рыба',nuts:'орехи',gluten:'глютен'};
    field(controls,p.name+' · '+(p.diet_mode==='breastfeeding'?'Кормящая мама':'Обычный режим')+' · исключено: '+(p.excluded_foods?.map(x=>names[x]||x).join(', ')||'нет'),input);
   });
-  const portion=E('input',null,{type:'number',min:'1',max:'100',step:'1',id:'dinner-portions'});portion.value=portions;
-  portion.onchange=()=>{const n=Number(portion.value);if(Number.isInteger(n)&&n>0&&n<=100){portions=n;resetCooking();render();}else{error='Укажите от 1 до 100 целых порций.';render();}};field(controls,'Порции',portion);
+  for(const [key,label,choices] of [['meal','Приём пищи',M.mealTypes],['cuisine','Кухня',M.cuisines]]){
+   const select=E('select',null,{id:'dinner-'+key});Object.entries(choices).forEach(([code,name])=>select.append(E('option',name,{value:code})));
+   select.value=selection[key];select.onchange=()=>changeSelection({[key]:select.value});field(controls,label,select);
+  }
+  if(selectionNotice)controls.append(E('p',selectionNotice,{role:'status'}));
+  const portion=E('input',null,{type:'number',min:'1',max:'100',step:'1',id:'dinner-portions'});portion.value=selection.portions;
+  portion.onchange=()=>{const n=Number(portion.value);if(Number.isInteger(n)&&n>0&&n<=100){selection=M.mealSelection({...selection,portions:n});selectionNotice='';error='';resetCooking();render();}else{error='Укажите от 1 до 100 целых порций.';render();}};field(controls,'Порции',portion);
   renderLots(controls);
   if(!selected.length){controls.append(E('p','Выберите доступный личный профиль. Ограничения учитываются при каждом расчёте.'));renderCart(controls);return;}
-  let ctx,cards;try{ctx=context();cards=M.suggest({...ctx,recipes:catalog.recipes,day:snapshot.today,portions});}catch{controls.append(E('p','Уточните настройки выбранных профилей.'));renderCart(controls);return;}
-  if(!cards.length){controls.append(E('p','В этом каталоге нет блюд для выбранных ограничений. Измените состав участников или выберите отдельные блюда.'));renderCart(controls);return;}
+  let ctx,choices;try{ctx=context();choices=M.selectMeals({...ctx,catalog,selection,day:snapshot.today});}catch{controls.append(E('p','Уточните настройки выбранных профилей.'));renderCart(controls);return;}
+  if(!choices.options.length){controls.append(E('p',choices.status==='no_recipes'?'В каталоге нет блюд для этого приёма пищи и кухни. Попробуйте другой фильтр.':'Для выбранных ограничений и фильтров нет вариантов. Попробуйте другую кухню или другой приём пищи.'));renderCart(controls);return;}
   controls.append(E('h3','Подходящие варианты'));
-  for(const card of cards){const r=catalog.recipes.find(r=>r.id===card.recipeId),article=E('article',null,{'data-dinner-card':r.id});article.append(E('h4',r.title),E('strong',card.result.label));explain(article,card.result);article.append(button('Выбрать',()=>{recipeId=r.id;resetCooking();render();},'choose-'+r.id));controls.append(article);}
-  const allowed=catalog.recipes.filter(r=>!M.evaluateMenu({...ctx,meals:[{id:r.id,recipe:r,day:snapshot.today,portions}]}).blocked.length);
+  for(const card of choices.options){const article=E('article',null,{'data-dinner-card':card.recipeId});article.append(E('h4',card.title),E('strong',card.label));explain(article,card);article.append(button('Выбрать',()=>{recipeId=card.recipeId;resetCooking();render();},'choose-'+card.recipeId));controls.append(article);}
+  const eligible=new Set(choices.eligibleRecipeIds),allowed=catalog.recipes.filter(r=>eligible.has(r.id));
   const selector=E('select',null,{id:'dinner-recipe'});selector.append(E('option','Выберите блюдо',{value:''}));allowed.forEach(r=>selector.append(E('option',r.title,{value:r.id})));selector.value=allowed.some(r=>r.id===recipeId)?recipeId:'';
   selector.onchange=()=>{recipeId=selector.value||null;resetCooking();render();};field(controls,'Блюдо и явная замена',selector);
   if(!allowed.some(r=>r.id===recipeId)){recipeId=null;renderCart(controls);return;}
-  const result=M.evaluateMenu({...ctx,meals:meals()});controls.append(E('h3',recipe().title),E('p',portions+' порц. · '+snapshot.today));explain(controls,result);
-  for(const [count,label]of [[1,'В покупки на этот ужин'],[7,'Повторить блюдо на 7 дней: в покупки']]){
+  const result=M.evaluateMenu({...ctx,meals:meals()});controls.append(E('h3',recipe().title),E('p',selection.portions+' порц. · '+snapshot.today));explain(controls,result);
+  for(const [count,label]of [[1,'В покупки для этого блюда'],[7,'Повторить блюдо на 7 дней: в покупки']]){
    const action=button(label,safe(async()=>{await load();const coverage=M.evaluateMenu({...context(),meals:meals(count)});if(coverage.status==='clarify'||coverage.blocked.length)throw Error('Сначала уточните количество и сроки партий.');
-    const desired=Object.fromEntries(M.shopping(coverage).map(l=>[l.ingredientId,l.amount])),scope_id='dinner:'+snapshot.today;await queue.start('shopping',{profiles:profiles(),meals:wireMeals(meals(count)),desired,scope_id,expected_scope_revision:snapshot.demand_versions?.[scope_id]||0});}),count===1?'dinner-shopping':'dinner-week-shopping');
+    const desired=Object.fromEntries(M.shopping(coverage).map(l=>[l.ingredientId,l.amount])),scope_id=selection.meal+':'+snapshot.today;await queue.start('shopping',{profiles:profiles(),meals:wireMeals(meals(count)),desired,scope_id,expected_scope_revision:snapshot.demand_versions?.[scope_id]||0});}),count===1?'dinner-shopping':'dinner-week-shopping');
    controls.append(action);
   }
   controls.append(E('p','Покупки пересчитываются для выбранного блюда. План и шаги не списывают продукты.'));
@@ -103,14 +117,14 @@ root.SFDinnerUI={mount({root:host,session,onSnapshot,stockLocked}){
  function renderCart(parent){
   if(snapshot.events?.length){const history=E('details',null,{id:'dinner-history'});history.append(E('summary','История расхода и отмен'));
    snapshot.events.forEach(e=>{const entry=E('p',e.kind==='consume'?'Расход: ':'Отмена расхода: ');entry.append(document.createTextNode(e.quantities.map(q=>(catalog.ingredients[q.ingredient_id]?.name||'Продукт')+' '+q.amount+' '+q.unit).join(', ')));history.append(entry);});parent.append(history);}
-  const carts=snapshot.cart_items.filter(c=>c.dinner_scope);if(!carts.length)return;const box=E('section',null,{id:'dinner-purchases'});box.append(E('h3','Покупки для ужина'));
+  const carts=snapshot.cart_items.filter(c=>c.dinner_scope);if(!carts.length)return;const box=E('section',null,{id:'dinner-purchases'});box.append(E('h3','Покупки для выбранных блюд'));
   carts.forEach(c=>{const row=E('div');row.append(E('p',c.name+' · '+c.qty_num+' '+c.unit));const expiry=E('input',null,{type:'date','aria-label':'Срок покупки '+c.name});expiry.value=purchaseDraft[c.id]||'';expiry.oninput=()=>purchaseDraft[c.id]=expiry.value;field(row,'Срок с упаковки (можно уточнить позже)',expiry);
    row.append(button('Куплено',safe(()=>queue.start('buy',{id:c.id,expected:c,expires_on:expiry.value})), 'dinner-buy-'+c.id));box.append(row);});parent.append(box);}
  window.addEventListener('sf:inventory',()=>{if(loading)needsRefresh=true;else if(!queue.pending()||!snapshot||loadedScope!==key()||!catalog)load();else render();});
- function clear(){queue.redact();generation++;snapshot=null;loadedScope='';selected=[];recipeId=null;step=0;actual=null;drafts={};actualDraft={};purchaseDraft={};error='';render();}
+ function clear(){queue.redact();generation++;snapshot=null;loadedScope='';selected=[];selection=M.mealSelection();selectionNotice='';recipeId=null;step=0;actual=null;drafts={};actualDraft={};purchaseDraft={};error='';render();}
  // My Data must emit this before sending a deletion, including an uncertain one.
  // Resolve any pending receipt by opaque ID; never keep its deleted profile input.
  window.addEventListener('sf:personal-data-deleting',clear);
- load();return {pending:()=>queue.pending(),refresh:load,clear};
+ load();return {pending:()=>queue.pending(),refresh:load,clear,openSelection};
 }};
 })(globalThis);

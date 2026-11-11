@@ -9,6 +9,8 @@ const units = {
   ml: ['volume', 1000], l: ['volume', 1000000], pcs: ['count', 1000],
 };
 const labels = { enough: 'достаточно', buy: 'докупить', clarify: 'количество нужно уточнить' };
+const mealTypes = Object.freeze({ breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин' });
+const cuisines = Object.freeze({ any: 'Без предпочтения', home: 'Домашняя', japanese: 'Японская' });
 const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 const id = value => typeof value === 'string' && value.trim().length > 0;
 const exclusions = new Set(['dairy', 'egg', 'fish', 'nuts', 'gluten']);
@@ -58,12 +60,13 @@ function blockReasons(recipe, profiles, ingredients) {
   }
   return [...new Set(reasons)];
 }
+const confirmedExpiry = lot => date(lot.expiresOn) && ['label', 'user'].includes(lot.dateSource);
 function classifyLot(lot, day, dimension) {
   const q = amount(lot.quantity);
   if (q && q.value === 0) return 'excluded';
-  if (date(lot.expiresOn) && lot.expiresOn < day) return 'expired';
+  if (confirmedExpiry(lot) && lot.expiresOn < day) return 'expired';
   if (!q || q.dimension !== dimension || !['measured', 'user'].includes(lot.quantity.source)
-    || !date(lot.expiresOn) || !['label', 'user'].includes(lot.dateSource)) return 'uncertain';
+    || !confirmedExpiry(lot)) return 'uncertain';
   return 'usable';
 }
 function evaluateMenu({ meals, lots, profiles, ingredients, householdId }) {
@@ -108,7 +111,7 @@ function evaluateMenu({ meals, lots, profiles, ingredients, householdId }) {
     }
     for (const req of requirements.values()) {
       const unresolvedOnDay = working.some(l => !id(l.ingredientId) && amount(l.quantity)?.value !== 0
-        && !(date(l.expiresOn) && l.expiresOn < meal.day));
+        && !(confirmedExpiry(l) && l.expiresOn < meal.day));
       let shortfall = req.required, uncertain = req.required === null || unresolvedOnDay;
       const allocations = [], excludedLots = [], uncertainLots = [];
       const candidates = working.filter(l => l.ingredientId === req.ingredientId)
@@ -143,7 +146,7 @@ function evaluateMenu({ meals, lots, profiles, ingredients, householdId }) {
     : lines.some(l => l.status === 'buy') ? 'buy' : 'enough';
   return { householdId, profileIds: profiles.map(p => p.id), status, label: labels[status] || null, lines, blocked, unresolvedLots };
 }
-function suggest({ recipes, day, portions, ...context }) {
+function rankRecipes({ recipes, day, portions, ...context }) {
   requireInput(Array.isArray(recipes) && recipes.length <= 100 && new Set(recipes.map(r => r.id)).size === recipes.length, 'invalid_recipes');
   return recipes.map(recipe => ({ recipeId: recipe.id, result: evaluateMenu({ ...context,
     meals: [{ id: recipe.id, recipe, day, portions }] }) }))
@@ -152,7 +155,58 @@ function suggest({ recipes, day, portions, ...context }) {
       const order = { enough: 0, buy: 1, clarify: 2 };
       const missingCount = r => r.result.lines.filter(l => l.status !== 'enough').length;
       return order[a.result.status] - order[b.result.status] || missingCount(a) - missingCount(b) || a.recipeId.localeCompare(b.recipeId);
-    }).slice(0, 3);
+    });
+}
+function suggest(input) {
+  return rankRecipes(input).slice(0, 3);
+}
+function mealSelection({ meal = 'dinner', cuisine = 'any', portions = 1 } = {}) {
+  requireInput(typeof meal === 'string' && own(mealTypes, meal), 'invalid_meal_type');
+  requireInput(typeof cuisine === 'string' && own(cuisines, cuisine), 'invalid_cuisine');
+  requireInput(Number.isSafeInteger(portions) && portions >= 1 && portions <= 100, 'invalid_portions');
+  return { meal, cuisine, portions };
+}
+function mealSelectionFromQuery(search) {
+  const params = new URLSearchParams(search);
+  const selection = {};
+  for (const key of ['meal', 'cuisine', 'portions']) {
+    const values = params.getAll(key);
+    requireInput(values.length <= 1, 'duplicate_meal_selection');
+    if (!values.length) continue;
+    if (key === 'portions') requireInput(/^(?:[1-9][0-9]?|100)$/.test(values[0]), 'invalid_portions');
+    selection[key] = key === 'portions' ? Number(values[0]) : values[0];
+  }
+  return mealSelection(selection);
+}
+function mealSelectionQuery(selection) {
+  const { meal, cuisine, portions } = mealSelection(selection);
+  return `?open=dinner&meal=${meal}&cuisine=${cuisine}&portions=${portions}`;
+}
+function selectMeals({ catalog, selection, ...context }) {
+  const requested = mealSelection(selection);
+  requireInput(date(context.day), 'invalid_meal_day');
+  requireInput(catalog && [1, 2].includes(catalog.version) && Array.isArray(catalog.recipes)
+    && catalog.recipes.length <= 100, 'invalid_meal_catalog');
+  const cuisineOf = recipe => catalog.version === 1 ? 'home' : recipe.cuisine;
+  const matches = catalog.recipes.filter(recipe => {
+    const mealList = catalog.version === 1 ? ['dinner'] : recipe.mealTypes;
+    return Array.isArray(mealList) && mealList.includes(requested.meal)
+      && (requested.cuisine === 'any' || cuisineOf(recipe) === requested.cuisine);
+  });
+  const ranked = rankRecipes({ ...context, recipes: matches, ingredients: catalog.ingredients, portions: requested.portions });
+  const recipes = new Map(matches.map(recipe => [recipe.id, recipe]));
+  // Presentation data only. Allocation and profile identifiers stay with the existing confirmation flow.
+  const options = ranked.slice(0, 3).map(({ recipeId, result }) => {
+    const recipe = recipes.get(recipeId);
+    return { recipeId, recipeVersion: recipe.version, title: recipe.title, cuisine: cuisineOf(recipe),
+      status: result.status, label: result.label,
+      lines: result.lines.map(({ ingredientId, dimension, required, knownAllocated, missingExact, status, label }) => ({
+        ingredientId, name: catalog.ingredients[ingredientId].name, dimension, required, knownAllocated, missingExact, status, label,
+      })),
+    };
+  });
+  return { selection: requested, options, eligibleRecipeIds: ranked.map(({ recipeId }) => recipeId),
+    status: options.length ? 'ok' : matches.length ? 'no_eligible_recipes' : 'no_recipes' };
 }
 function shopping(result) {
   requireInput(result && Array.isArray(result.blocked) && !result.blocked.length && Array.isArray(result.lines), 'blocked_or_invalid_menu');
@@ -209,5 +263,6 @@ function formatAmount(value, dimension) {
   const whole = Math.floor(value / 1000), fraction = String(value % 1000).padStart(3, '0').replace(/0+$/, '');
   return String(whole) + (fraction ? ',' + fraction : '') + ' ' + { mass: 'г', volume: 'мл', count: 'шт' }[dimension];
 }
-return Object.freeze({ amount, date, evaluateMenu, suggest, shopping, adaptInventory, adaptProfiles, formatAmount });
+return Object.freeze({ amount, date, evaluateMenu, suggest, shopping, adaptInventory, adaptProfiles, formatAmount,
+  mealTypes, cuisines, mealSelection, mealSelectionFromQuery, mealSelectionQuery, selectMeals });
 });

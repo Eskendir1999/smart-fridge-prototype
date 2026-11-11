@@ -1,5 +1,5 @@
 // Версия кэша: поднимайте при каждом деплое, чтобы старый app shell не залипал у пользователей.
-const CACHE_NAME = 'smart-fridge-telegram-on-demand-20261110';
+const CACHE_NAME = 'smart-fridge-meal-selection-20261111';
 const APP_SHELL = [
   '/',
   '/manifest.json',

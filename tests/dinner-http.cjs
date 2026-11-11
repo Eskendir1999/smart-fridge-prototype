@@ -28,7 +28,7 @@ async function main(){
     res.writeHead(upstream.status,{'Content-Type':upstream.headers.get('content-type')||'application/json'});return res.end(body);}
    if(req.url.startsWith('/auth/v1/logout')){res.statusCode=204;return res.end();}
    if(req.url==='/auth/v1/user'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({id:user,email:'fixture@example.test',role:'authenticated',aud:'authenticated'}));}
-   if(req.url==='/'){res.setHeader('Content-Type','text/html');return res.end(fs.readFileSync(path.join(root,'index.html'),'utf8').replaceAll("'__DINNER_ENABLED__'", "'1'").replaceAll("'__SUPABASE_URL__'",JSON.stringify(origin)).replaceAll("'__SUPABASE_ANON_KEY__'",JSON.stringify(anon)));}
+   if(new URL(req.url,'http://localhost').pathname==='/'){res.setHeader('Content-Type','text/html');return res.end(fs.readFileSync(path.join(root,'index.html'),'utf8').replaceAll("'__DINNER_ENABLED__'", "'1'").replaceAll("'__SUPABASE_URL__'",JSON.stringify(origin)).replaceAll("'__SUPABASE_ANON_KEY__'",JSON.stringify(anon)));}
    if(/^\/dinner\/(model\.js|queue\.js|ui\.js|catalog\.json|style\.css)$/.test(req.url)){res.setHeader('Content-Type',req.url.endsWith('.json')?'application/json':req.url.endsWith('.css')?'text/css':'application/javascript');return res.end(fs.readFileSync(path.join(root,req.url.slice(1))));}
    if(/^\/personal-data\/(ui|export|account)\.js$/.test(req.url)){res.setHeader('Content-Type','application/javascript');return res.end(fs.readFileSync(path.join(root,req.url.slice(1))));}
    if(/^\/ux\/core-flow\.(js|css)$/.test(req.url)){res.setHeader('Content-Type',req.url.endsWith('.css')?'text/css':'application/javascript');return res.end(fs.readFileSync(path.join(root,req.url.slice(1))));}
@@ -71,7 +71,7 @@ async function main(){
   assert.match(await page.textContent('#recipes-list'),/количество нужно уточнить/);
   await page.click('#dinner-lots summary');await page.fill('[data-lot-quantity="'+cheese+'"]','20');transport='fail-before';await page.click('[data-confirm-lot="'+cheese+'"]');
   await page.waitForFunction(()=>document.querySelector('#dinner-retry')&&!document.querySelector('#dinner-retry').disabled);assert.equal(await page.inputValue('[data-lot-quantity="'+cheese+'"]'),'20');await page.click('#dinner-retry');await page.waitForFunction(()=>document.querySelector('#dinner-status').textContent==='Сохранено.');assert.equal((await row(cheese)).quantity_source,'user');
-  await pool.query("update family_profiles set excluded_foods=array['dairy','egg'] where id=$1",[profile]);await page.click('#dinner-refresh');await page.waitForFunction(()=>document.querySelectorAll('[data-dinner-card]').length===1);assert.equal(await page.locator('[data-dinner-card="vegetable-salad"]').count(),1);
+  await pool.query("update family_profiles set excluded_foods=array['dairy','egg'] where id=$1",[profile]);await page.click('#dinner-refresh');await page.waitForFunction(()=>document.querySelectorAll('[data-dinner-card]').length===2);assert.deepEqual((await page.locator('[data-dinner-card]').evaluateAll(cards=>cards.map(c=>c.dataset.dinnerCard))).sort(),['shiozake-rice','vegetable-salad']);
   await pool.query("update family_profiles set excluded_foods='{}' where id=$1",[profile]);await page.click('#dinner-refresh');await page.waitForFunction(()=>document.querySelectorAll('[data-dinner-card]').length===3);await page.selectOption('#dinner-recipe','cheese-cucumber');
   await page.fill('#dinner-portions','2');await page.locator('#dinner-portions').blur();assert.match(await page.textContent('#recipes-list'),/не хватает 40 г/);await page.fill('#dinner-portions','1');await page.locator('#dinner-portions').blur();
   await page.evaluate(id=>openProduct('fridge',fridgeData.findIndex(p=>p._id===id)),cucumber);await page.fill('#use-product-qty','50');await page.click('#use-product-btn');await page.waitForFunction(()=>/Сохранено/.test(document.querySelector('#stock-save-message').textContent));
@@ -96,6 +96,27 @@ async function main(){
   const persisted=await page.evaluate(()=>JSON.stringify(Object.entries(localStorage).filter(([k])=>k.startsWith('sf_dinner_v1_'))));assert.ok(!persisted.includes(profile));assert.ok(persisted.includes('resolve'));
   await page.evaluate(({token,user})=>localStorage.setItem('sb-127-auth-token',JSON.stringify({access_token:token,refresh_token:'fixture-unused',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:user,email:'fixture@example.test',role:'authenticated',aud:'authenticated'}})),{token,user});await page.reload();await page.waitForFunction(()=>userDataLoaded);await page.click('.nav-item[data-nav=recipes]');await page.click('#dinner-retry');await page.waitForFunction(()=>document.querySelector('#dinner-status').textContent==='Сохранено.');assert.equal(requests.at(-1).kind,'resolve');assert.equal(requests.at(-1).op_id,lostOnLogout);assert.deepEqual(requests.at(-1).body,{});assert.equal(Number((await row(cucumber)).qty_num),400);
   await page.click('#dinner-undo');await page.waitForFunction(()=>/отменён/.test(document.querySelector('#dinner-status').textContent));assert.equal(Number((await row(cucumber)).qty_num),500);check('logout clears personal context and private intent; opaque resolution after login never repeats use');
+  await lot('short-grain-rice',50);
+  const eggs=await f.add(4,'шт');await must(rpc(a,'confirm_lot',{id:eggs,expected_version:0,ingredient_id:'egg',qty_num:4,unit:'шт',expires_on:null}));
+  const mealPage=await context.newPage(),beforeSelection=requests.length;
+  try{
+   await mealPage.goto(origin+'/?open=dinner&meal=breakfast&cuisine=japanese&portions=2');
+   await mealPage.waitForSelector('#screen-recipes.active #dinner-meal');
+   assert.equal(await mealPage.inputValue('#dinner-meal'),'breakfast');assert.equal(await mealPage.inputValue('#dinner-cuisine'),'japanese');
+   assert.equal(await mealPage.inputValue('#dinner-portions'),'2');
+   await mealPage.locator('[data-dinner-profile="'+profile+'"]').check();
+   const breakfast=mealPage.locator('[data-dinner-card="tamagoyaki-rice"]');
+   assert.equal(await mealPage.locator('[data-dinner-card]').count(),1);
+   assert.match(await breakfast.textContent(),/рис \(сухой\).*нужно 120 г, подтверждено 50 г, не хватает 70 г/i);
+   const eggLine=await breakfast.locator('li').filter({hasText:'Яйца'}).textContent();
+   assert.match(eggLine,/уточнить/);assert.doesNotMatch(eggLine,/не хватает/);
+   await mealPage.click('#choose-tamagoyaki-rice');await mealPage.selectOption('#dinner-meal','lunch');
+   assert.equal(await mealPage.inputValue('#dinner-recipe'),'');
+   assert.equal(await mealPage.locator('[data-dinner-card="salmon-onigiri"]').count(),1);
+   await mealPage.selectOption('#dinner-cuisine','any');assert.equal(await mealPage.locator('[data-dinner-card]').count(),3);
+   assert.equal(requests.length,beforeSelection);
+  }finally{await mealPage.close();}
+  check('meal deep link applies Japanese breakfast and portions; exact/uncertain lines and filter changes do not mutate stock');
   // The final owner bridge was installed with the isolated migrations.
 
   let exported;for(let i=0;i<40;i++){exported=await a.rpc('sf_dinner_my_data');if(exported.error?.code!=='PGRST202')break;await pause(100)}
