@@ -131,10 +131,20 @@ test('linked Telegram users get a persistent menu and can return from the cookin
   assert.match(shopping.reply, /Лунные яблоки — 3 шт/);
   expectKeyboard(shopping.markup, home);
   assert.match((await press(home[1])).reply, /Облачный сыр — [Зз]автра/);
-  expectKeyboard((await press(home[2])).markup, ['Ужин', 'В главное меню']);
-  assert.match((await press('Ужин')).markup.inline_keyboard[0][0].url, /\?open=dinner$/);
+  const mealButtons = [['Завтрак', 'breakfast'], ['Обед', 'lunch'], ['Ужин', 'dinner']];
+  expectKeyboard((await press(home[2])).markup, [...mealButtons.map(([label]) => label), 'В главное меню']);
+  for(const [label, meal] of mealButtons){
+    const choices = await press(label);
+    assert.match(choices.reply, /Выберите кухню/);
+    assert.deepEqual(choices.markup.inline_keyboard.map(([choice]) => choice.text), ['Без предпочтения', 'Домашняя', 'Японская']);
+    for(const [index, cuisine] of ['any', 'home', 'japanese'].entries()){
+      const url = new URL(choices.markup.inline_keyboard[index][0].url);
+      assert.equal(url.origin + url.pathname, 'https://smart-fridge-prototype.vercel.app/');
+      assert.deepEqual(Object.fromEntries(url.searchParams), { open: 'dinner', meal, cuisine, portions: '1' });
+    }
+  }
   expectKeyboard((await press('В главное меню')).markup, home);
   assert.match((await press('/help')).reply, /\/unlink/);
   assert.deepEqual((await press('/unlink')).markup, { remove_keyboard: true });
-  assert.deepEqual((await press('Ужин')).markup, { remove_keyboard: true });
+  assert.deepEqual((await press('Завтрак')).markup, { remove_keyboard: true });
 });

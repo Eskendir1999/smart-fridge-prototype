@@ -2,6 +2,7 @@ const { timingSafeEqual } = require('node:crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { sendTelegramMessage } = require('./_lib/telegram');
 const { daysBetween, dueLabel } = require('./_lib/fridge');
+const { mealTypes, cuisines, mealSelectionQuery } = require('../dinner/model');
 
 const DINNER_URL = 'https://smart-fridge-prototype.vercel.app/?open=dinner';
 const CONNECT = 'Откройте Smart Fridge → Профиль → «Подключить Telegram».';
@@ -10,11 +11,11 @@ const HELP = '/buy — что купить\n/expiry — что скоро ист
 const BUY = 'Что купить';
 const EXPIRY = 'Что скоро истекает';
 const COOK = 'Что приготовить?';
-const DINNER = 'Ужин';
 const BACK = 'В главное меню';
+const MEALS = new Map(Object.entries(mealTypes).map(([meal, label]) => [label.toLowerCase(), meal]));
 const ACTIONS = new Map([
   ['/buy', 'buy'], [BUY.toLowerCase(), 'buy'], ['/expiry', 'expiry'], [EXPIRY.toLowerCase(), 'expiry'],
-  ['/dinner', 'dinner'], [DINNER.toLowerCase(), 'dinner'], ['/status', 'status'],
+  ['/dinner', 'dinner'], ['/status', 'status'],
   ['/unlink', 'unlink'], ['/stop', 'unlink'], ['/help', 'help'],
   ['/start', 'start'], [BACK.toLowerCase(), 'start'], [COOK.toLowerCase(), 'cook'],
 ]);
@@ -24,7 +25,7 @@ function keyboard(...buttons){
 }
 
 const MENU = keyboard(BUY, EXPIRY, COOK);
-const COOK_MENU = keyboard(DINNER, BACK);
+const COOK_MENU = keyboard(...Object.values(mealTypes), BACK);
 
 function requestOf(update, now = Date.now()){
   const m = update?.message;
@@ -36,8 +37,10 @@ function requestOf(update, now = Date.now()){
   const link = text.match(/^\/start(?:@Smart_Fridge_T_bot)?\s+(\S+)$/i);
   if(link) return { p_update_id: update.update_id, p_chat_id: m.chat.id, p_action: 'link',
     p_token: /^[0-9a-f]{32}$/.test(link[1]) ? link[1] : null };
-  const action = ACTIONS.get(text.toLowerCase().replace(/@smart_fridge_t_bot$/, ''));
-  return action ? { p_update_id: update.update_id, p_chat_id: m.chat.id, p_action: action } : null;
+  const key = text.toLowerCase().replace(/@smart_fridge_t_bot$/, '');
+  const meal = MEALS.get(key);
+  const action = meal ? 'dinner' : ACTIONS.get(key);
+  return action ? { p_update_id: update.update_id, p_chat_id: m.chat.id, p_action: action, meal } : null;
 }
 
 function listText(rows, itemText, empty, title){
@@ -51,7 +54,7 @@ function itemName(name){
   return String(name).replace(/[\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]/g, ' ').slice(0, 120);
 }
 
-function replyFor(action, data){
+function replyFor(action, data, meal){
   switch(data.status){
     case 'duplicate': return null;
     case 'linked': return { text: 'Smart Fridge подключён.\n\n' + WELCOME, markup: MENU };
@@ -64,7 +67,14 @@ function replyFor(action, data){
   }
   if(action === 'start') return { text: WELCOME, markup: MENU };
   if(action === 'help') return { text: HELP, markup: MENU };
-  if(action === 'cook') return { text: 'Подберите ужин из продуктов дома.', markup: COOK_MENU };
+  if(action === 'cook') return { text: 'На какой приём пищи подобрать блюда?', markup: COOK_MENU };
+  if(meal) return {
+    text: mealTypes[meal] + '\nВыберите кухню. Рецепты и недостающие продукты откроются в Smart Fridge.',
+    markup: { inline_keyboard: Object.entries(cuisines).map(([cuisine, label]) => [{
+      text: label,
+      url: new URL(mealSelectionQuery({ meal, cuisine }), DINNER_URL).href,
+    }]) },
+  };
   if(action === 'dinner') return {
     text: 'Откройте «Ужин» в Smart Fridge. Если сессии нет, приложение попросит войти.',
     markup: { inline_keyboard: [[{ text: 'Открыть «Ужин»', url: DINNER_URL }]] },
@@ -83,14 +93,15 @@ function replyFor(action, data){
 }
 
 async function handleUpdate(sb, update, send = sendTelegramMessage){
-  const request = requestOf(update);
-  if(!request) return;
+  const parsed = requestOf(update);
+  if(!parsed) return;
+  const { meal, ...request } = parsed;
   const action = request.p_action;
   // Menu navigation uses the same link and household check as /help.
   if(action === 'start' || action === 'cook') request.p_action = 'help';
   const { data, error } = await sb.rpc('sf_telegram_update', request);
   if(error) throw Error('telegram_database_unavailable');
-  const reply = replyFor(action, data);
+  const reply = replyFor(action, data, meal);
   if(reply) await send(request.p_chat_id, reply.text, reply.markup);
 }
 
