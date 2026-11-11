@@ -24,6 +24,28 @@ async function fixture(){
  return {...f,rpc,state,today,profiles,meals,row,lot,request};
 }
 test('dinner catalog in SQL equals the reviewed client artifact',async()=>{const f=await fixture();try{assert.deepEqual((await f.db.query('select sf_private.dinner_catalog() c')).rows[0].c,catalog);}finally{await f.db.close()}});
+test('the Japanese breakfast uses the same server shortage, confirmed expense and undo',async()=>{const f=await fixture();try{
+ const rice=await f.lot('short-grain-rice',0.05,'кг'),eggs=await f.lot('egg',4,'шт');
+ const sugar=await f.lot('sugar',10),salt=await f.lot('salt',2),oil=await f.lot('neutral-oil',10,'мл');
+ const meals=[{id:'breakfast-'+f.today,day:f.today,recipe_id:'tamagoyaki-rice',recipe_version:1,portions:2}];
+ await f.rpc('shopping',{profiles:f.profiles,meals:f.meals(),desired:{cheese:30000,cucumber:150000},scope_id:'dinner:'+f.today});
+ const plan={profiles:f.profiles,meals,desired:{'short-grain-rice':70000},scope_id:'breakfast:'+f.today};
+ await assert.rejects(f.rpc('shopping',{...plan,desired:{'short-grain-rice':69999}}),/Shopping demand changed/);
+ await f.rpc('shopping',plan);
+ const cart=(await f.state()).cart_items;
+ assert.equal(cart.filter(c=>c.dinner_scope==='dinner:'+f.today).length,2);
+ const [shortage]=cart.filter(c=>c.dinner_scope==='breakfast:'+f.today);
+ assert.equal(Number(shortage.qty_num),70);assert.equal(shortage.unit,'г');
+ await f.rpc('confirm_lot',{id:rice,expected_version:(await f.row(rice)).dinner_version,ingredient_id:'short-grain-rice',qty_num:0.12,unit:'кг',expires_on:'2099-12-01'});
+ const ids=[rice,eggs,sugar,salt,oil],body={...await f.request(ids,[0.12,4,10,2,10]),meals};
+ await f.db.query("update family_profiles set excluded_foods=array['egg'] where id=$1",[profileId]);
+ await assert.rejects(f.rpc('consume',{...body,profiles:[{...f.profiles[0],exclusions:['egg']}]}),/Recipe excluded/);
+ await f.db.query("update family_profiles set excluded_foods='{}' where id=$1",[profileId]);
+ const id=randomUUID();await f.rpc('consume',body,{id});await f.rpc('consume',body,{id});
+ for(const item of ids)assert.equal(Number((await f.row(item)).qty_num),0);
+ await f.rpc('undo',{operation_id:id});
+ assert.deepEqual(await Promise.all(ids.map(async item=>Number((await f.row(item)).qty_num))),[0.12,4,10,2,10]);
+ }finally{await f.db.close()}});
 test('atomic partial use preserves both lots; repeats and undo retain an immutable journal',async()=>{const f=await fixture();try{
  const a=await f.lot(),b=await f.lot('cucumber',2000);const body=await f.request([a,b],[200,1000]);body.meals[0].portions=10;const id=randomUUID();
  const saved=await f.rpc('consume',body,{id});assert.equal(saved.kind,'consume');assert.equal(Number((await f.row(a)).qty_num),300);assert.equal(Number((await f.row(b)).qty_num),1000);
