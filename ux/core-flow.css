@@ -100,3 +100,4 @@
 
 @media (prefers-color-scheme: dark){:root{--sf-muted-readable:#A7B2AA}}
 #screen-home .sf-home-column>.section:has(>.save-banner){padding:0;border:0;background:none}
+#screen-home .sf-home-column .sf-home-bottom,#screen-home .sf-home-column .save-banner{max-width:none;width:100%;margin:0}
