@@ -1,1 +1,56 @@
-.dinner-panel{padding:0 1rem 2rem;max-width:48rem;margin:auto;overflow-wrap:anywhere}.dinner-panel fieldset{border:0;padding:0;min-width:0}.dinner-panel label{display:block;margin:.6rem 0}.dinner-panel input:not([type=checkbox]),.dinner-panel select{display:block;max-width:100%;width:100%;box-sizing:border-box;padding:.65rem;border:1px solid #b2bdb8;border-radius:.5rem;font:inherit;background:var(--surface,#fff);color:var(--text,#173c31)}.dinner-panel input[type=checkbox]{margin-right:.5rem}.dinner-panel button{border:1px solid #9bafa4;border-radius:.6rem;background:var(--fresh-soft,#e6f2ea);color:var(--text,#173c31);padding:.7rem;margin:.4rem .3rem .4rem 0;font:inherit;min-height:44px;cursor:pointer;max-width:100%}.dinner-panel button:disabled{opacity:.55;cursor:wait}.dinner-panel article,.dinner-panel form,.dinner-panel #dinner-purchases{padding:1rem;border:1px solid #d2ded5;border-radius:.7rem;margin:1rem 0;background:var(--surface,#fff)}.dinner-panel ul,.dinner-panel ol{padding-left:1.3rem}.dinner-panel li{margin:.4rem 0}.dinner-panel h3,.dinner-panel h4{margin:.7rem 0}.dinner-panel summary{padding:.8rem 0;cursor:pointer}.dinner-panel #dinner-status:not(:empty){border-left:3px solid var(--fresh,#347254);padding:.7rem;background:var(--fresh-soft,#e6f2ea)}
+/* "Что приготовить": one clear answer first, settings and stock checks after. Uses app tokens. */
+.dinner-panel{padding:0 1rem 2rem;max-width:44rem;margin:0 auto;overflow-wrap:anywhere;color:var(--ink)}
+.dinner-panel .dn-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin:0 0 .875rem}
+.dinner-panel .dn-head h2{font-size:var(--fs-xl);margin:0 0 .25rem}
+.dinner-panel .dn-sub{color:var(--ink-soft);font-size:var(--fs-sm);margin:0}
+.dinner-panel .dn-note{color:var(--ink-soft);font-size:var(--fs-sm);margin:.5rem 0}
+.dinner-panel #dinner-status:empty{display:none}
+.dinner-panel #dinner-status{font-size:var(--fs-sm);border-radius:var(--radius-sm);padding:.625rem .875rem;background:var(--fresh-soft);color:var(--ink);margin:0 0 .75rem}
+.dinner-panel fieldset{border:0;padding:0;margin:0;min-width:0}
+.dinner-panel legend{font-weight:600;font-size:var(--fs-sm);color:var(--ink-soft);padding:0;margin-bottom:.25rem}
+.dinner-panel label{display:block;margin:.5rem 0;font-size:var(--fs-sm);color:var(--ink-soft)}
+.dinner-panel input:not([type=checkbox]),.dinner-panel select{display:block;width:100%;max-width:100%;box-sizing:border-box;margin-top:.25rem;padding:.625rem .75rem;border:1px solid var(--line);border-radius:var(--radius-sm);font:inherit;font-size:var(--fs-md);background:var(--surface);color:var(--ink);min-height:44px}
+.dinner-panel input:focus-visible,.dinner-panel select:focus-visible,.dinner-panel button:focus-visible,.dinner-panel summary:focus-visible{outline:2px solid var(--fresh);outline-offset:2px}
+.dinner-panel .dn-filters{display:grid;grid-template-columns:1fr 1fr 4.75rem;gap:.5rem;align-items:end}
+.dinner-panel .dn-filters label{margin:0}
+@media (max-width:380px){.dinner-panel .dn-filters{grid-template-columns:1fr 1fr}.dinner-panel .dn-filters label:last-child{grid-column:1/-1}}
+.dinner-panel .dn-who{margin:1rem 0 .5rem;padding:.75rem .875rem;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
+.dinner-panel .dn-who label{display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:.625rem;color:var(--ink);font-size:var(--fs-md);margin:.25rem 0;min-height:44px}
+.dinner-panel input[type=checkbox]{width:1.25rem;height:1.25rem;accent-color:var(--fresh);flex:none;margin:0}
+.dinner-panel button{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);padding:.625rem 1rem;margin:.375rem .375rem .375rem 0;font:inherit;font-size:var(--fs-sm);font-weight:600;min-height:44px;cursor:pointer;max-width:100%;transition:background-color .15s ease,transform .15s ease}
+.dinner-panel button:active{transform:scale(.98)}
+.dinner-panel button:disabled{opacity:.55;cursor:wait}
+.dinner-panel .dn-card{position:relative;padding:1rem 1rem .75rem;border:1px solid var(--line);border-radius:var(--radius-md);margin:.75rem 0;background:var(--surface)}
+.dinner-panel .dn-card h4{font-family:'Fraunces',serif;font-size:var(--fs-lg);margin:0 0 .375rem;line-height:1.2}
+.dinner-panel .dn-hero{padding:1.25rem 1.125rem 1rem;border-color:transparent;background:var(--fresh-soft);box-shadow:var(--shadow);animation:dnRise .35s cubic-bezier(.2,.8,.2,1) both}
+.dinner-panel .dn-hero h4{font-size:var(--fs-xl)}
+.dinner-panel .dn-hero button{background:var(--btn-strong);color:var(--on-strong);border-color:var(--btn-strong);width:100%;margin-right:0}
+.dinner-panel .dn-eyebrow{text-transform:uppercase;letter-spacing:.06em;font-size:var(--fs-2xs);font-weight:700;color:var(--fresh);margin:0 0 .375rem}
+.dinner-panel .dn-badge{display:inline-block;font-size:var(--fs-xs);font-weight:600;padding:.1875rem .5rem;border-radius:999px;margin-bottom:.5rem}
+.dinner-panel .dn-ok{background:var(--fresh-soft);color:var(--fresh)}
+.dinner-panel .dn-hero .dn-ok{background:var(--surface)}
+.dinner-panel .dn-buy{background:var(--warn-soft);color:var(--warn-ink)}
+.dinner-panel .dn-check{background:var(--frost-soft);color:var(--frost)}
+.dinner-panel .dn-lines{list-style:none;padding:0;margin:.25rem 0 .5rem}
+.dinner-panel .dn-line{display:flex;justify-content:space-between;gap:.75rem;font-size:var(--fs-sm);padding:.375rem 0;border-bottom:1px solid var(--line);margin:0}
+.dinner-panel .dn-line:last-child{border-bottom:0}
+.dinner-panel .dn-line-state{color:var(--ink-soft);text-align:right}
+.dinner-panel .dn-l-buy .dn-line-state{color:var(--warn-ink)}
+.dinner-panel .dn-l-clarify .dn-line-state{color:var(--frost)}
+.dinner-panel .dn-l-enough .dn-line-state{color:var(--fresh)}
+.dinner-panel .dn-more h3,.dinner-panel .dn-plan h3,.dinner-panel #dinner-purchases h3{font-size:var(--fs-lg);margin:1.25rem 0 .25rem}
+.dinner-panel .dn-plan{margin:1rem 0;padding:1rem;border-radius:var(--radius-md);background:var(--surface);border:1px solid var(--line);scroll-margin-top:1rem}
+.dinner-panel .dn-actions{display:flex;flex-wrap:wrap}
+.dinner-panel .dn-actions button:first-child{background:var(--btn-strong);color:var(--on-strong);border-color:var(--btn-strong)}
+.dinner-panel .dn-steps{padding-left:1.25rem;margin:.75rem 0}
+.dinner-panel .dn-steps li{margin:.5rem 0;color:var(--ink-soft)}
+.dinner-panel .dn-steps li.now{color:var(--ink);font-weight:600}
+.dinner-panel .dn-steps li.done{text-decoration:line-through;opacity:.6}
+.dinner-panel form,.dinner-panel #dinner-purchases{padding:.875rem;border:1px solid var(--line);border-radius:var(--radius-md);margin:.75rem 0;background:var(--surface)}
+.dinner-panel #dinner-confirm{background:var(--btn-strong);color:var(--on-strong);border-color:var(--btn-strong)}
+.dinner-panel details{margin:.75rem 0;border-top:1px solid var(--line)}
+.dinner-panel summary{padding:.875rem 0;cursor:pointer;font-weight:600;font-size:var(--fs-sm);color:var(--ink-soft);min-height:44px;box-sizing:border-box}
+.dinner-panel form h4{margin:0 0 .25rem;font-size:var(--fs-md)}
+.dinner-panel #dinner-refresh{background:none;border-color:transparent;color:var(--fresh);font-weight:600;margin:-.5rem -.5rem 0 0;flex:none}
+@keyframes dnRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.dinner-panel .dn-hero{animation:none}.dinner-panel button{transition:none}}

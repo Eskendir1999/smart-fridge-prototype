@@ -10,7 +10,7 @@ const units = {
 };
 const labels = { enough: 'достаточно', buy: 'докупить', clarify: 'количество нужно уточнить' };
 const mealTypes = Object.freeze({ breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин' });
-const cuisines = Object.freeze({ any: 'Без предпочтения', home: 'Домашняя', japanese: 'Японская' });
+const cuisines = Object.freeze({ any: 'Любая', home: 'Домашняя', kazakh: 'Казахская', japanese: 'Японская' });
 const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 const id = value => typeof value === 'string' && value.trim().length > 0;
 const exclusions = new Set(['dairy', 'egg', 'fish', 'nuts', 'gluten']);

@@ -178,3 +178,18 @@ test('redacted operation resolution acknowledges commit or atomically cancels a 
  const committed=randomUUID();await f.rpc('consume',body,{id:committed});const saved=await f.rpc('resolve',{}, {id:committed});assert.equal(saved.operation_state,'saved');assert.equal(saved.resolved_kind,'consume');assert.equal(Number((await f.row(id)).qty_num),480);
  await assert.rejects(()=>f.rpc('resolve',{}, {id:committed,as:other}),e=>e.code==='42501');
  }finally{await f.db.close()}});
+test('Kazakh plov: server computes the same shortage and refuses gluten-free profiles only for lagman',async()=>{const f=await fixture();try{
+ const beef=await f.lot('beef',0.12,'кг'),rice=await f.lot('long-grain-rice',0.03,'кг'),carrot=await f.lot('carrot',80),onion=await f.lot('onion',40);
+ const oil=await f.lot('neutral-oil',15,'мл'),salt=await f.lot('salt',2);
+ const meals=[{id:'dinner-'+f.today,day:f.today,recipe_id:'palau',recipe_version:1,portions:1}];
+ const plan={profiles:f.profiles,meals,desired:{'long-grain-rice':50000},scope_id:'dinner:'+f.today};
+ await assert.rejects(f.rpc('shopping',{...plan,desired:{'long-grain-rice':49999}}),/Shopping demand changed/);
+ await f.rpc('shopping',plan);
+ const [shortage]=(await f.state()).cart_items.filter(c=>c.dinner_scope==='dinner:'+f.today);
+ assert.equal(shortage.ingredient_id,'long-grain-rice');assert.equal(Number(shortage.qty_num),50);assert.equal(shortage.unit,'г');
+ const lagman=[{id:'lunch-'+f.today,day:f.today,recipe_id:'lagman',recipe_version:1,portions:1}];
+ await f.db.query("update family_profiles set excluded_foods=array['gluten'] where id=$1",[profileId]);
+ await assert.rejects(f.rpc('shopping',{profiles:[{...f.profiles[0],exclusions:['gluten']}],meals:lagman,desired:{},scope_id:'lunch:'+f.today}),/Recipe excluded/);
+ await f.db.query("update family_profiles set excluded_foods='{}' where id=$1",[profileId]);
+ for(const id of [beef,carrot,onion,oil,salt])assert.ok(await f.row(id));
+}finally{await f.db.close();}});

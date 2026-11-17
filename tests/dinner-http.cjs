@@ -29,6 +29,8 @@ async function main(){
    if(req.url.startsWith('/auth/v1/logout')){res.statusCode=204;return res.end();}
    if(req.url==='/auth/v1/user'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({id:user,email:'fixture@example.test',role:'authenticated',aud:'authenticated'}));}
    if(new URL(req.url,'http://localhost').pathname==='/'){res.setHeader('Content-Type','text/html');return res.end(require('./helpers/page.cjs').stripIntegrity(fs.readFileSync(path.join(root,'index.html'),'utf8')).replaceAll("'__DINNER_ENABLED__'", "'1'").replaceAll("'__SUPABASE_URL__'",JSON.stringify(origin)).replaceAll("'__SUPABASE_ANON_KEY__'",JSON.stringify(anon)));}
+   // The browser flow is pinned to the reviewed 9-recipe set; the server catalog is a superset (new recipes are covered in SQL tests).
+   if(req.url==='/dinner/catalog.json'){res.setHeader('Content-Type','application/json');return res.end(fs.readFileSync(path.join(__dirname,'fixtures/dinner-catalog-v2-baseline.json')));}
    if(/^\/dinner\/(model\.js|queue\.js|ui\.js|catalog\.json|style\.css)$/.test(req.url)){res.setHeader('Content-Type',req.url.endsWith('.json')?'application/json':req.url.endsWith('.css')?'text/css':'application/javascript');return res.end(fs.readFileSync(path.join(root,req.url.slice(1))));}
    if(/^\/personal-data\/(ui|export|account)\.js$/.test(req.url)){res.setHeader('Content-Type','application/javascript');return res.end(fs.readFileSync(path.join(root,req.url.slice(1))));}
    if(/^\/ux\/core-flow\.(js|css)$/.test(req.url)){res.setHeader('Content-Type',req.url.endsWith('.css')?'text/css':'application/javascript');return res.end(fs.readFileSync(path.join(root,req.url.slice(1))));}
@@ -89,7 +91,7 @@ async function main(){
   for(let i=0;i<3;i++)await page.click('#dinner-next-step');await page.click('#dinner-cooked');await page.waitForSelector('#dinner-actual');await page.fill('[data-actual-lot="'+cucumber+'"]','100');transport='drop-after';await page.click('#dinner-confirm');await page.waitForFunction(()=>document.querySelector('#dinner-retry')&&!document.querySelector('#dinner-retry').disabled);const lost=requests.at(-1).op_id;assert.equal(Number((await row(cucumber)).qty_num),400);
   await page.reload();await page.waitForFunction(()=>userDataLoaded);await page.evaluate(()=>{history=['recipes'];showScreen('recipes',false)});await page.click('#dinner-retry');await page.waitForFunction(()=>document.querySelector('#dinner-status').textContent==='Сохранено.');assert.equal(requests.at(-1).op_id,lost);assert.equal(Number((await row(cucumber)).qty_num),400);
   await page.click('#dinner-undo');await page.waitForFunction(()=>/отменён/.test(document.querySelector('#dinner-status').textContent));assert.equal(Number((await row(cucumber)).qty_num),500);check('mobile UI → exact 10 g purchase → steps → cancel → partial batch → lost reply/reload → retry → common undo');
-  await page.waitForSelector('[data-dinner-profile]');assert.doesNotMatch(await page.textContent('#recipes-list'),/Загружаем подтверждённые данные/);
+  await page.waitForSelector('[data-dinner-profile]');assert.doesNotMatch(await page.textContent('#recipes-list'),/Загружаем ваши продукты/);
   const out=process.env.SF_DINNER_EVIDENCE_DIR||'/tmp/sf-dinner-http-evidence';fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'mobile-dinner-undo.png'),fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);check('mobile screen recovers after reload, fits and has no uncaught errors');
   await page.selectOption('#dinner-recipe','cheese-cucumber');for(let i=0;i<3;i++)await page.click('#dinner-next-step');await page.click('#dinner-cooked');await page.waitForSelector('#dinner-actual');await page.fill('[data-actual-lot="'+cucumber+'"]','100');transport='drop-after';await page.click('#dinner-confirm');await page.waitForFunction(()=>document.querySelector('#dinner-retry')&&!document.querySelector('#dinner-retry').disabled);const lostOnLogout=requests.at(-1).op_id;
   await page.click('.nav-item[data-nav=home]');await page.click('#home-avatar');await Promise.all([page.waitForEvent('load'),page.click('#logout-btn')]);await page.waitForFunction(()=>currentUserId===null);assert.doesNotMatch(await page.textContent('#recipes-list'),/Профиль для ужина/);assert.equal(await page.locator('#recipes-list input').count(),0);
@@ -107,7 +109,7 @@ async function main(){
    await mealPage.locator('[data-dinner-profile="'+profile+'"]').check();
    const breakfast=mealPage.locator('[data-dinner-card="tamagoyaki-rice"]');
    assert.equal(await mealPage.locator('[data-dinner-card]').count(),1);
-   assert.match(await breakfast.textContent(),/рис \(сухой\).*нужно 120 г, подтверждено 50 г, не хватает 70 г/i);
+   assert.match(await breakfast.textContent(),/рис \(сухой\).*не хватает 70 г \(нужно 120 г, есть 50 г\)/i);
    const eggLine=await breakfast.locator('li').filter({hasText:'Яйца'}).textContent();
    assert.match(eggLine,/уточнить/);assert.doesNotMatch(eggLine,/не хватает/);
    await mealPage.click('#choose-tamagoyaki-rice');await mealPage.selectOption('#dinner-meal','lunch');

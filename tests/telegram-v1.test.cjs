@@ -136,8 +136,8 @@ test('linked Telegram users get a persistent menu and can return from the cookin
   for(const [label, meal] of mealButtons){
     const choices = await press(label);
     assert.match(choices.reply, /Выберите кухню/);
-    assert.deepEqual(choices.markup.inline_keyboard.map(([choice]) => choice.text), ['Без предпочтения', 'Домашняя', 'Японская']);
-    for(const [index, cuisine] of ['any', 'home', 'japanese'].entries()){
+    assert.deepEqual(choices.markup.inline_keyboard.map(([choice]) => choice.text), ['Любая', 'Домашняя', 'Казахская', 'Японская']);
+    for(const [index, cuisine] of ['any', 'home', 'kazakh', 'japanese'].entries()){
       const url = new URL(choices.markup.inline_keyboard[index][0].url);
       assert.equal(url.origin + url.pathname, 'https://smart-fridge-prototype.vercel.app/');
       assert.deepEqual(Object.fromEntries(url.searchParams), { open: 'dinner', meal, cuisine, portions: '1' });

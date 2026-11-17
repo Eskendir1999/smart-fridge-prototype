@@ -126,7 +126,7 @@ SF_TEST_POSTGREST_BIN; при необходимости SF_TEST_POSTGREST_LIBRA
 | Поле | Допустимо | По умолчанию |
 |---|---|---|
 | `meal` | `breakfast` · `lunch` · `dinner` | `dinner` |
-| `cuisine` | `any` · `home` · `japanese` | `any` («Без предпочтения») |
+| `cuisine` | `any` · `home` · `japanese` | `any` («Любая») |
 | `portions` | Целое число от 1 до 100 | 1 |
 
 `mealSelection(selection)` проверяет объект, `mealSelectionQuery(selection)` строит

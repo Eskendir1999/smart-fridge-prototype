@@ -84,6 +84,57 @@
       "name": "Картофель (сырой)",
       "tags": [],
       "allergensReviewed": true
+    },
+    "beef": {
+      "name": "Говядина без кости (сырая)",
+      "tags": [],
+      "allergensReviewed": true
+    },
+    "carrot": {
+      "name": "Морковь",
+      "tags": [],
+      "allergensReviewed": true
+    },
+    "onion": {
+      "name": "Лук репчатый",
+      "tags": [],
+      "allergensReviewed": true
+    },
+    "long-grain-rice": {
+      "name": "Рис длиннозёрный (сухой)",
+      "tags": [],
+      "allergensReviewed": true
+    },
+    "cottage-cheese": {
+      "name": "Творог",
+      "tags": [
+        "dairy"
+      ],
+      "allergensReviewed": true
+    },
+    "flour": {
+      "name": "Мука пшеничная",
+      "tags": [
+        "gluten"
+      ],
+      "allergensReviewed": true
+    },
+    "noodles": {
+      "name": "Лапша пшеничная без яиц",
+      "tags": [
+        "gluten"
+      ],
+      "allergensReviewed": true
+    },
+    "bell-pepper": {
+      "name": "Перец болгарский",
+      "tags": [],
+      "allergensReviewed": true
+    },
+    "buckwheat": {
+      "name": "Гречка (сухая)",
+      "tags": [],
+      "allergensReviewed": true
     }
   },
   "recipes": [
@@ -474,6 +525,395 @@
         "Отварите картофель в воде до готовности и остудите.",
         "Нарежьте картофель и огурец, измельчите зелень.",
         "Перемешайте и заправьте отмеренным маслом."
+      ],
+      "version": 1
+    },
+    {
+      "id": "palau",
+      "title": "Плов домашний",
+      "mealTypes": [
+        "lunch",
+        "dinner"
+      ],
+      "cuisine": "kazakh",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "beef",
+          "quantity": {
+            "value": 120,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "long-grain-rice",
+          "quantity": {
+            "value": 80,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "carrot",
+          "quantity": {
+            "value": 80,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "onion",
+          "quantity": {
+            "value": 40,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "neutral-oil",
+          "quantity": {
+            "value": 15,
+            "unit": "ml"
+          }
+        },
+        {
+          "ingredientId": "salt",
+          "quantity": {
+            "value": 2,
+            "unit": "g"
+          }
+        }
+      ],
+      "steps": [
+        "Обжарьте нарезанное мясо в масле до корочки.",
+        "Добавьте лук и морковь соломкой, тушите 10 минут.",
+        "Выложите промытый рис, залейте водой на 1,5 см выше, посолите и готовьте под крышкой 25 минут."
+      ],
+      "version": 1
+    },
+    {
+      "id": "kuyrdak",
+      "title": "Куырдак с картофелем",
+      "mealTypes": [
+        "dinner"
+      ],
+      "cuisine": "kazakh",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "beef",
+          "quantity": {
+            "value": 120,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "potato",
+          "quantity": {
+            "value": 200,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "onion",
+          "quantity": {
+            "value": 40,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "neutral-oil",
+          "quantity": {
+            "value": 10,
+            "unit": "ml"
+          }
+        },
+        {
+          "ingredientId": "salt",
+          "quantity": {
+            "value": 2,
+            "unit": "g"
+          }
+        }
+      ],
+      "steps": [
+        "Нарежьте мясо и картофель кубиками.",
+        "Обжарьте мясо до готовности, добавьте лук.",
+        "Добавьте картофель, посолите и жарьте до мягкости."
+      ],
+      "version": 1
+    },
+    {
+      "id": "achichuk",
+      "title": "Салат ачичук",
+      "mealTypes": [
+        "lunch",
+        "dinner"
+      ],
+      "cuisine": "kazakh",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "tomato",
+          "quantity": {
+            "value": 150,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "onion",
+          "quantity": {
+            "value": 30,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "salt",
+          "quantity": {
+            "value": 1,
+            "unit": "g"
+          }
+        }
+      ],
+      "steps": [
+        "Нарежьте помидоры тонкими дольками.",
+        "Лук — тонкими полукольцами, слегка помните с солью.",
+        "Смешайте и сразу подавайте."
+      ],
+      "version": 1
+    },
+    {
+      "id": "lagman",
+      "title": "Лагман",
+      "mealTypes": [
+        "lunch",
+        "dinner"
+      ],
+      "cuisine": "kazakh",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "beef",
+          "quantity": {
+            "value": 100,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "noodles",
+          "quantity": {
+            "value": 120,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "bell-pepper",
+          "quantity": {
+            "value": 60,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "tomato",
+          "quantity": {
+            "value": 80,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "onion",
+          "quantity": {
+            "value": 40,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "neutral-oil",
+          "quantity": {
+            "value": 10,
+            "unit": "ml"
+          }
+        },
+        {
+          "ingredientId": "salt",
+          "quantity": {
+            "value": 2,
+            "unit": "g"
+          }
+        }
+      ],
+      "steps": [
+        "Отварите лапшу и промойте.",
+        "Обжарьте мясо, добавьте лук, перец и помидоры, тушите 15 минут.",
+        "Разложите лапшу и полейте соусом."
+      ],
+      "version": 1
+    },
+    {
+      "id": "syrniki",
+      "title": "Сырники",
+      "mealTypes": [
+        "breakfast"
+      ],
+      "cuisine": "home",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "cottage-cheese",
+          "quantity": {
+            "value": 150,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "egg",
+          "quantity": {
+            "value": 1,
+            "unit": "pcs"
+          }
+        },
+        {
+          "ingredientId": "flour",
+          "quantity": {
+            "value": 25,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "sugar",
+          "quantity": {
+            "value": 10,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "neutral-oil",
+          "quantity": {
+            "value": 10,
+            "unit": "ml"
+          }
+        }
+      ],
+      "steps": [
+        "Смешайте творог, яйцо, сахар и муку.",
+        "Сформируйте лепёшки, обваляйте в муке.",
+        "Обжарьте на масле по 3 минуты с каждой стороны."
+      ],
+      "version": 1
+    },
+    {
+      "id": "milk-rice-porridge",
+      "title": "Рисовая каша на молоке",
+      "mealTypes": [
+        "breakfast"
+      ],
+      "cuisine": "home",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "short-grain-rice",
+          "quantity": {
+            "value": 50,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "milk",
+          "quantity": {
+            "value": 200,
+            "unit": "ml"
+          }
+        },
+        {
+          "ingredientId": "butter",
+          "quantity": {
+            "value": 10,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "sugar",
+          "quantity": {
+            "value": 10,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "salt",
+          "quantity": {
+            "value": 1,
+            "unit": "g"
+          }
+        }
+      ],
+      "steps": [
+        "Отварите рис в небольшом количестве воды 10 минут.",
+        "Влейте молоко, добавьте сахар и соль, варите до мягкости.",
+        "Подавайте со сливочным маслом."
+      ],
+      "version": 1
+    },
+    {
+      "id": "buckwheat-egg",
+      "title": "Гречка с яйцом",
+      "mealTypes": [
+        "breakfast",
+        "lunch"
+      ],
+      "cuisine": "home",
+      "basePortions": 1,
+      "allowedModes": [
+        "standard"
+      ],
+      "ingredients": [
+        {
+          "ingredientId": "buckwheat",
+          "quantity": {
+            "value": 70,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "egg",
+          "quantity": {
+            "value": 1,
+            "unit": "pcs"
+          }
+        },
+        {
+          "ingredientId": "butter",
+          "quantity": {
+            "value": 10,
+            "unit": "g"
+          }
+        },
+        {
+          "ingredientId": "salt",
+          "quantity": {
+            "value": 1,
+            "unit": "g"
+          }
+        }
+      ],
+      "steps": [
+        "Промойте гречку и сварите в подсоленной воде 15 минут.",
+        "Отварите или поджарьте яйцо.",
+        "Подайте гречку с маслом и яйцом."
       ],
       "version": 1
     }
