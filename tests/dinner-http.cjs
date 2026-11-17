@@ -70,7 +70,7 @@ async function main(){
   await context.addInitScript(({token,user})=>{localStorage.setItem('sf_onboarding_seen_'+user,'1');if(!localStorage.getItem('sf_dinner_fixture_seeded')){localStorage.setItem('sf_dinner_fixture_seeded','1');localStorage.setItem('sb-127-auth-token',JSON.stringify({access_token:token,refresh_token:'fixture-unused',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:user,email:'fixture@example.test',role:'authenticated',aud:'authenticated'}}));}},{token,user});
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(origin);await page.waitForFunction(()=>userDataLoaded&&document.querySelector('[data-dinner-profile]'));
   await page.click('.nav-item[data-nav=recipes]');await page.check('[data-dinner-profile="'+profile+'"]');await page.selectOption('#dinner-recipe','cheese-cucumber');
-  assert.match(await page.textContent('#recipes-list'),/количество нужно уточнить/);
+  assert.match(await page.textContent('#recipes-list'),/есть ли \d+ (г|мл|шт)\?/);
   await page.click('#dinner-lots summary');await page.fill('[data-lot-quantity="'+cheese+'"]','20');transport='fail-before';await page.click('[data-confirm-lot="'+cheese+'"]');
   await page.waitForFunction(()=>document.querySelector('#dinner-retry')&&!document.querySelector('#dinner-retry').disabled);assert.equal(await page.inputValue('[data-lot-quantity="'+cheese+'"]'),'20');await page.click('#dinner-retry');await page.waitForFunction(()=>document.querySelector('#dinner-status').textContent==='Сохранено.');assert.equal((await row(cheese)).quantity_source,'user');
   await pool.query("update family_profiles set excluded_foods=array['dairy','egg'] where id=$1",[profile]);await page.click('#dinner-refresh');await page.waitForFunction(()=>document.querySelectorAll('[data-dinner-card]').length===2);assert.deepEqual((await page.locator('[data-dinner-card]').evaluateAll(cards=>cards.map(c=>c.dataset.dinnerCard))).sort(),['shiozake-rice','vegetable-salad']);
@@ -111,7 +111,7 @@ async function main(){
    assert.equal(await mealPage.locator('[data-dinner-card]').count(),1);
    assert.match(await breakfast.textContent(),/рис \(сухой\).*не хватает 70 г \(нужно 120 г, есть 50 г\)/i);
    const eggLine=await breakfast.locator('li').filter({hasText:'Яйца'}).textContent();
-   assert.match(eggLine,/уточнить/);assert.doesNotMatch(eggLine,/не хватает/);
+   assert.match(eggLine,/есть ли/);assert.doesNotMatch(eggLine,/не хватает/);
    await mealPage.click('#choose-tamagoyaki-rice');await mealPage.selectOption('#dinner-meal','lunch');
    assert.equal(await mealPage.inputValue('#dinner-recipe'),'');
    assert.equal(await mealPage.locator('[data-dinner-card="salmon-onigiri"]').count(),1);

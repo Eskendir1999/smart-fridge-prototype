@@ -63,6 +63,7 @@
     --fresh:#6CC093; --fresh-soft:#1D3127; --warn:#F0A06A; --warn-soft:#3A2A1F; --warn-ink:#F3B48A;
     --danger:#EC8A8A; --danger-soft:#3A2224; --frost:#8DB4E4; --frost-soft:#1C2939;
     --btn-strong:#E8ECE6; --on-strong:#121614; --on-accent:#0F1A13; --shadow:0 8px 24px rgba(0,0,0,0.35); --overlay:rgba(0,0,0,0.6);
+    --nav-bg:rgba(18,22,20,0.92);
     color-scheme: dark;
   }
 }
@@ -554,7 +555,7 @@ img{ animation:imgFadeIn .25s ease; }
 @keyframes drawChartLine{ to{ stroke-dashoffset:0; } }
 
 /* ===== Bottom nav ===== */
-.bottom-nav{ position:fixed; left:0; right:0; bottom:0; background:rgba(251,247,242,0.92); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; padding:0.625rem calc(0.375rem + var(--safe-l)) calc(0.625rem + var(--safe-b)) calc(0.375rem + var(--safe-r)); z-index:50; max-width:1400px; margin:0 auto; }
+.bottom-nav{ position:fixed; left:0; right:0; bottom:0; background:var(--nav-bg,rgba(251,247,242,0.92)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border-top:1px solid var(--line); display:flex; padding:0.625rem calc(0.375rem + var(--safe-l)) calc(0.625rem + var(--safe-b)) calc(0.375rem + var(--safe-r)); z-index:50; max-width:1400px; margin:0 auto; }
 .nav-item{ flex:1; display:flex; flex-direction:column; align-items:center; gap:0.1875rem; min-height:44px; background:none; border:none; color:var(--muted); font-family:'Inter',sans-serif; font-size:var(--fs-2xs); font-weight:600; }
 .nav-item .ic{ font-size:var(--fs-lg); }
 .nav-item.active{ color:var(--fresh); }
@@ -2227,10 +2228,15 @@ function updateSavedBanner(){
   const total = usedCount + wastedCount;
   const pct = total===0 ? 100 : Math.round(usedCount/total*100);
   document.getElementById('sum-saved-pct').textContent = pct+'%';
-  document.getElementById('saved-banner-text').textContent = `За месяц спасено ${usedWeightKg.toFixed(1)} кг еды`;
+  const kg = Math.round(usedWeightKg*10)/10;
+  const forms=['продукт','продукта','продуктов']; const n=usedCount;
+  const word = forms[n%10===1&&n%100!==11?0:n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?1:2];
+  document.getElementById('saved-banner-text').textContent = n
+    ? `За месяц спасено ${n} ${word}${kg>0?' · '+String(kg).replace('.',',')+' кг':''}`
+    : 'Здесь появится ваша экономия';
   document.getElementById('saved-banner-sub').textContent = total===0
-    ? 'Отмечайте продукты «Использовано» или «Выброшено» — так считается экономия'
-    : `Расчёт: использовано ${usedCount} из ${total} отмеченных продуктов (${pct}%) до истечения срока`;
+    ? 'Отмечайте «Съели» или «Выбросили» — посчитаем, сколько еды вы спасли'
+    : `Съедено вовремя ${usedCount} из ${total} отмеченных (${pct}%)`;
 }
 
 function renderFridgeList(compartment){

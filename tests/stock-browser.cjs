@@ -56,8 +56,8 @@ const {createStockDb,user,household}=require('./helpers/stock-db.cjs');
   try{
     await page.goto('http://127.0.0.1:'+port);await page.waitForFunction(()=>userDataLoaded&&document.getElementById('login-screen').style.display==='none');
     await page.waitForSelector('.sf-home-grid');
-    assert.match(await page.locator('#screen-home .sf-home-section-title').textContent(),/Есть дома/);
-    assert.ok(await page.locator('.sf-home-disabled').isVisible());
+    assert.match(await page.locator('#screen-home .sf-home-grid').textContent(),/Скоро испортится/);
+    assert.equal(await page.locator('#sf-home-decide').isVisible(),false); // dinner disabled in this build: no promise to cook
     assert.equal(await page.locator('.side-item[data-nav="diet"]').isDisabled(),true);
     assert.equal(await page.locator('.side-item[data-nav="recipes"]').isDisabled(),true);
     await page.evaluate(()=>showScreen('fridge',false));

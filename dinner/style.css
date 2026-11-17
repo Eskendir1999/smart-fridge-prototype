@@ -32,9 +32,10 @@
 .dinner-panel .dn-buy{background:var(--warn-soft);color:var(--warn-ink)}
 .dinner-panel .dn-check{background:var(--frost-soft);color:var(--frost)}
 .dinner-panel .dn-lines{list-style:none;padding:0;margin:.25rem 0 .5rem}
-.dinner-panel .dn-line{display:flex;justify-content:space-between;gap:.75rem;font-size:var(--fs-sm);padding:.375rem 0;border-bottom:1px solid var(--line);margin:0}
+.dinner-panel .dn-line{display:grid;grid-template-columns:minmax(5.5rem,40%) 1fr;align-items:baseline;gap:.75rem;font-size:var(--fs-sm);padding:.375rem 0;border-bottom:1px solid var(--line);margin:0}
 .dinner-panel .dn-line:last-child{border-bottom:0}
 .dinner-panel .dn-line-state{color:var(--ink-soft);text-align:right}
+.dinner-panel .dn-line>:first-child{overflow-wrap:normal;word-break:normal;hyphens:auto}
 .dinner-panel .dn-l-buy .dn-line-state{color:var(--warn-ink)}
 .dinner-panel .dn-l-clarify .dn-line-state{color:var(--frost)}
 .dinner-panel .dn-l-enough .dn-line-state{color:var(--fresh)}

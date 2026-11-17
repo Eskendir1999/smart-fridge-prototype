@@ -21,7 +21,7 @@
 .sf-home-buy{border:1px solid var(--line);border-radius:20px;padding:1rem;background:var(--surface)}
 .sf-home-buy h2{font-size:var(--fs-lg);margin:0 0 .5rem}
 .sf-home-buy p{font-size:var(--fs-sm);line-height:1.5;color:var(--sf-muted-readable);margin:0 0 .75rem}
-.sf-home-buy button{width:auto}
+.sf-home-buy button{width:auto;padding:0 1.125rem;margin-top:0}
 #screen-home .sf-home-bottom{max-width:840px;margin:1rem auto 0}
 #screen-home .sf-home-bottom .save-banner{margin:0}
 .sf-stock-tools{margin:0 1.25rem 1rem;padding:1rem;background:var(--surface);border-radius:16px;border:1px solid var(--line)}
@@ -84,3 +84,19 @@
 #fridge-list .product-row:focus-visible{outline:3px solid var(--sf-focus);outline-offset:3px}
 #manual-sheet{scrollbar-gutter:stable}
 @media(max-width:480px){.sf-manual-grid{grid-template-columns:1fr 105px;gap:.625rem}.sf-manual-fields{padding:.875rem}}
+
+/* Calm home: the daily decision card. */
+.sf-home-decide{position:relative;padding:1.25rem 1.125rem 1.125rem;border-radius:22px;background:var(--fresh-soft);box-shadow:var(--shadow);animation:sfDecideIn .45s cubic-bezier(.2,.8,.2,1) both}
+.sf-home-decide .sf-eyebrow{margin:0 0 .375rem;font-size:var(--fs-2xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fresh)}
+.sf-home-decide h2{font-size:var(--fs-xl);line-height:1.15;margin:0 0 .375rem;overflow-wrap:anywhere}
+.sf-home-decide .sf-decide-note{margin:0 0 1rem;font-size:var(--fs-sm);color:var(--ink-soft);min-height:1.2em}
+.sf-home-decide[data-status="buy"] .sf-decide-note{color:var(--warn-ink)}
+.sf-home-decide .primary-btn{width:100%}
+.sf-home-grid .sf-home-stats{padding:.75rem 1rem}
+.sf-home-grid .sf-home-stats .summary-card{background:none;padding:0}
+#screen-home .save-banner{border-radius:20px}
+@keyframes sfDecideIn{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.sf-home-decide{animation:none}}
+
+@media (prefers-color-scheme: dark){:root{--sf-muted-readable:#A7B2AA}}
+#screen-home .sf-home-column>.section:has(>.save-banner){padding:0;border:0;background:none}

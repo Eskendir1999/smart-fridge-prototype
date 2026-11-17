@@ -38,7 +38,7 @@ root.SFDinnerUI={mount({root:host,session,onSnapshot,stockLocked}){
    const {data,error:err}=await session().sb.rpc('dinner_mutate',{op_id:null,hh_id:s.householdId,kind:'snapshot',body:{}});
    if(target!==key()||seq!==generation)return;if(err||!data?.today||!Array.isArray(data.profiles))throw Error('Не удалось загрузить подтверждённые запасы. Обновите данные.');
    if(loadedScope!==target){const pending=queue.view().request?.body;loadedScope=target;
-    selected=pending?.profiles?.map(p=>p.id).filter(id=>data.profiles.some(p=>p.id===id))||(session().profileId&&data.profiles.some(p=>p.id===session().profileId)?[session().profileId]:[]);
+    selected=pending?.profiles?.map(p=>p.id).filter(id=>data.profiles.some(p=>p.id===id))||(session().profileId&&data.profiles.some(p=>p.id===session().profileId)?[session().profileId]:data.profiles.length===1?[data.profiles[0].id]:[]);
     recipeId=null;restoreChoice(pending);actual=null;drafts={};purchaseDraft={};step=0;}
    snapshot=data;selected=selected.filter(id=>data.profiles.some(p=>p.id===id));error='';
   }catch(e){if(target===key())error=e.message;}finally{loading=false;render();if(needsRefresh){needsRefresh=false;Promise.resolve().then(load);}}}
@@ -54,6 +54,8 @@ root.SFDinnerUI={mount({root:host,session,onSnapshot,stockLocked}){
   if(hero)article.append(E('p','Лучший вариант сейчас',{class:'dn-eyebrow'}));
   article.append(E('h4',c.title),E('strong',text,{class:'dn-badge dn-'+tone}));explain(article,c);
   article.append(button(hero?'Готовлю это':'Выбрать',()=>{recipeId=c.recipeId;resetCooking();render();host.querySelector('#dinner-plan')?.scrollIntoView({block:'start',behavior:'smooth'});},'choose-'+c.recipeId));parent.append(article);}
+ let lastAnnounced='';
+ function announce(detail){const sig=JSON.stringify(detail);if(sig===lastAnnounced)return;lastAnnounced=sig;root.dispatchEvent(new CustomEvent('sf:dinner-best',{detail}));}
  function render(){host.replaceChildren();host.classList.add('dinner-panel');
   const head=E('header',null,{class:'dn-head'});head.append(E('p','Из того, что уже есть дома. Недостающее — одной кнопкой в покупки.',{class:'dn-sub'}));host.append(head);
   if(!scope()){host.append(E('p','Войдите, чтобы увидеть блюда из ваших продуктов.',{class:'dn-note'}));return;}
@@ -84,10 +86,11 @@ root.SFDinnerUI={mount({root:host,session,onSnapshot,stockLocked}){
    const extra=[p.diet_mode==='breastfeeding'?'кормящая мама':null,...(p.excluded_foods||[]).map(x=>names[x]||x)].filter(Boolean).join(', ');
    field(who,p.name+(extra?' · '+extra:''),input);
   });
-  if(!selected.length){controls.append(E('p','Отметьте, для кого готовим, — учтём ограничения.',{class:'dn-note'}));renderLots(controls);renderCart(controls);return;}
+  if(!selected.length){announce({reason:snapshot.profiles.length?'select':'profile',meal:selection.meal});controls.append(E('p','Отметьте, для кого готовим, — учтём ограничения.',{class:'dn-note'}));renderLots(controls);renderCart(controls);return;}
   let ctx,choices;try{ctx=context();choices=M.selectMeals({...ctx,catalog,selection,day:snapshot.today});}catch{controls.append(E('p','Проверьте настройки профилей.',{class:'dn-note'}));renderLots(controls);renderCart(controls);return;}
-  if(!choices.options.length){controls.append(E('p',choices.status==='no_recipes'?'Для этого приёма пищи и кухни пока нет блюд. Выберите другую кухню.':'С учётом ограничений подходящих блюд нет. Попробуйте другую кухню или приём пищи.',{class:'dn-note'}));renderLots(controls);renderCart(controls);return;}
+  if(!choices.options.length){announce({reason:'empty',meal:selection.meal});controls.append(E('p',choices.status==='no_recipes'?'Для этого приёма пищи и кухни пока нет блюд. Выберите другую кухню.':'С учётом ограничений подходящих блюд нет. Попробуйте другую кухню или приём пищи.',{class:'dn-note'}));renderLots(controls);renderCart(controls);return;}
   const [best,...rest]=choices.options;card(controls,best,true);
+  announce({title:best.title,status:best.status,recipeId:best.recipeId,meal:selection.meal,missing:best.lines.filter(l=>l.status==='buy').map(l=>catalog.ingredients[l.ingredientId]?.name||'продукт')});
   if(rest.length){const more=E('div',null,{class:'dn-more'});more.append(E('h3','Ещё варианты'));rest.forEach(c=>card(more,c,false));controls.append(more);}
   const eligible=new Set(choices.eligibleRecipeIds),allowed=catalog.recipes.filter(r=>eligible.has(r.id));
   const selector=E('select',null,{id:'dinner-recipe'});selector.append(E('option','Выбрать блюдо из списка',{value:''}));allowed.forEach(r=>selector.append(E('option',r.title,{value:r.id})));selector.value=allowed.some(r=>r.id===recipeId)?recipeId:'';
@@ -118,7 +121,7 @@ root.SFDinnerUI={mount({root:host,session,onSnapshot,stockLocked}){
  }
  function explain(parent,result){const ul=E('ul',null,{class:'dn-lines'});for(const l of result.lines){const name=catalog.ingredients[l.ingredientId]?.name||'Продукт';
    const need=l.required!==null?M.formatAmount(l.required,l.dimension):null,have=l.required!==null?M.formatAmount(l.knownAllocated,l.dimension):null;
-   let text=l.status==='enough'?'есть':l.status==='buy'?'не хватает '+M.formatAmount(l.missingExact,l.dimension)+(need?' (нужно '+need+', есть '+have+')':''):l.label+(need?' (нужно '+need+')':'');
+   let text=l.status==='enough'?'есть':l.status==='buy'?'не хватает '+M.formatAmount(l.missingExact,l.dimension)+(need?' (нужно '+need+', есть '+have+')':''):(need?'есть ли '+need+'?':'уточните количество');
    const li=E('li',null,{class:'dn-line dn-l-'+(l.status||'clarify')});li.append(E('span',name,{class:'dn-line-name'}),E('span',text,{class:'dn-line-state'}));ul.append(li);}parent.append(ul);}
  function renderLots(parent){const details=E('details',null,{id:'dinner-lots'});
   const pendingLots=snapshot.fridge_items.filter(l=>!l.dinner_excluded&&(!l.ingredient_id||l.quantity_source!=='user'));

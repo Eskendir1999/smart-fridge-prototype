@@ -20,7 +20,7 @@ test('build copies both UX assets',()=>{
 });
 test('UX layer has no mutation, checkout or dinner API',()=>{
   assert.doesNotMatch(js,/\bstock_mutate\s*\(|\brunStockOperation\s*\(|\bsaveStockItem\s*\(|\bSFDinner\b|\.rpc\s*\(/);
-  assert.ok(js.includes("querySelector('.side-item[data-nav=\"cart\"]')?.click()"));
+  assert.ok(js.includes("querySelector('.nav-item[data-nav=\"cart\"],.side-item[data-nav=\"cart\"]')?.click()"));
 });
 test('new nodes preserve identifiers used by existing stock and cart handlers',()=>{
   for(const id of ['summary-section','expiring-row','low-stock-section','home-meals-row','fridge-list','suggest-row','manual-custom-name','manual-custom-add-btn','stock-save-panel']){
@@ -46,5 +46,7 @@ test('the manual form requests quantity and honest optional expiration',()=>{
 test('unavailable nutrition is not presented as enabled',()=>{
   assert.match(js,/SF_NUTRITION_ENABLED/);
   assert.match(js,/button\.disabled=true/);
-  assert.match(js,/Пока недоступно/);
+  assert.match(js,/meals\.hidden=!nutritionEnabled/);
+  assert.match(js,/decide\.hidden=!dinnerOn/);
+  assert.doesNotMatch(js,/Пока недоступно/);
 });

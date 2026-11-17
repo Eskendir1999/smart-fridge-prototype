@@ -17,12 +17,8 @@
     const lowStock=document.getElementById('low-stock-section');
     const saveBanner=document.getElementById('save-banner-btn')?.closest('.section');
     if(summary && expiring && meals && lowStock && saveBanner){
-      const intro=document.createElement('p');
-      intro.className='sf-home-intro';
-      intro.textContent='Что есть дома, что приготовить и что осталось купить.';
-      const header=home.querySelector('.topbar');
-      if(header)header.insertAdjacentElement('afterend',intro);
-
+      // Calm home: one decision first (what to cook), then what spoils soon, what to buy, and the month's benefit.
+      document.querySelector('#screen-home > p.section')?.remove();
       const grid=document.createElement('div');
       grid.className='sf-home-grid';
       const primary=document.createElement('div');
@@ -30,39 +26,43 @@
       const secondary=document.createElement('div');
       secondary.className='sf-home-column';
 
-      const title=document.createElement('h2');
-      title.textContent='1. Есть дома';
-      title.className='sf-home-section-title';
-      title.style.marginBottom='.875rem';
-      summary.prepend(title);
-      primary.append(summary,expiring);
+      const dinnerOn=typeof SF_DINNER_ENABLED!=='undefined' && SF_DINNER_ENABLED;
+      const decide=document.createElement('section');
+      decide.className='sf-home-decide';decide.id='sf-home-decide';decide.hidden=!dinnerOn;
+      decide.innerHTML='<p class="sf-eyebrow" id="sf-decide-eyebrow">Сегодня на ужин</p><h2 id="sf-decide-title">Подбираем блюдо из ваших продуктов…</h2><p class="sf-decide-note" id="sf-decide-note"></p><button type="button" class="primary-btn" id="sf-decide-go">Что приготовить</button>';
+      decide.querySelector('#sf-decide-go').addEventListener('click',()=>document.querySelector('.nav-item[data-nav="recipes"],.side-item[data-nav="recipes"]')?.click());
+      window.addEventListener('sf:dinner-best',event=>{
+        const d=event.detail||{};decide.hidden=!dinnerOn;
+        const meal={breakfast:'завтрак',lunch:'обед',dinner:'ужин'}[d.meal]||'ужин';
+        decide.querySelector('#sf-decide-eyebrow').textContent='Сегодня на '+meal;
+        decide.querySelector('#sf-decide-title').textContent=d.title||(d.reason==='profile'?'Создайте профиль — подскажем, что приготовить':'Добавьте продукты — подскажем блюдо');
+        decide.querySelector('#sf-decide-note').textContent=d.title?(d.status==='enough'?'Всё есть дома':d.status==='buy'?'Не хватает: '+d.missing.join(', '):'Уточните пару продуктов — и можно готовить'):'';
+        decide.dataset.status=d.status||'none';
+        decide.querySelector('#sf-decide-go').textContent=d.title?'Готовлю':'Открыть';
+      });
 
+      const expHead=expiring.querySelector('.section-head h2');
+      if(expHead)expHead.textContent='Скоро испортится';
+      summary.classList.add('sf-home-stats');
+      primary.append(decide,expiring,summary);
+
+      // Old "ideas" row is replaced by the decision card above; nutrition plan stays an owner extra.
       const nutritionEnabled=typeof SF_NUTRITION_ENABLED!=='undefined' && SF_NUTRITION_ENABLED;
-      if(nutritionEnabled){
-        const mealsTitle=meals.querySelector('.section-head h2');
-        if(mealsTitle)mealsTitle.textContent='2. Приготовить · план питания';
-        const mealHint=document.createElement('p');
-        mealHint.className='sf-home-subhead';
-        mealHint.textContent='План питания — не подтверждение наличия всех ингредиентов. Проверяйте состав перед приготовлением.';
-        const mealHead=meals.querySelector('.section-head');
-        if(mealHead)mealHead.insertAdjacentElement('afterend',mealHint);
-        secondary.append(meals);
-      }else{
-        meals.hidden=true;
-        secondary.append(meals);
-        const unavailable=document.createElement('section');
-        unavailable.className='sf-home-disabled';
-        unavailable.innerHTML='<h2>2. Приготовить</h2><p>Питание и подбор блюд временно недоступны: идёт проверка. Продукты и покупки продолжают работать.</p><span class="sf-unavailable-label">Пока недоступно</span>';
-        secondary.append(unavailable);
-      }
+      meals.hidden=!nutritionEnabled;
+      if(nutritionEnabled){const mealsTitle=meals.querySelector('.section-head h2');if(mealsTitle)mealsTitle.textContent='План питания';}
+      secondary.append(meals);
 
       const buy=document.createElement('section');
       buy.className='sf-home-buy';
-      buy.innerHTML='<h2>3. Купить</h2><p>Список покупок обновляется после подтверждённого сохранения. Предложенные ингредиенты не добавляются автоматически.</p><button type="button" class="secondary-btn" data-nav="cart">Открыть покупки</button>';
-      buy.querySelector('[data-nav="cart"]').addEventListener('click',()=>document.querySelector('.side-item[data-nav="cart"]')?.click());
-      secondary.append(buy,lowStock);
+      buy.innerHTML='<h2>Купить</h2><p id="sf-home-buy-count">Список покупок пуст</p><button type="button" class="secondary-btn" data-nav="cart">Открыть покупки</button>';
+      buy.querySelector('[data-nav="cart"]').addEventListener('click',()=>document.querySelector('.nav-item[data-nav="cart"],.side-item[data-nav="cart"]')?.click());
+      const badge=document.querySelector('.nav-item[data-nav="cart"] .badge,#cart-badge');
+      const paintBuy=()=>{const n=typeof cartData!=='undefined'?cartData.length:0;const forms=['позиция','позиции','позиций'];const k=n%10===1&&n%100!==11?0:n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?1:2;
+        buy.querySelector('#sf-home-buy-count').textContent=n?n+' '+forms[k]+' в списке':'Список покупок пуст';};
+      paintBuy();window.addEventListener('sf:inventory',paintBuy);if(badge)new MutationObserver(paintBuy).observe(badge,{childList:true,characterData:true,subtree:true});
+      secondary.append(buy,lowStock,saveBanner.closest('.section')||saveBanner);
       grid.append(primary,secondary);
-      home.insertBefore(grid,saveBanner);
+      home.appendChild(grid);
       saveBanner.classList.add('sf-home-bottom');
     }
 
