@@ -44,6 +44,26 @@ function bullets(names) {
 function expiryText(names) {
   return `🧊 Завтра истекает срок годности:\n${bullets(names)}`;
 }
+// Reminder ladder: D-3 (plan it) and D-0 (last day). Items without a date never get a reminder.
+function expiryLadder(items, today) {
+  const byHousehold = {};
+  for (const i of items || []) {
+    if (!i || !i.expires_on || !i.household_id) continue;
+    const d = daysBetween(today, String(i.expires_on).slice(0, 10));
+    const step = d === 0 ? 'today' : d === 3 ? 'soon' : null;
+    if (!step) continue;
+    const slot = (byHousehold[i.household_id] ||= { today: [], soon: [] });
+    if (!slot[step].includes(i.name)) slot[step].push(i.name);
+  }
+  return byHousehold;
+}
+function ladderText(slot) {
+  const list = names => names.slice(0, 3).join(', ') + (names.length > 3 ? ` и ещё ${names.length - 3}` : '');
+  const parts = [];
+  if (slot.today.length) parts.push(`Сегодня последний день: ${list(slot.today)}.`);
+  if (slot.soon.length) parts.push(`Через 3 дня: ${list(slot.soon)} — можно запланировать ужин.`);
+  return parts.join(' ');
+}
 function weighText(w, today) {
   const ago = daysBetween(w.date, today);
   return `⚖️ Пора взвеситься, ${w.profileName}.\nПоследний замер: ${fmtKg(w.weight)} кг, ${ago} ${ruDays(ago)} назад.`;
@@ -84,5 +104,5 @@ async function statusText(sb, householdId, today) {
 
 module.exports = {
   WEIGH_EVERY_DAYS, isoDate, daysBetween, addDaysIso, fmtKg, ruDays, dueLabel,
-  expiryText, weighText, householdIdOf, lastWeighIn, statusText,
+  expiryText, weighText, householdIdOf, lastWeighIn, statusText, expiryLadder, ladderText,
 };
