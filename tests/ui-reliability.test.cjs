@@ -124,10 +124,8 @@ function profileFixture({ error = null, measuredFailure = false, editing = true,
     showToast: (...args) => toasts.push(args), isMissingColumnError: e => e?.code === '42703', saveDietLocal: (...args) => local.push(args),
     loadFamilyProfiles: async () => {}, openFamilyMember: async () => {}, history: ['diet', 'form'],
     saveProfileWeight: async (id, value) => { measures.push({ id, weight: value }); if (measureFails) { measureFails = false; throw Error('fixture measurement failure'); } },
-    sb: { from: table => ({
-      update(row) { writes.push({ type: 'update', row, table }); return this; }, insert(row) { writes.push({ type: 'insert', row, table }); return this; }, eq() { return this; }, select() { return this; },
-      single: async () => ({ error, data: error ? null : { id: 'fixture-profile' } }),
-    }) },
+    pendingNewProfileId: null, crypto: { randomUUID: () => 'fixture-profile' },
+    profileWrite: async (action, id, row) => { writes.push({ type: action === 'create_profile' ? 'insert' : 'update', row, id }); return { error, data: error ? null : { profile_id: 'fixture-profile', status: 'created' } }; },
   });
   return { c, button, writes, measures, toasts, local, run: () => vm.runInContext('saveFamilyProfile()', c) };
 }
@@ -154,20 +152,14 @@ test('invalid age or weight cannot be persisted', async () => {
   }
 });
 
-test('weight-only save keeps body measurements and handles concurrent daily insert', async () => {
-  for (const concurrent of [false, true]) {
-    let updates = 0, inserts = 0; const row = { id: 'fixture-measurement', neck: 32, chest: 90, belly: 80, hips: 95, weight: 75 };
-    const c = load(['saveProfileWeight'], { isoDate: () => '2026-11-02', Date,
-      sb: { from: () => ({
-        update(payload) { assert.deepEqual(Object.keys(payload), ['weight']); this.payload = payload; return this; },
-        eq() { return this; }, select() { return this; },
-        async maybeSingle() { updates++; if (concurrent && updates === 1) return { data: null, error: null }; Object.assign(row, this.payload); return { data: { id: row.id }, error: null }; },
-        insert() { inserts++; return this; }, async single() { return { data: null, error: { code: '23505' } }; },
-      }) },
-    });
-    await vm.runInContext('saveProfileWeight("fixture-profile", 74.5)', c);
-    assert.equal(row.weight, 74.5); assert.equal(row.neck, 32); assert.equal(row.hips, 95); assert.equal(inserts, concurrent ? 1 : 0);
-  }
+test('weight-only save sends only today and weight to the owner-checked server upsert', async () => {
+  const calls = [];
+  const c = load(['saveProfileWeight'], { isoDate: () => '2026-11-02', Date,
+    profileWrite: async (action, id, fields) => { calls.push({ action, id, fields }); return { data: { status: 'saved' }, error: null }; } });
+  await vm.runInContext('saveProfileWeight("fixture-profile", 74.5)', c);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ action: 'upsert_measurement', id: 'fixture-profile', fields: { log_date: '2026-11-02', weight: 74.5 } }]);
+  const failing = load(['saveProfileWeight'], { isoDate: () => '2026-11-02', Date, profileWrite: async () => ({ data: null, error: { code: '42501' } }) });
+  await assert.rejects(vm.runInContext('saveProfileWeight("fixture-profile", 74.5)', failing));
 });
 test('editor keeps the opening baseline even if background inventory refreshes',async()=>{
   const f=editFixture({data:null,error:{message:'conflict'}});f.p.qtyNum=0.3;

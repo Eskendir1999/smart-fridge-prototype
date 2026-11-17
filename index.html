@@ -3493,7 +3493,7 @@ async function saveMealChoices(){
   try { sessionStorage.setItem(mealChoicesKey(profile.id), JSON.stringify(mealChoices)); } catch(e){}
   profile.meal_choices = mealChoices;
   if(dietColumnsMissing || !sb) return;
-  const { error } = await sb.from('family_profiles').update({meal_choices: mealChoices}).eq('id', profile.id);
+  const { error } = await profileWrite('update_profile', profile.id, {meal_choices: mealChoices});
   if(isMissingColumnError(error)) dietColumnsMissing = true;
 }
 
@@ -4009,7 +4009,6 @@ async function saveFamilyProfile(){
     excluded_foods: [...(familyProfiles.find(p => p.id === editingProfileId)?.excluded_foods || []).filter(x => !Object.hasOwn(EXCLUSION_LABELS,x)), ...Array.from(document.querySelectorAll('#ff-exclusions [data-excl][aria-pressed="true"]')).map(b => b.dataset.excl)],
   };
   const payload = {
-    ...(editingProfileId ? {} : {household_id: currentHouseholdId, created_by: currentUserId, profile_owner_user_id: currentUserId}),
     name,
     sex: document.getElementById('ff-sex-female').classList.contains('active') ? 'female' : 'male',
     age,
@@ -4026,17 +4025,17 @@ async function saveFamilyProfile(){
   try{
     let result;
     if(wasEditing){
-      result = await sb.from('family_profiles').update({...payload, ...dietPayload}).eq('id', editingProfileId).select('id').single();
-
+      result = await profileWrite('update_profile', editingProfileId, {...payload, ...dietPayload});
     }else{
-      payload.start_weight_kg = weight;
-      result = await sb.from('family_profiles').insert({...payload, ...dietPayload}).select().single();
-
+      // One id per form: a retry after a lost answer returns the same profile instead of a duplicate.
+      pendingNewProfileId = pendingNewProfileId || crypto.randomUUID();
+      result = await profileWrite('create_profile', pendingNewProfileId, {...payload, ...dietPayload, start_weight_kg: weight});
     }
-    if(result.error || !result.data?.id) throw result.error || new Error('Profile was not saved');
+    if(result.error || !result.data?.profile_id) throw result.error || new Error('Profile was not saved');
     if(formVersion !== privateContextVersion || formActor !== currentUserId) return;
     // Retain the saved ID if the second write fails so a retry cannot create a duplicate profile.
-    editingProfileId = result.data.id;
+    editingProfileId = result.data.profile_id;
+    pendingNewProfileId = null;
     saveDietLocal(editingProfileId, dietPayload);
     if(!wasEditing || weight !== familyFormInitialWeight){
       try{ await saveProfileWeight(editingProfileId, weight); }
@@ -4055,29 +4054,15 @@ async function saveFamilyProfile(){
 }
 document.getElementById('ff-save-btn').addEventListener('click', saveFamilyProfile);
 async function saveProfileWeight(profileId, weight){
-  const day = isoDate(new Date());
-  const updateWeight = () => sb.from('family_measurements').update({weight})
-    .eq('profile_id', profileId).eq('log_date', day).select('id').maybeSingle();
-  let result = await updateWeight();
-  if(result.error) throw result.error;
-  if(result.data) return;
-  result = await sb.from('family_measurements').insert({profile_id:profileId, log_date:day, weight}).select('id').single();
-  // Another device may have inserted today's row between the update and insert.
-  if(result.error?.code === '23505') result = await updateWeight();
-  if(result.error || !result.data) throw result.error || new Error('Weight was not saved');
+  // Server upserts today's row atomically, so two devices cannot race into a duplicate.
+  const result = await profileWrite('upsert_measurement', profileId, {log_date: isoDate(new Date()), weight});
+  if(result.error || result.data?.status !== 'saved') throw result.error || new Error('Weight was not saved');
 }
-document.getElementById('ff-delete-btn').addEventListener('click', async ()=>{
+document.getElementById('ff-delete-btn').addEventListener('click', ()=>{
   if(!editingProfileId) return;
-  const {data, error} = await sb.from('family_profiles').delete().eq('id', editingProfileId).eq('profile_owner_user_id', currentUserId).select('id');
-  if(error || !data?.length){ showToast('Удаление не подтверждено. Повторите попытку.', true); return; }
-  resetPrivateContext();
-  showToast('Личный профиль удалён из активной базы. Срок резервных копий требует отдельного подтверждения.');
-  editingProfileId = null;
-  currentProfileId = null;
-  mealChoices = {};
-  history = ['diet'];
-  showScreen('diet', false);
-  await loadFamilyProfiles();
+  // Whole-profile deletion needs a server ticket and typed confirmation: reuse the "My data" flow.
+  showToast('Удаление профиля — в «Мои данные»: там видно, что исчезнет, и нужно подтверждение.');
+  document.getElementById('my-data-open')?.click();
 });
 
 /* ===================== WEEKLY MISSING-INGREDIENTS ALERT ===================== */
@@ -4466,9 +4451,9 @@ document.getElementById('ms-save-btn').addEventListener('click', async ()=>{
 document.getElementById('ms-delete-btn').addEventListener('click', async ()=>{
   const profile = getCurrentProfile(), date = editingMeasurementDate, version = privateContextVersion;
   if(!profile || !date) return;
-  const {data,error} = await sb.from('family_measurements').delete().eq('profile_id', profile.id).eq('log_date', date).select('id');
+  const {data,error} = await profileWrite('delete_measurement', profile.id, {log_date: date});
   if(version !== privateContextVersion) return;
-  if(error || !data?.length){ showToast('Удаление не подтверждено. Повторите попытку.', true); return; }
+  if(error || data?.status !== 'deleted'){ showToast('Не получилось удалить запись. Попробуйте ещё раз.', true); return; }
   measurementHistory = measurementHistory.filter(m => m.date !== date);
   closeSheet(); renderHistory(); renderMemberTrend(); renderReminders();
   showToast('Запись удалена из активной базы.');
@@ -4679,11 +4664,16 @@ function toDbRow(p){
 async function dbSaveMeasurement(entry){
   const profile = getCurrentProfile();
   if(!profile) throw new Error('Private profile required');
-  const {data,error} = await sb.from('family_measurements').upsert(
-    {profile_id: profile.id, log_date: entry.date, weight: entry.weight, neck: entry.neck, chest: entry.chest, belly: entry.belly, hips: entry.hips},
-    {onConflict:'profile_id,log_date'}
-  ).select('id').single();
-  if(error || !data?.id) throw error || new Error('Measurement not confirmed');
+  const fields = {log_date: entry.date, weight: entry.weight};
+  for(const k of ['neck','chest','belly','hips']) if(entry[k] != null && !Number.isNaN(entry[k])) fields[k] = entry[k];
+  const {data,error} = await profileWrite('upsert_measurement', profile.id, fields);
+  if(error || data?.status !== 'saved') throw error || new Error('Measurement not confirmed');
+}
+// The only write path for personal profile data: owner-checked server function, no direct table writes.
+let pendingNewProfileId = null;
+async function profileWrite(action, profileId, fields){
+  if(!sb) return {data:null, error:new Error('offline')};
+  return sb.rpc('sf_profile_write', {action, target_profile: profileId, fields});
 }
 
 async function initEmptyAccount(userId){
