@@ -76,8 +76,12 @@
       wrapper.className='sf-suggestions';
       const caption=document.createElement('p');
       caption.className='sf-disclaimer';
-      caption.textContent=typeof SF_NUTRITION_ENABLED!=='undefined' && SF_NUTRITION_ENABLED?'Идеи для вдохновения. Проверяйте ингредиенты и количество.':'Подбор блюд временно недоступен. Сохранённые продукты и покупки доступны.';
-      if(heading)heading.textContent='Идеи блюд';
+      const dinnerOn=typeof SF_DINNER_ENABLED!=='undefined' && SF_DINNER_ENABLED;
+      const nutritionOn=typeof SF_NUTRITION_ENABLED!=='undefined' && SF_NUTRITION_ENABLED;
+      caption.textContent=dinnerOn?'Подберём блюдо из того, что уже есть, и покажем, чего не хватает.':nutritionOn?'Идеи для вдохновения. Проверяйте ингредиенты и количество.':'';
+      caption.hidden=!caption.textContent;
+      wrapper.hidden=!dinnerOn && !nutritionOn;
+      if(heading)heading.textContent='Что приготовить';
       if(headingSection)wrapper.appendChild(headingSection);
       wrapper.appendChild(caption);
       wrapper.appendChild(suggest);
