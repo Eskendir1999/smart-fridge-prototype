@@ -97,6 +97,24 @@ const {createStockDb,user,household}=require('./helpers/stock-db.cjs');
     await page.screenshot({path:path.join(out,'mobile-unknown-product.png'),fullPage:true});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false);
     console.log('PASS browser: mobile input retained on failure; unknown product has no invented expiry');
+    // Quick add: pasted list -> reviewed drafts -> one add_item per checked line, estimated expiry only for known products.
+    const before=calls.length;
+    await page.evaluate(()=>{history=['fridge'];showScreen('fridge',false);sfQuickAdd.open({text:'Купить:\n• Хлеб — 1 шт\nПомидоры 0,5 кг\nЗагадочный соус'});});
+    await page.waitForFunction(()=>document.querySelectorAll('#quick-preview .quick-row').length===3);
+    assert.match(await page.textContent('#quick-preview'),/Загадочный соус.*срок не указан/);
+    await page.uncheck('[data-quick-idx="0"]');
+    assert.equal(await page.textContent('#quick-add-btn'),'Добавить 2 продукта');
+    await page.click('#quick-add-btn');
+    await page.waitForFunction(n=>document.querySelectorAll('#quick-preview .quick-row').length===0,null);
+    const added=calls.slice(before).map(c=>c.body);
+    assert.deepEqual(added.map(b=>[b.name,b.qty_num,b.unit,b.expiry_estimated]),[['Помидоры',0.5,'кг',true],['Загадочный соус',1,'шт',false]]);
+    assert.equal(added[1].expires_on,null);
+    // A fiscal QR opens the sheet with the e-receipt link instead of a barcode lookup.
+    await page.evaluate(()=>{history=['fridge','barcode'];onBarcodeDetected('http://consumer.oofd.kz?i=1&f=2&s=3&t=4');});
+    await page.waitForFunction(()=>!document.getElementById('quick-receipt').hidden);
+    assert.equal(await page.getAttribute('#quick-receipt-link','href'),'https://consumer.oofd.kz/?i=1&f=2&s=3&t=4');
+    await page.click('#quick-cancel');
+    console.log('PASS browser: quick add from a pasted list and a fiscal receipt QR');
     assert.deepEqual(errors,[]);console.log('PASS browser: no uncaught page errors; mobile width fits');
     fs.writeFileSync(path.join(out,'browser-summary.json'),JSON.stringify({passed:5,errors,requests:calls.map(({op_id,kind})=>({op_id,kind})),viewport:[1280,900,390,844]},null,2));
   }finally{await browser.close();await new Promise(r=>server.close(r));await f.db.close();}
