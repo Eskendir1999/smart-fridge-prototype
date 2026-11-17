@@ -25,23 +25,3 @@ test('replaying an older custom add does not clear a newly typed product name',a
   await f.run('addCustomProduct()');f.node('manual-custom-name').value='new draft';await f.run('executeStockRequest()');
   assert.equal(f.node('manual-custom-name').value,'new draft');assert.equal(f.node('manual-custom-qty').value,'3');assert.equal(closed,0);assert.match(f.node('stock-save-message').textContent,/Новый ввод/);
 });
-test('widget waits for confirmation and leaves failed and unattempted marks pending',async()=>{
-  const cleared=[],calls=[];let failed=true;
-  const c=vm.createContext({cartData:[{_id:'one',name:'one'},{_id:'two',name:'two'}],showToast(){},
-    WB:{getPending:async()=>({ids:['one','two']}),clearPending:async({ids})=>cleared.push(...ids)},
-    buyCartItem:async item=>{calls.push(item._id);return !failed;}});
-  vm.runInContext(fn('applyWidgetPurchases'),c);await vm.runInContext('applyWidgetPurchases(WB)',c);assert.deepEqual(cleared,[]);
-  failed=false;await vm.runInContext('applyWidgetPurchases(WB)',c);assert.deepEqual(cleared,['one','two']);assert.deepEqual(calls,['one','one','two']);
-});
-test('widget snapshot repaint cannot schedule its own retry loop',()=>{
-  const scheduled=[];const c=vm.createContext({nativeSyncRunning:true,currentProduct:null,fridgeData:[],freezerData:[],cartData:[],history:[],
-    renderCart:sync=>{if(sync)scheduled.push('another native sync');},updateSummary(){},renderFridgeList(){},renderSuggestRow(){},renderMissingAlert(){},currentCompartment:'fridge'});
-  vm.runInContext(fn('applyStockSnapshot'),c);vm.runInContext('applyStockSnapshot({fridge_items:[],cart_items:[],stats:null})',c);assert.deepEqual(scheduled,[]);
-  c.nativeSyncRunning=false;vm.runInContext('applyStockSnapshot({fridge_items:[],cart_items:[],stats:null})',c);assert.equal(scheduled.length,1);
-});
-test('native synchronization cannot overlap and unlocks after failure',async()=>{
-  let release,attempts=0;const c=vm.createContext({nativePlugin:()=>({}),currentUserId:'user',userDataLoaded:true,nativeSyncRunning:false,console:{warn(){}},
-    applyWidgetPurchases:async()=>{attempts++;await new Promise(r=>release=r);throw Error('offline');}});
-  vm.runInContext(fn('syncNativeExtras'),c);const pending=vm.runInContext('syncNativeExtras()',c);await vm.runInContext('syncNativeExtras()',c);
-  assert.equal(attempts,1);release();await pending;assert.equal(c.nativeSyncRunning,false);
-});

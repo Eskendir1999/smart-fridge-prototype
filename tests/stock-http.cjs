@@ -66,7 +66,7 @@ async function main(){
           return res.end(JSON.stringify({id:user,email:'fixture@example.test',role:'authenticated',aud:'authenticated'}));
         }
         if(req.url==='/'){
-          const html=fs.readFileSync(path.join(root,'index.html'),'utf8').replaceAll("'__SUPABASE_URL__'",JSON.stringify(origin)).replaceAll("'__SUPABASE_ANON_KEY__'",JSON.stringify(anonKey));
+          const html=require('./helpers/page.cjs').stripIntegrity(fs.readFileSync(path.join(root,'index.html'),'utf8')).replaceAll("'__SUPABASE_URL__'",JSON.stringify(origin)).replaceAll("'__SUPABASE_ANON_KEY__'",JSON.stringify(anonKey));
           res.setHeader('Content-Type','text/html');return res.end(html);
         }
         if(/^\/dinner\/(model\.js|queue\.js|ui\.js|catalog\.json|style\.css)$/.test(req.url)){

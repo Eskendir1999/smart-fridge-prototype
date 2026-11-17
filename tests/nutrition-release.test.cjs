@@ -7,17 +7,6 @@ test('production-disabled profiles are cleared without reading the legacy family
  const c=context(['loadFamilyProfiles'],{SF_NUTRITION_ENABLED:false,currentUserId:'fixture',familyProfiles:[{name:'old private'}],resetPrivateContext:()=>resets++,renderFamilyGrid:()=>renders++,sb:{from(){throw Error('No personal read in production');}}});
  await vm.runInContext('loadFamilyProfiles()',c);assert.equal(c.familyProfiles.length,0);assert.equal(resets,1);assert.equal(renders,1);
 });
-test('native snapshot strips all personal fields even if a caller supplies a profile',()=>{
- const c=context(['buildWidgetSnapshot'],{Date,cartData:[{_id:'cart-id',name:'Shared shopping'}]});
- const snap=vm.runInContext('buildWidgetSnapshot({name:"private",start_weight_kg:70},[{weight:80}])',c);
- for(const k of ['profileName','weightNow','weightStart','weightGoal','startTs','lastWeighTs'])assert.equal(snap[k],null);
- assert.equal(snap.trend.length,0);assert.equal(snap.cart[0].name,'Shared shopping');
-});
-test('native sync clears prior personal snapshot and never schedules disabled reminders',async()=>{
- let snapshot,purchases=0;
- const c=context(['syncNativeExtras','widgetProfileRows','buildWidgetSnapshot'],{currentUserId:'fixture',userDataLoaded:true,nativeSyncRunning:false,SF_NOTIFICATIONS_ENABLED:false,Date,cartData:[],nativePlugin:()=>({setSnapshot:async v=>snapshot=JSON.parse(v.json)}),applyWidgetPurchases:async()=>purchases++,scheduleNativeReminders(){throw Error('Reminders disabled');},maybeStartMealActivity(){throw Error('Activity disabled');},sb:{from(){throw Error('No personal reads');}},console});
- await vm.runInContext('syncNativeExtras()',c);assert.equal(purchases,1);assert.equal(snapshot.weightNow,null);assert.equal(snapshot.profileName,null);assert.equal(c.nativeSyncRunning,false);
-});
 test('Scriptable upgrades an installed widget without reading old data or making requests',async()=>{
  const source=fs.readFileSync(path.join(root,'scriptable/smart-fridge.js'),'utf8');
  for(const widgetFamily of ['small','medium','large','accessoryCircular','accessoryInline','accessoryRectangular',null]){

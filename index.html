@@ -1384,7 +1384,6 @@ img{ animation:imgFadeIn .25s ease; }
         <button class="secondary-btn" data-nav="vision">📷 Распознать продукт</button>
         <button class="secondary-btn" id="open-family-btn">👪 Семья</button>
         <button class="secondary-btn" id="push-toggle-btn">🔔 Уведомления об истечении срока</button>
-        <button class="secondary-btn" id="meal-timer-btn" style="display:none">⏱ Таймер приёма пищи: вкл</button>
         <button class="secondary-btn" id="telegram-btn" style="display:none">✈️ Подключить Telegram</button>
         <button class="secondary-btn" id="install-app-btn" style="display:none">📲 Установить приложение</button>
         <button class="secondary-btn" id="show-onboarding-btn">❓ Как пользоваться приложением</button>
@@ -1555,11 +1554,27 @@ img{ animation:imgFadeIn .25s ease; }
   <button id="stock-undo-btn" class="secondary-btn" hidden>Отменить последнее действие</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
-<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0" integrity="sha384-UagCvVPT5XXA0Hx+nJYUAGBFseHT9zBgpJMSebsAxl9lciTwbT+39j5VfRjdP5Tp" crossorigin="anonymous"></script>
+<script>
+/* Heavy scanners load on demand, pinned by SRI: the login and home screens no longer pay ~1.8 MB. */
+const LAZY_LIBS = {
+  zxing: [['https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js','sha384-BzBxP10ZE72aitqj5UMmUsbKFliP/DZqA8Wq+BNNhlIJDGoEd1tpkMYXOg9+n6sB']],
+  tf: [['https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js','sha384-xc4sZTUOM2obsQR75Be0zGbt7Gb6mOVFJN4yBm30Xn0YQLDWIY+yrtFmLmIank6w']],
+  mobilenet: [['https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js','sha384-oBAqwJ0tv9zzKlbIZyBhhXlEvU/PMrSMqDyOHlEZVC8xWHx4yPySuS7vRikRcYFq']],
+  coco: [['https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js','sha384-/Ze86je+L/XYNre5spsZmGKuRlc3l7SmjraCSxWNzYE5QqbnXPrhMz81bDA4fcox']],
+};
+const lazyLibPromises = {};
+function loadLib(name){
+  if(lazyLibPromises[name]) return lazyLibPromises[name];
+  lazyLibPromises[name] = LAZY_LIBS[name].reduce((chain,[src,integrity]) => chain.then(() => new Promise((resolve,reject) => {
+    const el = document.createElement('script');
+    el.src = src; el.integrity = integrity; el.crossOrigin = 'anonymous'; el.async = true;
+    el.onload = resolve; el.onerror = () => reject(new Error('script_failed:'+name));
+    document.head.appendChild(el);
+  })), Promise.resolve()).catch(err => { delete lazyLibPromises[name]; throw err; });
+  return lazyLibPromises[name];
+}
+</script>
 <script>
 /* ===================== SUPABASE ===================== */
 const SF_NUTRITION_ENABLED = false;
@@ -2573,7 +2588,7 @@ function applyStockSnapshot(data){
   for(const r of data.fridge_items) getArr(r.compartment).push(stockItemFromRow(r));
   for(const r of data.cart_items) cartData.push(stockItemFromRow(r));
   usedCount=data.stats?.used_count||0; usedWeightKg=Number(data.stats?.used_weight_kg||0); wastedCount=data.stats?.wasted_count||0;
-  renderCart(!nativeSyncRunning); updateSummary(); renderFridgeList(currentCompartment); renderSuggestRow(); renderMissingAlert();
+  renderCart(); updateSummary(); renderFridgeList(currentCompartment); renderSuggestRow(); renderMissingAlert();
   if(selected){
     const list=fridgeData.some(p=>p._id===selected)?'fridge':'freezer';
     const idx=getArr(list).findIndex(p=>p._id===selected);
@@ -2853,7 +2868,7 @@ let mobilenetLoading = null;
 function ensureModel(){
   if(mobilenetModel) return Promise.resolve(mobilenetModel);
   if(mobilenetLoading) return mobilenetLoading;
-  mobilenetLoading = mobilenet.load().then(m => { mobilenetModel = m; return m; }).catch(err => { console.error('MobileNet load failed', err); mobilenetLoading = null; return null; });
+  mobilenetLoading = loadLib('tf').then(() => loadLib('mobilenet')).then(() => mobilenet.load()).then(m => { mobilenetModel = m; return m; }).catch(err => { console.error('MobileNet load failed', err); mobilenetLoading = null; return null; });
   return mobilenetLoading;
 }
 
@@ -2999,7 +3014,7 @@ let cocoModel = null, cocoLoading = null;
 function ensureDetectorModel(){
   if(cocoModel) return Promise.resolve(cocoModel);
   if(cocoLoading) return cocoLoading;
-  cocoLoading = cocoSsd.load().then(m => { cocoModel = m; return m; }).catch(err => { console.error('COCO-SSD load failed', err); cocoLoading = null; return null; });
+  cocoLoading = loadLib('tf').then(() => loadLib('coco')).then(() => cocoSsd.load()).then(m => { cocoModel = m; return m; }).catch(err => { console.error('COCO-SSD load failed', err); cocoLoading = null; return null; });
   return cocoLoading;
 }
 const FOOD_COCO_CLASSES = {
@@ -3153,6 +3168,7 @@ async function startBarcodeScan(){
   try{
     barcodeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     video.srcObject = barcodeStream;
+    await loadLib('zxing');
     barcodeReader = new ZXing.BrowserMultiFormatReader();
     barcodeReader.decodeFromVideoElement(video, (result, err)=>{
       if(result) onBarcodeDetected(result.getText());
@@ -4159,7 +4175,7 @@ async function addCartDraft(){
 }
 document.getElementById('cart-add-btn').addEventListener('click',addCartDraft);
 
-function renderCart(syncNative=true){
+function renderCart(){
   const list = document.getElementById('cart-list');
   const empty = document.getElementById('cart-empty');
   document.getElementById('cart-count').textContent = cartData.length;
@@ -4182,7 +4198,6 @@ function renderCart(syncNative=true){
     });
   }
   updateCartBadge();
-  if(syncNative) queueNativeSync();
 }
 // Покупка товара из корзины: переносит его в холодильник/морозилку. Вызывается и по кнопке
 // «Куплено», и по отметке из виджета на iPhone (silent — без тоста на каждый товар).
@@ -4318,7 +4333,6 @@ document.getElementById('save-weight-btn').addEventListener('click', async ()=>{
   if(!merged) return;
   renderMemberTrend();
   renderReminders();
-  queueNativeSync();
   showToast(congratsMessage(merged.weight, false));
 });
 document.getElementById('save-measurement-btn').addEventListener('click', async ()=>{
@@ -4334,7 +4348,6 @@ document.getElementById('save-measurement-btn').addEventListener('click', async 
   if(!merged) return;
   renderMemberTrend();
   renderReminders();
-  queueNativeSync();
   showToast(congratsMessage(merged.weight, true));
 });
 function fmtKg(n){ return n.toFixed(1).replace('.0','').replace('.', ','); }
@@ -4647,7 +4660,7 @@ dietitianSendBtn.addEventListener('click', sendDietitianMessage);
 dietitianInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); sendDietitianMessage(); } });
 
 if(!SF_NUTRITION_ENABLED){
-  document.querySelectorAll('[data-nav="diet"],#open-dietitian-btn,#meal-timer-btn').forEach(el=>el.style.display='none');
+  document.querySelectorAll('[data-nav="diet"],#open-dietitian-btn').forEach(el=>el.style.display='none');
   if(!SF_DINNER_ENABLED){
     document.querySelectorAll('[data-nav="recipes"]').forEach(el=>el.style.display='none');
     document.getElementById('home-meals-row').closest('.section').style.display='none';
@@ -4791,8 +4804,7 @@ async function loadUserData(){
   initPushUI();
   refreshTelegramStatus();
   initBiometricUI();
-  initMealTimerUI();
-  loadFamilyProfiles().then(() => queueNativeSync());
+  loadFamilyProfiles();
   maybeShowOnboarding();
   window.dispatchEvent(new Event('sf:inventory'));
 }
@@ -4863,14 +4875,7 @@ function urlBase64ToUint8Array(base64String){
   const raw = atob(base64);
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
-// В обёртке Capacitor (iOS) WKWebView не поддерживает Service Worker вовсе —
-// там используется нативный путь через APNs (Capacitor Push Notifications
-// plugin) вместо Web Push. Определяем окружение один раз и ветвим всю логику.
-function isNativeApp(){
-  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-}
 function pushSupported(){
-  if(isNativeApp()) return true;
   return 'serviceWorker' in navigator && 'PushManager' in window && VAPID_PUBLIC_KEY;
 }
 async function initPushUI(){
@@ -4878,12 +4883,6 @@ async function initPushUI(){
   const btn = document.getElementById('push-toggle-btn');
   if(!pushSupported()){ btn.style.display = 'none'; return; }
   try{
-    if(isNativeApp()){
-      const { LocalNotifications } = window.Capacitor.Plugins;
-      const perm = await LocalNotifications.checkPermissions();
-      btn.textContent = perm.display === 'granted' ? '🔔 Уведомления включены' : '🔔 Уведомления об истечении срока';
-      return;
-    }
     const reg = await navigator.serviceWorker.register('/sw.js');
     const sub = await reg.pushManager.getSubscription();
     btn.textContent = sub ? '🔔 Уведомления включены (нажмите, чтобы отключить)' : '🔔 Уведомления об истечении срока';
@@ -4891,36 +4890,7 @@ async function initPushUI(){
     btn.style.display = 'none';
   }
 }
-async function saveApnsToken(token){
-  if(!currentUserId) return;
-  const { error } = await sb.from('apns_tokens').upsert({
-    user_id: currentUserId, token
-  }, { onConflict: 'token' });
-  if(error) console.error('saveApnsToken failed', error);
-}
-async function toggleNativePush(){
-  const btn = document.getElementById('push-toggle-btn');
-  const { LocalNotifications } = window.Capacitor.Plugins;
-  let perm = await LocalNotifications.checkPermissions();
-  if(perm.display !== 'granted') perm = await LocalNotifications.requestPermissions();
-  if(perm.display !== 'granted'){
-    showToast('Разрешение на уведомления не дано', true);
-    return;
-  }
-  btn.textContent = '🔔 Уведомления включены';
-  showToast('Уведомления включены');
-  scheduleNativeReminders();
-  // Серверные push через APNs работают только с платной подпиской разработчика Apple.
-  // Локальные напоминания выше работают всегда, поэтому ошибка APNs не считается сбоем.
-  try{
-    const { PushNotifications } = window.Capacitor.Plugins;
-    PushNotifications.addListener('registration', (token) => saveApnsToken(token.value));
-    PushNotifications.addListener('registrationError', (err) => console.warn('APNs недоступен', err));
-    await PushNotifications.register();
-  }catch(e){ console.warn('APNs недоступен', e); }
-}
 async function togglePushSubscription(){
-  if(isNativeApp()){ await toggleNativePush(); return; }
   const btn = document.getElementById('push-toggle-btn');
   if(!pushSupported()) return;
   const reg = await navigator.serviceWorker.register('/sw.js');
@@ -4960,7 +4930,7 @@ const TELEGRAM_BOT_USERNAME = '__TELEGRAM_BOT_USERNAME__';
 const telegramBtn = document.getElementById('telegram-btn');
 let telegramLinked = false, telegramUnlinkArmed = null, telegramRevision = 0;
 function telegramAvailable(){
-  return SF_TELEGRAM_ENABLED && !isNativeApp() && TELEGRAM_BOT_USERNAME.toLowerCase() === 'smart_fridge_t_bot';
+  return SF_TELEGRAM_ENABLED && TELEGRAM_BOT_USERNAME.toLowerCase() === 'smart_fridge_t_bot';
 }
 function renderTelegramBtn(){
   if(!telegramAvailable()){ telegramBtn.style.display = 'none'; return; }
@@ -5012,154 +4982,6 @@ telegramBtn.addEventListener('click', async () => {
   }
 });
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') refreshTelegramStatus(); });
-
-/* ===================== НАТИВНОЕ ПРИЛОЖЕНИЕ: виджеты, напоминания, таймер еды ===================== */
-const MEAL_SLOTS = [
-  {name:'Завтрак', h:8,  m:30, key:'breakfastT'},
-  {name:'Обед',    h:13, m:0,  key:'lunchT'},
-  {name:'Ужин',    h:19, m:0,  key:'dinnerT'},
-];
-function nativePlugin(name){
-  return isNativeApp() ? ((window.Capacitor.Plugins || {})[name] || null) : null;
-}
-
-// Виджеты показывают первый профиль семьи. Если он сейчас открыт на экране, берём уже
-// загруженные замеры, иначе отдельный запрос.
-async function widgetProfileRows(){
-  return null; // Weight/measurements are not exported to widgets in this MVP.
-}
-
-function buildWidgetSnapshot(){
-  // Clear the previous personal snapshot, retaining the shared shopping list only.
-  return {profileName:null, weightNow:null, weightStart:null, weightGoal:null,
-    startTs:null, lastWeighTs:null, weighEveryDays:2, trend:[],
-    cart:cartData.slice(0,12).map(c=>({id:String(c._id||c.name),name:c.name,done:false})),
-    updatedAt:Date.now()/1000};
-}
-
-// Покупки, отмеченные галочкой прямо в виджете, применяются при открытии приложения.
-async function applyWidgetPurchases(WB){
-  const res = await WB.getPending();
-  const ids = (res && res.ids) || [];
-  if(!ids.length) return;
-  const bought = [];
-  const confirmed=[];
-  for(const id of ids){
-    const item=cartData.find(c=>String(c._id||c.name)===id);
-    if(item){ if(!await buyCartItem(item,true)) break; bought.push(item.name); }
-    confirmed.push(id);
-  }
-  if(confirmed.length) await WB.clearPending({ids:confirmed});
-  if(bought.length) showToast(`Куплено через виджет: ${bought.join(', ')}`);
-}
-
-var nativeSyncRunning = false;
-var nativeSyncTimer = null; // var, а не let: renderCart() вызывается при старте раньше этого места
-function queueNativeSync(){
-  if(!isNativeApp()) return;
-  clearTimeout(nativeSyncTimer);
-  nativeSyncTimer = setTimeout(syncNativeExtras, 600);
-}
-async function syncNativeExtras(){
-  const WB = nativePlugin('WidgetBridge');
-  if(!WB || !currentUserId || !userDataLoaded || nativeSyncRunning) return;
-  nativeSyncRunning = true;
-  try{
-    await applyWidgetPurchases(WB);
-    const pack = await widgetProfileRows();
-    await WB.setSnapshot({ json: JSON.stringify(buildWidgetSnapshot()) });
-    if(typeof SF_NOTIFICATIONS_ENABLED==='undefined'||SF_NOTIFICATIONS_ENABLED){scheduleNativeReminders(pack);maybeStartMealActivity(WB);}
-  }catch(e){ console.warn('Синхронизация с виджетами не удалась', e); }
-  finally{ nativeSyncRunning = false; }
-}
-document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') queueNativeSync(); });
-
-// Локальные напоминания: не нужен сервер и платный аккаунт, всё планируется на самом телефоне
-// и пересчитывается при каждом открытии приложения и после любого изменения данных.
-async function scheduleNativeReminders(packArg){
-  const LN = nativePlugin('LocalNotifications');
-  if(!LN) return;
-  try{
-    const perm = await LN.checkPermissions();
-    if(perm.display !== 'granted') return;
-    const pending = await LN.getPending();
-    if(pending.notifications && pending.notifications.length) await LN.cancel({ notifications: pending.notifications });
-    const pack = packArg || await widgetProfileRows();
-    const list = [], now = new Date();
-    let nid = 1;
-    const at = (date, h, m) => { const d = new Date(date); d.setHours(h, m, 0, 0); return d; };
-    const push = (title, body, when) => { if(when > now) list.push({ id: nid++, title, body, schedule: { at: when, allowWhileIdle: true } }); };
-
-    const byDate = {};
-    fridgeData.forEach(p => { if(p.expiresOn) (byDate[p.expiresOn] ||= []).push(p.name); });
-    Object.keys(byDate).sort().slice(0, 20).forEach(iso => {
-      const names = byDate[iso];
-      const body = names.length > 3 ? `${names.slice(0, 3).join(', ')} и ещё ${names.length - 3}` : names.join(', ');
-      push('Завтра истекает срок годности', body, at(addDays(parseLocalDate(iso), -1), 9, 0));
-    });
-
-    if(pack && pack.rows.length){
-      const lastW = parseLocalDate(pack.rows[pack.rows.length-1].date);
-      let due = addDays(lastW, WEIGHT_REMINDER_DAYS);
-      if(at(due, 8, 30) <= now) due = addDays(TODAY, 1);
-      for(let k = 0; k < 4; k++){
-        push('Пора взвеситься', 'Это быстро: откройте Smart Fridge и запишите вес', at(addDays(due, k * WEIGHT_REMINDER_DAYS), 8, 30));
-      }
-      const fullRow = [...pack.rows].reverse().find(r => r.neck > 0 && r.chest > 0 && r.belly > 0 && r.hips > 0);
-      let manual = null;
-      try{ manual = localStorage.getItem('sf_fullmeasure_' + pack.profile.id); }catch(e){}
-      const lastFull = [fullRow && fullRow.date, manual].filter(Boolean).sort().pop();
-      if(lastFull){
-        let dueF = addDays(parseLocalDate(lastFull), FULL_REMINDER_DAYS);
-        if(at(dueF, 9, 0) <= now) dueF = addDays(TODAY, 1);
-        push('Замер объёмов', 'Шея, грудь, живот и бёдра: пора измериться', at(dueF, 9, 0));
-      }
-    }
-    if(list.length) await LN.schedule({ notifications: list });
-  }catch(e){ console.warn('Не удалось запланировать напоминания', e); }
-}
-
-// Таймер приёма пищи на экране блокировки и в Dynamic Island. Без платного аккаунта Apple
-// Live Activity можно запустить только пока приложение открыто: стартует автоматически,
-// если до ближайшего приёма пищи осталось не больше полутора часов.
-function mealTimerOn(){
-  try{ return localStorage.getItem('sf_meal_timer') !== '0'; }catch(e){ return true; }
-}
-function maybeStartMealActivity(WB){
-  if(!mealTimerOn()) return;
-  const now = new Date();
-  for(const slot of MEAL_SLOTS){
-    const when = new Date(now); when.setHours(slot.h, slot.m, 0, 0);
-    const minsLeft = (when - now) / 60000;
-    if(minsLeft > 0 && minsLeft <= 90){
-      const stamp = isoDate(now) + slot.name;
-      let done = null;
-      try{ done = localStorage.getItem('sf_meal_activity'); }catch(e){}
-      if(done === stamp) return;
-      try{ localStorage.setItem('sf_meal_activity', stamp); }catch(e){}
-      WB.startMealActivity({ name: slot.name, detail: (dietDays[0] && dietDays[0][slot.key]) || '', at: when.getTime() / 1000 });
-      return;
-    }
-  }
-  const stale = MEAL_SLOTS.some(s => { const w = new Date(now); w.setHours(s.h, s.m, 0, 0); const mins = (now - w) / 60000; return mins > 30 && mins < 240; });
-  if(stale) WB.endMealActivity();
-}
-function initMealTimerUI(){
-  if(!SF_NOTIFICATIONS_ENABLED){document.getElementById('meal-timer-btn').style.display='none';return;}
-  const btn = document.getElementById('meal-timer-btn');
-  if(!nativePlugin('WidgetBridge')) return;
-  btn.style.display = '';
-  const paint = () => { btn.textContent = mealTimerOn() ? '⏱ Таймер приёма пищи: вкл' : '⏱ Таймер приёма пищи: выкл'; };
-  paint();
-  btn.onclick = () => {
-    const on = !mealTimerOn();
-    try{ localStorage.setItem('sf_meal_timer', on ? '1' : '0'); }catch(e){}
-    if(!on) nativePlugin('WidgetBridge').endMealActivity();
-    paint();
-    showToast(on ? 'Таймер приёма пищи включён' : 'Таймер приёма пищи выключен');
-  };
-}
-
 
 /* ===================== УСТАНОВКА PWA НА ЭКРАН ===================== */
 let deferredInstallPrompt = null;

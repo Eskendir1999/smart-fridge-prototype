@@ -64,3 +64,12 @@ test('direct table writes stay closed; anonymous and unknown sessions are refuse
  await assert.rejects(write(stranger,'create_profile',randomUUID(),{name:'NoSession'},{session_id:randomUUID()}),{code:'42501'});
  await assert.rejects(write(user,'drop_everything',randomUUID()),{code:'22023'});
 });
+
+test('grant hygiene: anon has no table rights and nobody can truncate early tables',async()=>{
+ const {rows}=await f.db.query(`select table_name, grantee, privilege_type from information_schema.role_table_grants
+  where table_schema='public' and table_name in ('households','household_members','household_join_attempts','push_subscriptions')
+  and grantee in ('anon','authenticated') order by 1,2,3`);
+ assert.equal(rows.some(r=>r.grantee==='anon'),false);
+ assert.equal(rows.some(r=>['TRUNCATE','TRIGGER','REFERENCES'].includes(r.privilege_type)),false);
+ assert.deepEqual(rows.filter(r=>r.table_name==='households').map(r=>r.privilege_type),['SELECT']);
+});

@@ -12,7 +12,7 @@ const {createMyDataDb,user,other,A}=require('./helpers/my-data-db.cjs');
  const data=await f.data(args,who);if(active==='drop'){res.end('{"data":');return;}res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data,error:null}));return;
  }
  const rel=req.url==='/'?'index.html':req.url.split('?')[0];const file=path.join(root,'dist',rel);if(!fs.existsSync(file)){res.statusCode=404;return res.end();}
- res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.html')?'text/html':'image/png');res.end(fs.readFileSync(file));
+ res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.html')?'text/html':'image/png');res.end(file.endsWith('.html')?require('./helpers/page.cjs').stripIntegrity(fs.readFileSync(file)):fs.readFileSync(file));
  }catch(e){res.end(JSON.stringify({data:null,error:{message:e.message}}));}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});const context=await browser.newContext({viewport:{width:1280,height:900},serviceWorkers:'block',acceptDownloads:true});
  await context.route('**/*',route=>{const u=route.request().url();if(u.startsWith('http://127.0.0.1:'))return route.continue();return route.fulfill({contentType:'application/javascript',body:u.includes('@supabase/supabase-js')?stub:''});});

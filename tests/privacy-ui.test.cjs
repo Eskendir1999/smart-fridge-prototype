@@ -29,11 +29,10 @@ test('a saved measurement updates local history only after confirmation',async()
  let resolve;const c=ctx(['mergeMeasurementEntry'],{privateContextVersion:1,measurementHistory:[],showToast:()=>{},dbSaveMeasurement:()=>new Promise(r=>resolve=r)});
  const pending=vm.runInContext('mergeMeasurementEntry({date:"2026-11-03",weight:80})',c);assert.equal(c.measurementHistory.length,0);resolve();await pending;assert.equal(c.measurementHistory.length,1);
 });
-test('native personal widget reads are disabled',async()=>{
- const c=ctx(['widgetProfileRows'],{sb:{from(){throw Error('No private reads');}}});assert.equal(await vm.runInContext('widgetProfileRows()',c),null);
- const script=fs.readFileSync(require('node:path').join(__dirname,'../scriptable/smart-fridge.js'),'utf8');assert.doesNotMatch(script,/rest\(['`"]family_(profiles|measurements)/);
-});
 test('unconfirmed stricter settings suspend recommendations after reload in the same session',()=>{
  const c=ctx(['recipeBlockReason'],{getCurrentProfile:()=>null,currentUserId:'owner',sessionStorage:{getItem:key=>key==='sf_restrictions_pending_owner_p'?'1':null}});
  assert.match(vm.runInContext('recipeBlockReason({id:"r"},{id:"p",excluded_foods:[]})',c),/приостановлены/);
+});
+test('Scriptable widget never reads personal profile tables',()=>{
+ const script=fs.readFileSync(require('node:path').join(__dirname,'../scriptable/smart-fridge.js'),'utf8');assert.doesNotMatch(script,/rest\(['`"]family_(profiles|measurements)/);
 });

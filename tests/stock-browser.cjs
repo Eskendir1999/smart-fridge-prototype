@@ -35,7 +35,7 @@ const {createStockDb,user,household}=require('./helpers/stock-db.cjs');
       const file=url.pathname==='/'?'dist/index.html':'dist'+url.pathname;
       if(!fs.existsSync(path.join(__dirname,'..',file))){res.statusCode=404;return res.end();}
       res.setHeader('Content-Type',file.endsWith('html')?'text/html':file.endsWith('js')?'application/javascript':file.endsWith('css')?'text/css':file.endsWith('json')?'application/json':'image/png');
-      res.end(fs.readFileSync(path.join(__dirname,'..',file)));
+      res.end(file.endsWith('.html')?require('./helpers/page.cjs').stripIntegrity(fs.readFileSync(path.join(__dirname,'..',file))):fs.readFileSync(path.join(__dirname,'..',file)));
     }catch(e){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data:null,error:{message:e.message,code:e.code}}));}
   });
   await new Promise(r=>server.listen(0,'127.0.0.1',r));
