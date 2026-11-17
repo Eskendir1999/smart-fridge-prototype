@@ -50,3 +50,10 @@ test('unavailable nutrition is not presented as enabled',()=>{
   assert.match(js,/decide\.hidden=!dinnerOn/);
   assert.doesNotMatch(js,/Пока недоступно/);
 });
+test('login has a sign-in / sign-up switch where Enter uses the visible button',()=>{
+  const page=require('fs').readFileSync(require('path').join(__dirname,'..','index.html'),'utf8');
+  for(const id of ['login-mode-in','login-mode-up','signup-btn','login-forgot-btn'])assert.ok(page.includes('id="'+id+'"'),id);
+  assert.match(page,/#login-form\[data-mode="in"\] \.login-signup/);
+  assert.match(page,/form\.insertBefore\(first,second\)/);
+  assert.match(page,/pass\.autocomplete=mode==='up'\?'new-password':'current-password'/);
+});

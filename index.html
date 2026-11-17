@@ -611,6 +611,26 @@ img{ animation:imgFadeIn .25s ease; }
 @media (prefers-reduced-motion: reduce){ #stock-save-panel{ transition:none !important; } }
 /* ===== Login gate ===== */
 .login-screen{ position:fixed; inset:0; z-index:300; background:linear-gradient(160deg,#1F2A24,#2E3E33); display:flex; align-items:center; justify-content:center; padding:calc(1.25rem + var(--safe-t)) 1.25rem calc(1.25rem + var(--safe-b)) 1.25rem; }
+.login-screen{ background:radial-gradient(120% 70% at 50% 0%, var(--fresh-soft), var(--bg) 70%); color:var(--ink); }
+.login-screen .login-card{ max-width:400px; box-shadow:var(--shadow); border:1px solid var(--line); padding:1.75rem 1.5rem 1.25rem; animation:sfLoginIn .5s cubic-bezier(.2,.8,.2,1) both; }
+.login-brand{ display:flex; align-items:center; gap:.5rem; font-weight:700; font-size:var(--fs-sm); color:var(--fresh); margin-bottom:1rem; }
+.login-mark{ width:22px; height:22px; border-radius:7px; background:linear-gradient(135deg,var(--fresh),#2E6E45); box-shadow:inset 0 -6px 0 rgba(255,255,255,.18); }
+.login-card h1.login-title{ font-size:var(--fs-xl); line-height:1.18; text-align:left; margin:0 0 .5rem; }
+#login-card .sub{ text-align:left; margin-bottom:1.25rem; color:var(--ink-soft); }
+.login-mode{ display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; border-radius:14px; background:var(--bg); border:1px solid var(--line); margin-bottom:1rem; }
+.login-mode button{ min-height:40px; border:0; border-radius:10px; background:none; font:600 var(--fs-sm)/1 'Inter',sans-serif; color:var(--muted); cursor:pointer; transition:background .2s, color .2s; }
+.login-mode button[aria-selected="true"]{ background:var(--surface); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.password-check-note a{ color:var(--fresh); }
+.login-pass-head label{ display:block; font-size:var(--fs-xs); font-weight:600; color:var(--ink-soft); margin-bottom:0.375rem; }
+.login-pass-head{ display:flex; justify-content:space-between; align-items:baseline; gap:.5rem; }
+.login-pass-head .login-forgot{ width:auto; margin:0; font-size:var(--fs-xs); text-decoration:none; color:var(--fresh); }
+#login-form[data-mode="in"] .login-signup, #login-form[data-mode="in"] .password-check-note{ display:none; }
+#login-form[data-mode="up"] .login-submit, #login-form[data-mode="up"] .login-forgot{ display:none; }
+#login-card #account-erasure-receipt{ margin-top:1.25rem; padding-top:.875rem; border-top:1px solid var(--line); font-size:var(--fs-xs); color:var(--muted); }
+#login-card #account-erasure-receipt summary{ cursor:pointer; }
+@keyframes sfLoginIn{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce){ .login-screen .login-card{ animation:none; } }
+@media (max-width:480px){ .login-screen{ align-items:flex-start; } .login-screen .login-card{ margin-top:8vh; } }
 .login-card{ width:100%; max-width:360px; max-height:100%; overflow-y:auto; background:var(--surface); border-radius:var(--radius-lg); padding:2rem 1.625rem; box-shadow:0 20px 50px rgba(0,0,0,0.35); }
 .login-logo{ font-size:var(--fs-2xl); text-align:center; margin-bottom:0.375rem; }
 .login-card h1{ font-size:var(--fs-lg); font-weight:600; text-align:center; margin-bottom:0.25rem; }
@@ -689,30 +709,33 @@ img{ animation:imgFadeIn .25s ease; }
 
 <div class="login-screen" id="login-screen">
   <div class="login-card" id="login-card">
-    <div class="login-logo">🧊</div>
-    <h1>Smart Fridge</h1>
-    <div class="sub">Войдите или зарегистрируйте новый аккаунт</div>
+    <div class="login-brand"><span class="login-mark" aria-hidden="true"></span>Smart Fridge</div>
+    <h1 class="login-title">Что приготовить сегодня — из того, что уже есть дома</h1>
+    <p class="sub">Сроки под контролем, ужин за минуту, покупки одним списком.</p>
+    <div class="login-mode" role="tablist" aria-label="Вход или регистрация">
+      <button type="button" role="tab" id="login-mode-in" aria-selected="true">Вход</button>
+      <button type="button" role="tab" id="login-mode-up" aria-selected="false">Регистрация</button>
+    </div>
     <div class="login-error" id="login-error" role="alert">Неверный email или пароль</div>
     <div class="login-info" id="login-info" role="status"></div>
-    <form id="login-form">
+    <form id="login-form" data-mode="in">
       <div class="form-field">
         <label for="login-username">Email</label>
-        <input type="email" id="login-username" autocomplete="email" placeholder="you@example.com" required>
+        <input type="email" id="login-username" autocomplete="email" inputmode="email" placeholder="you@example.com" required>
       </div>
-      <div class="form-field" style="margin-bottom:0.375rem">
-        <label for="login-password">Пароль</label>
+      <div class="form-field login-pass-field">
+        <div class="login-pass-head"><label for="login-password">Пароль</label><button type="button" class="login-forgot" id="login-forgot-btn">Забыли пароль?</button></div>
         <div class="password-field">
           <input type="password" id="login-password" autocomplete="current-password" required>
           <button type="button" class="password-toggle" id="login-password-toggle" aria-label="Показать пароль">👁</button>
         </div>
       </div>
       <button type="submit" class="primary-btn login-submit">Войти</button>
-      <button type="submit" class="secondary-btn" id="signup-btn" aria-describedby="signup-password-check">Зарегистрироваться</button>
-      <p class="password-check-note" id="signup-password-check">При регистрации проверяем новый пароль по базе утечек. <a href="/privacy.html#password-check" target="_blank" rel="noopener">Как это работает</a></p>
+      <button type="submit" class="primary-btn login-signup" id="signup-btn" aria-describedby="signup-password-check">Создать аккаунт</button>
+      <p class="password-check-note" id="signup-password-check">Новый пароль проверим по базе утечек — сам пароль никуда не отправляется. <a href="/privacy.html#password-check" target="_blank" rel="noopener">Как это работает</a></p>
     </form>
-    <button type="button" class="login-forgot" id="login-forgot-btn">Забыли пароль?</button>
     <details id="account-erasure-receipt">
-      <summary>Проверить удаление аккаунта</summary>
+      <summary>Проверить удаление аккаунта по коду</summary>
       <form id="account-erasure-check">
         <label for="account-erasure-code">Код квитанции</label>
         <input id="account-erasure-code" autocomplete="off" maxlength="36" required>
@@ -721,6 +744,26 @@ img{ animation:imgFadeIn .25s ease; }
       <p id="account-erasure-result" role="status"></p>
     </details>
   </div>
+<script>
+/* Sign-in / sign-up switch. Independent of the auth client so it works before it loads. */
+(function(){
+  const form=document.getElementById('login-form'), pass=document.getElementById('login-password');
+  const login=form.querySelector('.login-submit'), signup=document.getElementById('signup-btn');
+  const tabIn=document.getElementById('login-mode-in'), tabUp=document.getElementById('login-mode-up');
+  function setMode(mode){
+    form.dataset.mode=mode;
+    tabIn.setAttribute('aria-selected',String(mode==='in'));
+    tabUp.setAttribute('aria-selected',String(mode==='up'));
+    pass.autocomplete=mode==='up'?'new-password':'current-password';
+    // Enter submits with the first submit button in the form, so the visible one goes first.
+    const first=mode==='up'?signup:login, second=mode==='up'?login:signup;
+    form.insertBefore(first,second);
+    const err=document.getElementById('login-error'); if(err) err.style.display='none';
+  }
+  tabIn.addEventListener('click',()=>setMode('in'));
+  tabUp.addEventListener('click',()=>setMode('up'));
+})();
+</script>
   <div class="login-card" id="recovery-card" style="display:none">
     <div class="login-logo">🔑</div>
     <h1>Новый пароль</h1>
