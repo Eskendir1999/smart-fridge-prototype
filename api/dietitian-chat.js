@@ -22,8 +22,9 @@ const SYSTEM_PROMPT = `Ты — личный диетолог в приложе�
 произошло. Совет должен быть практичным и выполнимым, а не общими словами вроде "питайся
 правильно".
 
-Когда пользователь описывает, что съел или хочет съесть — примерно оцени калорийность блюда и
-подскажи разумную порцию. Не назначай жёстких дневных норм, голодания и резкого дефицита. Ты не
+Когда пользователь описывает, что съел или хочет съесть — оцени калорийность блюда и скажи,
+сколько граммов/порций ему сейчас разумно съесть, учитывая его дневную норму (если она известна)
+и то, что он, скорее всего, уже съел сегодня. Не советуй голодание и дефицит больше 500 ккал. Ты не
 врач: при болезнях, лекарствах, тревожных симптомах или беременности советуй обратиться к врачу.
 
 Отвечай по-русски, разговорно, без markdown-разметки (это озвучивается голосом), 2-5 предложений
@@ -78,6 +79,7 @@ module.exports = async (req, res) => {
     profile = {
       weightKg: num(rawProfile.weightKg, 20, 400),
       targetWeightKg: num(rawProfile.targetWeightKg, 20, 400),
+      kcalPerDay: Number.isFinite(rawProfile.kcalPerDay) && rawProfile.kcalPerDay >= 1200 && rawProfile.kcalPerDay <= 6000 ? Math.round(rawProfile.kcalPerDay) : null,
       dietMode: rawProfile.dietMode === 'breastfeeding' ? 'breastfeeding' : 'standard',
       babyAgeMonths: rawProfile.babyAgeMonths,
       excludedFoods: Array.isArray(rawProfile.excludedFoods) ? rawProfile.excludedFoods.filter(x => typeof x === 'string' && Object.hasOwn(EXCLUSION_NAMES, x)) : [],
@@ -85,7 +87,7 @@ module.exports = async (req, res) => {
   }
 
   const profileLine = profile
-    ? [profile.weightKg ? `Текущий вес: ${profile.weightKg} кг.` : '', profile.targetWeightKg ? `Цель: ${profile.targetWeightKg} кг.` : ''].join(' ').trim() + dietModeLine(profile)
+    ? [profile.weightKg ? `Текущий вес: ${profile.weightKg} кг.` : '', profile.targetWeightKg ? `Цель: ${profile.targetWeightKg} кг.` : '', profile.kcalPerDay ? `Дневная норма по расчёту приложения: ${profile.kcalPerDay} ккал.` : ''].join(' ').trim() + dietModeLine(profile)
     : '';
 
   const contents = [];
