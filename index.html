@@ -3245,8 +3245,7 @@ async function saveMealChoices(){
   try { localStorage.setItem(mealChoicesKey(profile.id), JSON.stringify(mealChoices)); } catch(e){}
   profile.meal_choices = mealChoices;
   if(dietColumnsMissing || !sb) return;
-  const { error } = await sb.from('family_profiles').update({meal_choices: mealChoices}).eq('id', profile.id);
-  if(isMissingColumnError(error)) dietColumnsMissing = true;
+  await profileWrite('update_profile', profile.id, {meal_choices: mealChoices});
 }
 
 function daySlots(d, profile){
@@ -3611,6 +3610,12 @@ try { const saved = localStorage.getItem('sf_diet_tab'); if(saved === 'body') se
 /* ===================== FAMILY PROFILES ===================== */
 function profileInitial(name){ return (name||'?').trim().charAt(0).toUpperCase() || '?'; }
 
+// Personal profile data is written only through the owner-checked server function (direct table writes are closed).
+async function profileWrite(action, profileId, fields){
+  if(!sb) return {data:null, error:new Error('offline')};
+  return sb.rpc('sf_profile_write', {action, target_profile: profileId, fields});
+}
+
 async function loadFamilyProfiles(){
   if(!currentHouseholdId) return;
   const { data, error } = await sb.from('family_profiles').select('*').eq('household_id', currentHouseholdId).order('created_at');
@@ -3758,8 +3763,6 @@ document.getElementById('ff-save-btn').addEventListener('click', async ()=>{
     excluded_foods: Array.from(document.querySelectorAll('#ff-exclusions [data-excl][aria-pressed="true"]')).map(b => b.dataset.excl),
   };
   const payload = {
-    household_id: currentHouseholdId,
-    created_by: currentUserId,
     name,
     sex: document.getElementById('ff-sex-female').classList.contains('active') ? 'female' : 'male',
     age,
@@ -3769,36 +3772,34 @@ document.getElementById('ff-save-btn').addEventListener('click', async ()=>{
     activity_level: document.getElementById('ff-act-low').classList.contains('active') ? 'low'
       : document.getElementById('ff-act-high').classList.contains('active') ? 'high' : 'moderate',
   };
-  // Пока миграция не применена, сохраняем профиль без новых полей, а режим питания — на устройстве.
-  const fallbackNote = ' Режим питания пока сохранён только на этом устройстве — нужна миграция в Supabase.';
   if(editingProfileId){
-    let { error } = await sb.from('family_profiles').update({...payload, ...dietPayload}).eq('id', editingProfileId);
-    let local = false;
-    if(isMissingColumnError(error)){ local = true; ({ error } = await sb.from('family_profiles').update(payload).eq('id', editingProfileId)); }
+    const { data, error } = await profileWrite('update_profile', editingProfileId, {...payload, ...dietPayload});
+    if(error || !['updated','saved'].includes(data?.status)){ showToast('Не удалось сохранить профиль'); return; }
     saveDietLocal(editingProfileId, dietPayload);
     await loadFamilyProfiles();
-    if(local) dietColumnsMissing = true;
-    showToast('Профиль обновлён' + (local ? '.' + fallbackNote : ''));
+    showToast('Профиль обновлён');
     history.pop();
     openFamilyMember(editingProfileId);
   } else {
     payload.start_weight_kg = weight;
-    let { data, error } = await sb.from('family_profiles').insert({...payload, ...dietPayload}).select().single();
-    let local = false;
-    if(isMissingColumnError(error)){ local = true; ({ data, error } = await sb.from('family_profiles').insert(payload).select().single()); }
-    if(error || !data){ showToast('Не удалось сохранить профиль'); return; }
-    saveDietLocal(data.id, dietPayload);
-    await sb.from('family_measurements').insert({profile_id: data.id, log_date: isoDate(TODAY), weight});
+    pendingNewProfileId = pendingNewProfileId || crypto.randomUUID();
+    const id = pendingNewProfileId;
+    const { data, error } = await profileWrite('create_profile', id, {...payload, ...dietPayload});
+    if(error || !data || !['created','exists','saved'].includes(data.status)){ showToast('Не удалось сохранить профиль'); return; }
+    pendingNewProfileId = null;
+    saveDietLocal(id, dietPayload);
+    await profileWrite('upsert_measurement', id, {log_date: isoDate(TODAY), weight});
     await loadFamilyProfiles();
-    if(local) dietColumnsMissing = true;
-    showToast(`Профиль «${name}» добавлен` + (local ? '.' + fallbackNote : ''));
+    showToast(`Профиль «${name}» добавлен`);
     history.pop();
-    openFamilyMember(data.id);
+    openFamilyMember(id);
   }
 });
+let pendingNewProfileId = null;
 document.getElementById('ff-delete-btn').addEventListener('click', async ()=>{
   if(!editingProfileId) return;
-  await sb.from('family_profiles').delete().eq('id', editingProfileId);
+  showToast('Удаление профиля пока недоступно — сделаем отдельным шагом', true);
+  return;
   showToast('Профиль удалён');
   editingProfileId = null;
   currentProfileId = null;
@@ -4234,17 +4235,17 @@ document.getElementById('ms-save-btn').addEventListener('click', async ()=>{
   // Дату в форме поменяли на другую (перенос записи) — старую строку удаляем,
   // чтобы не остались задвоенные/осиротевшие данные под прежней датой.
   if(editingMeasurementDate && editingMeasurementDate !== date){
-    await sb.from('family_measurements').delete().eq('profile_id', currentProfileId).eq('log_date', editingMeasurementDate);
+    await profileWrite('delete_measurement', currentProfileId, {log_date: editingMeasurementDate});
     const oldIdx = measurementHistory.findIndex(m => m.date === editingMeasurementDate);
     if(oldIdx >= 0) measurementHistory.splice(oldIdx, 1);
   }
 
   const existingIdx = measurementHistory.findIndex(m => m.date === date);
   if(existingIdx >= 0) measurementHistory[existingIdx] = partial; else measurementHistory.push(partial);
-  await sb.from('family_measurements').upsert(
-    {profile_id: currentProfileId, log_date: date, weight: partial.weight, neck: partial.neck ?? null, chest: partial.chest ?? null, belly: partial.belly ?? null, hips: partial.hips ?? null},
-    {onConflict:'profile_id,log_date'}
-  );
+  const fields = {log_date: date, weight: partial.weight};
+  for(const k of ['neck','chest','belly','hips']) if(partial[k] != null) fields[k] = partial[k];
+  const { error: saveError } = await profileWrite('upsert_measurement', currentProfileId, fields);
+  if(saveError){ showToast('Не удалось сохранить замер', true); return; }
   closeSheet();
   renderHistory();
   renderMemberTrend();
@@ -4254,7 +4255,7 @@ document.getElementById('ms-save-btn').addEventListener('click', async ()=>{
 });
 document.getElementById('ms-delete-btn').addEventListener('click', async ()=>{
   if(!editingMeasurementDate) return;
-  await sb.from('family_measurements').delete().eq('profile_id', currentProfileId).eq('log_date', editingMeasurementDate);
+  await profileWrite('delete_measurement', currentProfileId, {log_date: editingMeasurementDate});
   const idx = measurementHistory.findIndex(m => m.date === editingMeasurementDate);
   if(idx >= 0) measurementHistory.splice(idx, 1);
   closeSheet();
@@ -4586,10 +4587,10 @@ async function dbLogFoodEvent(item, action, qtyKg){
 }
 async function dbSaveMeasurement(entry){
   if(!currentProfileId) return;
-  await sb.from('family_measurements').upsert(
-    {profile_id: currentProfileId, log_date: entry.date, weight: entry.weight, neck: entry.neck, chest: entry.chest, belly: entry.belly, hips: entry.hips},
-    {onConflict:'profile_id,log_date'}
-  );
+  const fields = {log_date: entry.date, weight: entry.weight};
+  for(const k of ['neck','chest','belly','hips']) if(entry[k] != null && !Number.isNaN(entry[k])) fields[k] = entry[k];
+  const { error } = await profileWrite('upsert_measurement', currentProfileId, fields);
+  if(error) throw error;
 }
 
 async function initEmptyAccount(userId){
