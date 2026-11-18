@@ -16,7 +16,7 @@ function context(names, values = {}) {
 }
 for (const profile of [null, {age:17}, {age:18}, {age:30,goal:'lose'}, {age:30,diet_mode:'breastfeeding',goal:'lose'}, {age:null}, {age:120}]) {
   test('no energy target for ' + JSON.stringify(profile), () => {
-    const c = context(['calcKcalTarget','dietitianProfile','projectGoalDate'], {profile});
+    const c = context(['calcKcalTarget','dietitianProfile','projectGoalDate'], {profile, getCurrentProfile:()=>null});
     assert.equal(vm.runInContext('calcKcalTarget(profile, 70)',c),null);
     assert.equal(vm.runInContext('dietitianProfile()',c),null);
     assert.equal(vm.runInContext('projectGoalDate([], 40)',c),null);
@@ -65,10 +65,16 @@ test('legacy underage or unknown profile is blocked before measurement query',as
 test('disabled chat screen never loads account-wide messages or speaks them',async()=>{
   const nodes=Object.fromEntries(['dietitian-messages','dietitian-summaries-hint','dt-status'].map(id=>[id,{textContent:'legacy'}]));
   let stopped=0;
-  const c=context(['loadDietitianScreen'],{dietitianHistory:['legacy'],dietitianInput:{},dietitianSendBtn:{},document:{getElementById:id=>nodes[id]},window:{speechSynthesis:{cancel(){stopped++;}}},sb:{from(){throw Error('Must not read account chat');}}});
+  const c=context(['dietitianAiAllowed','loadDietitianScreen'],{SF_NUTRITION_ENABLED:false,sessionStorage:{getItem:()=>'1'},dietitianHistory:['legacy'],dietitianInput:{},dietitianSendBtn:{},document:{getElementById:id=>nodes[id]},window:{speechSynthesis:{cancel(){stopped++;}}},sb:{from(){throw Error('Must not read account chat');}}});
   await vm.runInContext('loadDietitianScreen()',c);
   assert.equal(c.dietitianHistory.length,0);assert.equal(c.dietitianInput.disabled,true);assert.equal(c.dietitianSendBtn.disabled,true);assert.equal(stopped,1);
-  assert.match(nodes['dietitian-messages'].textContent,/отключён/);
+  assert.match(nodes['dietitian-messages'].textContent,/недоступен/);
+});
+test('dietitian profile sends only coarse whitelisted fields, never calorie targets',()=>{
+  const c=context(['dietitianProfile'],{getCurrentProfile:()=>({name:'Секрет',target_weight_kg:'62',diet_mode:'breastfeeding'}),document:{getElementById:()=>({value:'68.4'})},
+    isBreastfeeding:()=>true,babyAgeMonths:()=>4,profileExclusions:()=>['fish']});
+  const out=JSON.parse(JSON.stringify(vm.runInContext('dietitianProfile()',c)));
+  assert.deepEqual(out,{weightKg:68.4,targetWeightKg:62,dietMode:'breastfeeding',babyAgeMonths:4,excludedFoods:['fish']});
 });
 test('weight hero ignores previous goal and classification',()=>{
   const nodes={};const c=context(['isAdultNutritionProfile','updateDietHero'],{getCurrentProfile:()=>({age:30,goal:'lose',target_weight_kg:40}),document:{getElementById:id=>nodes[id]||=( {style:{},textContent:''})}});

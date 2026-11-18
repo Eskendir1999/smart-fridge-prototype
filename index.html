@@ -752,7 +752,7 @@ img{ animation:imgFadeIn .25s ease; }
       </div>
       <button type="submit" class="primary-btn login-submit">Войти</button>
       <button type="submit" class="primary-btn login-signup" id="signup-btn" aria-describedby="signup-password-check">Создать аккаунт</button>
-      <p class="password-check-note" id="signup-password-check">Новый пароль проверим по базе утечек — сам пароль никуда не отправляется. <a href="/privacy.html#password-check" target="_blank" rel="noopener">Как это работает</a></p>
+      <p class="password-check-note" id="signup-password-check"><b>Пароль: от 10 символов, буквы и хотя бы одна цифра.</b> Проверим его по базе утечек — сам пароль никуда не отправляется. <a href="/privacy.html#password-check" target="_blank" rel="noopener">Как это работает</a></p>
     </form>
     <details id="account-erasure-receipt">
       <summary>Проверить удаление аккаунта по коду</summary>
@@ -793,7 +793,7 @@ img{ animation:imgFadeIn .25s ease; }
       <div class="form-field" style="margin-bottom:0.375rem">
         <label for="recovery-password">Новый пароль</label>
         <div class="password-field">
-          <input type="password" id="recovery-password" autocomplete="new-password" minlength="14" required>
+          <input type="password" id="recovery-password" autocomplete="new-password" minlength="10" required>
           <button type="button" class="password-toggle" id="recovery-password-toggle" aria-label="Показать пароль">👁</button>
         </div>
       </div>
@@ -1080,8 +1080,8 @@ img{ animation:imgFadeIn .25s ease; }
       <button type="button" class="dietitian-entry" id="open-dietitian-btn">
         <div class="dt-orb"></div>
         <div style="flex:1; min-width:0; text-align:left">
-          <div class="t">AI-помощник</div>
-          <div class="s">Пока отключён · условия обработки данных проверяются</div>
+          <div class="t">Диетолог</div>
+          <div class="s">Спросите, что съесть, чем заменить, что при ГВ</div>
         </div>
       </button>
 
@@ -1293,14 +1293,14 @@ img{ animation:imgFadeIn .25s ease; }
       <div class="dt-head">
         <div class="dt-orb sm" id="dt-orb"></div>
         <div>
-          <h2>AI-помощник</h2>
+          <h2>Диетолог</h2>
           <div class="dt-status" id="dt-status">отключён</div>
         </div>
       </div>
       <div id="dietitian-summaries-hint"></div>
       <div id="dietitian-messages" class="dietitian-messages"></div>
       <div class="dietitian-input-row">
-        <input type="text" id="dietitian-input" disabled placeholder="AI-помощник пока отключён" autocomplete="off">
+        <input type="text" id="dietitian-input" disabled placeholder="Спросите о питании…" autocomplete="off">
         <button type="button" id="dietitian-send-btn" disabled aria-label="Отправить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
       </div>
     </section>
@@ -1684,7 +1684,10 @@ function loadLib(name){
 </script>
 <script>
 /* ===================== SUPABASE ===================== */
-const SF_NUTRITION_ENABLED = false;
+// Owner-only extras (питание, замеры, диетолог). Off by default; /api/features enables them per account
+// from a server-side allowlist, then the page reloads once with the flag set for this tab session.
+function sfOwnerExtrasEnabled(){ try{ return sessionStorage.getItem('sf_owner_extras') === '1'; }catch(e){ return false; } }
+const SF_NUTRITION_ENABLED = sfOwnerExtrasEnabled();
 const SF_DINNER_ENABLED = '__DINNER_ENABLED__' === '1';
 const SF_NOTIFICATIONS_ENABLED = false;
 const SUPABASE_URL = '__SUPABASE_URL__';
@@ -3845,8 +3848,8 @@ function openSwapSheet(d, slot){
   ask.type = 'button';
   ask.className = 'swap-option';
   ask.dataset.askDietitian = '1';
-  const t = document.createElement('div'); t.className = 't'; t.textContent = '💬 AI-помощник пока отключён';
-  const s = document.createElement('div'); s.className = 's'; s.textContent = 'Условия обработки данных и разделение профилей ещё проверяются.';
+  const t = document.createElement('div'); t.className = 't'; t.textContent = dietitianAiAllowed() ? '💬 Спросить диетолога' : '💬 Диетолог недоступен';
+  const s = document.createElement('div'); s.className = 's'; s.textContent = dietitianAiAllowed() ? 'Подскажет замену из того, что есть дома' : 'Включается только для владельца';
   ask.append(t, s);
   list.appendChild(ask);
   openSheet(swapSheet);
@@ -3874,6 +3877,7 @@ document.getElementById('swap-list').addEventListener('click', (e)=>{
   const {d, slot} = swapContext;
   const profile = getCurrentProfile();
   if(e.target.closest('[data-ask-dietitian]')){
+    if(!dietitianAiAllowed()) return;
     const current = resolveDish(d, slot, profile).dish;
     const have = inventoryNames().slice(0, 12).join(', ');
     closeSheet();
@@ -4697,9 +4701,24 @@ function speakText(text){
   }catch(e){}
 }
 
+// Only whitelisted, coarse fields leave the device; no names, no free text, no calorie targets.
 function dietitianProfile(){
-  return null; // No personal parameters may enter the disabled AI route.
+  const profile = getCurrentProfile();
+  if(!profile) return null;
+  const slider = document.getElementById('slider-weight');
+  const w = slider ? parseFloat(slider.value) : NaN;
+  const target = Number(profile.target_weight_kg);
+  return {
+    weightKg: Number.isFinite(w) ? w : null,
+    targetWeightKg: Number.isFinite(target) && target > 0 ? target : null,
+    dietMode: isBreastfeeding(profile) ? 'breastfeeding' : 'standard',
+    babyAgeMonths: isBreastfeeding(profile) ? babyAgeMonths(profile) : null,
+    excludedFoods: profileExclusions(profile),
+  };
 }
+function dietitianAiAllowed(){ try{ return SF_NUTRITION_ENABLED && sessionStorage.getItem('sf_owner_ai') === '1'; }catch(e){ return false; } }
+function dietitianConsentKey(){ return 'sf_dt_consent_' + (currentUserId || ''); }
+function dietitianConsented(){ try{ return localStorage.getItem(dietitianConsentKey()) === '1'; }catch(e){ return false; } }
 
 function dtSpeakBtn(content){ return `<button type="button" class="speak-btn" data-speak="${escapeHtml(content)}" aria-label="Озвучить">🔊</button>`; }
 function dietitianMsgHtml(role, content, pending){
@@ -4734,13 +4753,41 @@ function dtScroll(smooth){
 let dietitianHistory = [];
 
 async function loadDietitianScreen(){
-  dietitianHistory = [];
-  document.getElementById('dietitian-messages').textContent = 'AI-помощник пока отключён: условия обработки данных и разделение профилей ещё не подтверждены. Холодильник, покупки и каталог доступны.';
+  // History lives only in this tab: nothing is stored in the database.
+  const listEl = document.getElementById('dietitian-messages');
   document.getElementById('dietitian-summaries-hint').textContent = '';
-  document.getElementById('dt-status').textContent = 'отключён';
-  dietitianInput.disabled = true;
-  dietitianSendBtn.disabled = true;
   if(window.speechSynthesis) window.speechSynthesis.cancel();
+  if(!dietitianAiAllowed()){
+    dietitianHistory = [];
+    listEl.textContent = 'Диетолог сейчас недоступен.';
+    document.getElementById('dt-status').textContent = 'отключён';
+    dietitianInput.disabled = true; dietitianSendBtn.disabled = true;
+    return;
+  }
+  dietitianInput.disabled = false; dietitianSendBtn.disabled = false;
+  if(!dietitianConsented()){
+    listEl.innerHTML = `<div class="dt-welcome"><div class="dt-orb lg"></div><h3>Перед началом</h3>
+      <p>Ответы даёт ИИ Google Gemini на бесплатном тарифе: Google может использовать переписку для улучшения своих моделей. Не пишите имена, диагнозы и лекарства. В запрос уходят только вес, цель, режим «кормящая мама» и исключённые продукты. Это не замена врачу.</p>
+      <button type="button" class="primary-btn" id="dt-consent-btn">Понятно, начать</button></div>`;
+    document.getElementById('dt-consent-btn').addEventListener('click', ()=>{
+      try{ localStorage.setItem(dietitianConsentKey(), '1'); }catch(e){}
+      loadDietitianScreen();
+    });
+    dietitianInput.disabled = true; dietitianSendBtn.disabled = true;
+    document.getElementById('dt-status').textContent = 'ждёт согласия';
+    return;
+  }
+  if(dietitianHistory.length){
+    listEl.innerHTML = dietitianHistory.map(m => dietitianMsgHtml(m.role, m.content, false)).join('');
+  } else {
+    const profile = getCurrentProfile();
+    const tips = profile && isBreastfeeding(profile)
+      ? ['Что можно на ужин при ГВ?', 'Перекус между кормлениями', 'Сколько воды пить?']
+      : ['Что приготовить из холодильника?', 'Съел плов — что на ужин?', 'Сколько белка мне нужно?'];
+    listEl.innerHTML = `<div class="dt-welcome"><div class="dt-orb lg"></div><h3>Привет! Я ваш диетолог</h3><p>Расскажите, что сегодня съели или что планируете.</p></div>` + dtChipsHtml(tips, 'dt-quick', 'dt-quick');
+  }
+  dtSetThinking(false);
+  dtScroll(false);
 }
 
 document.getElementById('open-dietitian-btn').addEventListener('click', ()=>{
@@ -4794,8 +4841,52 @@ function dtReveal(bubble, text, onDone){
 }
 
 async function sendDietitianMessage(){
-  // Do not even persist a message until consent and profile isolation are implemented.
-  showToast('AI-помощник пока отключён. Холодильник и покупки доступны.', true);
+  const text = dietitianInput.value.trim();
+  if(!text || !currentUserId || dietitianSendBtn.disabled || !dietitianAiAllowed() || !dietitianConsented()) return;
+  dietitianInput.value = '';
+  dtUpdateSendBtn();
+  dietitianSendBtn.disabled = true;
+  dtClearQuick();
+  dietitianMessagesEl.querySelector('.dt-welcome')?.remove();
+  dietitianMessagesEl.insertAdjacentHTML('beforeend', dietitianMsgHtml('user', text, false));
+  dietitianMessagesEl.insertAdjacentHTML('beforeend', dietitianMsgHtml('assistant', '', true));
+  const bubble = dietitianMessagesEl.lastElementChild.querySelector('.dietitian-msg');
+  dtSetThinking(true);
+  dtScroll(true);
+  const historyForApi = dietitianHistory.slice(-20);
+  const actor = currentUserId;
+  try{
+    const { data: sessionData } = await sb.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if(!token) throw new Error('Session unavailable');
+    const resp = await fetch('/api/dietitian-chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'Authorization': 'Bearer ' + token},
+      body: JSON.stringify({ message: text, history: historyForApi, profile: dietitianProfile() }),
+    });
+    const data = await resp.json().catch(()=>({}));
+    if(currentUserId !== actor) return;
+    bubble.classList.remove('pending');
+    if(!resp.ok || !data.reply){
+      bubble.textContent = data.error || 'Не удалось получить ответ, попробуйте ещё раз.';
+      dtSetThinking(false);
+      return;
+    }
+    dietitianHistory.push({role:'user', content:text}, {role:'assistant', content:data.reply});
+    dtReveal(bubble, data.reply, () => {
+      bubble.insertAdjacentHTML('beforeend', dtSpeakBtn(data.reply));
+      dtAppendQuick(text);
+      dtSetThinking(false);
+      dtScroll(true);
+    });
+    if(dietitianVoiceOn) speakText(data.reply);
+  }catch(e){
+    bubble.classList.remove('pending');
+    bubble.textContent = 'Не удалось связаться с диетологом.';
+    dtSetThinking(false);
+  }finally{
+    dietitianSendBtn.disabled = false;
+  }
 }
 dietitianSendBtn.addEventListener('click', sendDietitianMessage);
 dietitianInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); sendDietitianMessage(); } });
@@ -5240,7 +5331,8 @@ document.getElementById('biometric-toggle-btn').addEventListener('click', async 
 
 /* ===================== LOGIN GATE (Supabase Auth) ===================== */
 async function newPasswordError(password){
-  if(password.length < 14) return 'Пароль должен быть не короче 14 символов.';
+  if(password.length < 10) return 'Пароль должен быть не короче 10 символов.';
+  if(!/\p{L}/u.test(password) || !/\d/.test(password)) return 'В пароле нужны буквы и хотя бы одна цифра.';
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try{
@@ -5298,7 +5390,30 @@ async function newPasswordError(password){
   wirePasswordToggle(passInput, document.getElementById('login-password-toggle'));
   wirePasswordToggle(recoveryPassInput, document.getElementById('recovery-password-toggle'));
 
+  async function syncOwnerExtras(){
+    let want = false, ai = false;
+    try{
+      const { data } = await sb.auth.getSession();
+      const token = data?.session?.access_token;
+      if(!token) return false;
+      const resp = await fetch('/api/features', { headers: { Authorization: 'Bearer ' + token }, cache: 'no-store' });
+      if(!resp.ok) return false; // unknown: keep extras off
+      const flags = await resp.json();
+      want = flags.nutrition === true; ai = flags.ai === true;
+    }catch(e){ return false; }
+    try{
+      sessionStorage.setItem('sf_owner_ai', ai ? '1' : '0');
+      if(want === SF_NUTRITION_ENABLED) return false;
+      if(want) sessionStorage.setItem('sf_owner_extras', '1'); else sessionStorage.removeItem('sf_owner_extras');
+      if(sfOwnerExtrasEnabled() !== want) return false; // storage blocked: never loop
+    }catch(e){ return false; }
+    location.reload();
+    return true;
+  }
+  function clearOwnerExtras(){ try{ sessionStorage.removeItem('sf_owner_extras'); sessionStorage.removeItem('sf_owner_ai'); }catch(e){} }
+
   async function enterApp(){
+    if(await syncOwnerExtras()) return;
     await loadUserData();
     loginScreen.style.display = 'none';
     const url = new URL(location.href);
@@ -5345,6 +5460,7 @@ async function newPasswordError(password){
     resetPrivateContext(); familyProfiles = []; currentUserId = null;
     globalThis.sfDinner?.clear();
     document.getElementById('family-grid').replaceChildren();
+    clearOwnerExtras();
     await sb.auth.signOut();
     biometricCard.style.display = 'none';
     loginCard.style.display = 'block';
@@ -5390,7 +5506,7 @@ async function newPasswordError(password){
       userForBiometric = data.user;
     }catch(error){
       loginError.textContent = isNewSignup && error?.code === 'weak_password'
-        ? 'Для нового аккаунта нужен пароль от 14 символов со строчными и заглавными буквами, цифрой и специальным символом.'
+        ? 'Нужен пароль от 10 символов: буквы и хотя бы одна цифра.'
         : error?.code === 'invalid_credentials'
           ? 'Неверный email или пароль. Если забыли пароль, восстановите его ниже.'
           : isNewSignup ? 'Не удалось зарегистрироваться. Попробуйте ещё раз.' : 'Не удалось войти. Попробуйте ещё раз.';
@@ -5399,7 +5515,7 @@ async function newPasswordError(password){
     }finally{
       submitBtn.disabled = signupBtn.disabled = false;
       submitBtn.textContent = 'Войти';
-      signupBtn.textContent = 'Зарегистрироваться';
+      signupBtn.textContent = 'Создать аккаунт';
     }
     try{ await enterApp(); }
     catch{
@@ -5438,6 +5554,7 @@ async function newPasswordError(password){
     resetPrivateContext(); familyProfiles = []; currentUserId = null;
     globalThis.sfDinner?.clear();
     document.getElementById('family-grid').replaceChildren();
+    clearOwnerExtras();
     await sb.auth.signOut();
     location.reload();
   });

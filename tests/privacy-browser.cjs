@@ -27,9 +27,9 @@ const A='30000000-0000-4000-8000-000000000001',B='30000000-0000-4000-8000-000000
  if(!fs.existsSync(file)){res.statusCode=404;return res.end();}
  res.setHeader('Content-Type',file.endsWith('.html')?'text/html':file.endsWith('.js')?'application/javascript':'image/png');
  // Test-only enablement on loopback to exercise held-back UI against candidate RLS.
- // Production source/build retain SF_NUTRITION_ENABLED=false.
+ // Production source/build keep nutrition off unless /api/features enables it for an allowlisted owner.
  const content=fs.readFileSync(file);
- res.end(file.endsWith('index.html')?require('./helpers/page.cjs').stripIntegrity(content).replace('const SF_NUTRITION_ENABLED = false;','const SF_NUTRITION_ENABLED = true;'):content);
+ res.end(file.endsWith('index.html')?require('./helpers/page.cjs').stripIntegrity(content).replace('const SF_NUTRITION_ENABLED = sfOwnerExtrasEnabled();','const SF_NUTRITION_ENABLED = true;'):content);
  }catch(e){res.end(JSON.stringify({data:null,error:{message:e.message}}));}
  });await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH});
