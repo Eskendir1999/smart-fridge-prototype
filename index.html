@@ -3934,7 +3934,6 @@ function renderCart(){
 function buyCartItem(item, silent){
   const at = cartData.indexOf(item);
   if(at >= 0) cartData.splice(at, 1);
-  dbDeleteCart(item);
   const entry = findCatalog(item.name);
   const toFreezer = entry ? entry.compartment === 'freezer' : false;
   const shelfDays = entry ? entry.shelfDays : 5;
@@ -3946,7 +3945,7 @@ function buyCartItem(item, silent){
     expiresOn: isoDate(addDays(TODAY, shelfDays))
   };
   target.push(newItem);
-  dbInsertItem(newItem, toFreezer?'freezer':'fridge');
+  dbBuyCart(item, newItem, toFreezer?'freezer':'fridge');
   renderCart();
   updateSummary();
   renderFridgeList(currentCompartment);
@@ -4550,40 +4549,55 @@ showScreen('home', false);
 function toDbRow(p){
   return {name:p.name, emoji:p.emoji, qty_num:p.qtyNum, unit:p.unit, location:p.location||null, expires_on:p.expiresOn||null};
 }
+// Stock writes go through public.stock_mutate (household lock, validation, undo log). Direct table writes
+// are closed in the database since 3 Nov. The UI stays optimistic; on a rejected write we reload from the server.
+async function stockOp(kind, body, opId){
+  if(!currentUserId || !currentHouseholdId || !sb) return null;
+  const op_id = opId || crypto.randomUUID();
+  const { data, error } = await sb.rpc('stock_mutate', {op_id, hh_id: currentHouseholdId, kind, body});
+  if(error){
+    showToast('Не удалось сохранить — обновляю список', true);
+    try{ await loadUserData(); }catch(e){}
+    return null;
+  }
+  return {op_id, data};
+}
+function rowFrom(data, listKey, id){ return (data?.[listKey] || []).find(r => r.id === id) || null; }
+function expectedOf(item){
+  const r = item._row || {};
+  return {name:r.name, emoji:r.emoji, qty_num:r.qty_num, unit:r.unit, location:r.location,
+    expires_on:r.expires_on, expiry_estimated:r.expiry_estimated, compartment:r.compartment};
+}
 async function dbInsertItem(item, compartment){
-  if(!currentUserId) return;
-  const { data, error } = await sb.from('fridge_items').insert({...toDbRow(item), compartment, user_id: currentUserId, household_id: currentHouseholdId}).select().single();
-  if(!error && data) item._id = data.id;
+  const res = await stockOp('add_item', {name:item.name, emoji:item.emoji||'📦', qty_num:item.qtyNum, unit:item.unit,
+    compartment, location:item.location||null, expires_on:item.expiresOn||'', expiry_estimated:false});
+  if(res){ item._id = res.op_id; item._row = rowFrom(res.data, 'fridge_items', res.op_id); }
 }
 async function dbUpdateItem(item, compartment){
-  if(!currentUserId || !item._id) return;
-  const payload = toDbRow(item);
-  if(compartment) payload.compartment = compartment;
-  await sb.from('fridge_items').update(payload).eq('id', item._id);
+  if(!item._id || !item._row) return;
+  const res = await stockOp('edit', {id:item._id, expected:expectedOf(item), name:item.name, emoji:item.emoji||'📦',
+    qty_num:item.qtyNum, unit:item.unit, location:item.location||null, expires_on:item.expiresOn||'',
+    expiry_estimated:false, compartment: compartment || item._row.compartment});
+  if(res) item._row = rowFrom(res.data, 'fridge_items', item._id) || item._row;
 }
-async function dbDeleteItem(item){
-  if(!currentUserId || !item._id) return;
-  await sb.from('fridge_items').delete().eq('id', item._id);
-}
+// Removal is recorded together with its reason: dbLogFoodEvent('used'|'wasted') deletes the item on the server.
+async function dbDeleteItem(item){ /* handled by dbLogFoodEvent */ }
 async function dbInsertCart(item){
-  if(!currentUserId) return;
-  const { data, error } = await sb.from('cart_items').insert({name:item.name, emoji:item.emoji, qty_num:item.qtyNum, unit:item.unit, note:item.note||null, user_id: currentUserId, household_id: currentHouseholdId}).select().single();
-  if(!error && data) item._id = data.id;
+  const res = await stockOp('add_cart', {name:item.name, emoji:item.emoji||'🛒', qty_num:item.qtyNum, unit:item.unit, note:item.note||null});
+  if(res){ item._id = res.op_id; item._row = rowFrom(res.data, 'cart_items', res.op_id); }
 }
-async function dbDeleteCart(item){
-  if(!currentUserId || !item._id) return;
-  await sb.from('cart_items').delete().eq('id', item._id);
+async function dbDeleteCart(item){ /* carts leave only through dbBuyCart */ }
+async function dbBuyCart(cartItem, newItem, compartment){
+  if(!cartItem._id){ return dbInsertItem(newItem, compartment); }
+  const res = await stockOp('buy', {id:cartItem._id, expected_qty:cartItem._row ? cartItem._row.qty_num : cartItem.qtyNum,
+    expected_unit:cartItem._row ? cartItem._row.unit : cartItem.unit, compartment, location:newItem.location||null, expires_on:newItem.expiresOn||''});
+  if(res){ newItem._id = res.op_id; newItem._row = rowFrom(res.data, 'fridge_items', res.op_id); }
 }
-async function dbSaveStats(){
-  if(!currentUserId) return;
-  await sb.from('food_stats').upsert({user_id: currentUserId, used_count: usedCount, used_weight_kg: usedWeightKg, wasted_count: wastedCount});
-}
+async function dbSaveStats(){ /* server keeps food_stats */ }
 async function dbLogFoodEvent(item, action, qtyKg){
-  if(!currentUserId || !currentHouseholdId) return;
-  await sb.from('food_events').insert({
-    household_id: currentHouseholdId, user_id: currentUserId,
-    name: item.name, emoji: item.emoji || '📦', action, qty_kg: qtyKg ?? null
-  });
+  if(!item._id || !item._row) return;
+  await stockOp(action === 'wasted' ? 'wasted' : 'used', {id:item._id, amount:item._row.qty_num,
+    expected_qty:item._row.qty_num, expected_unit:item._row.unit});
 }
 async function dbSaveMeasurement(entry){
   if(!currentProfileId) return;
@@ -4603,7 +4617,7 @@ async function initEmptyAccount(userId){
   const { data: householdId, error: hhErr } = await sb.rpc('create_household');
   if(hhErr) throw hhErr;
   currentHouseholdId = householdId;
-  await sb.from('food_stats').upsert({user_id:userId, used_count:0, used_weight_kg:0, wasted_count:0});
+  // food_stats is maintained by the server stock function; nothing to write here.
 }
 
 async function renderFamily(){
@@ -4680,13 +4694,13 @@ async function loadUserData(){
   fridgeData.length = 0; freezerData.length = 0;
   if(!fridgeRes.error && fridgeRes.data){
     fridgeRes.data.forEach(r => {
-      const item = {name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, location:r.location, expiresOn:r.expires_on, _id:r.id};
+      const item = {name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, location:r.location, expiresOn:r.expires_on, _id:r.id, _row:r};
       (r.compartment === 'freezer' ? freezerData : fridgeData).push(item);
     });
   }
   cartData.length = 0;
   if(!cartRes.error && cartRes.data){
-    cartRes.data.forEach(r => cartData.push({name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, note:r.note, _id:r.id}));
+    cartRes.data.forEach(r => cartData.push({name:r.name, emoji:r.emoji, qtyNum:Number(r.qty_num), unit:r.unit, note:r.note, _id:r.id, _row:r}));
   }
   if(!statsRes.error && statsRes.data){
     usedCount = statsRes.data.used_count; usedWeightKg = Number(statsRes.data.used_weight_kg); wastedCount = statsRes.data.wasted_count;
