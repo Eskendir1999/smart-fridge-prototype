@@ -293,9 +293,22 @@ const SFDiet = (() => {
     const all = [...byKey.values()].concat(DAILY_NEEDS);
     return all.filter(x => !inventory.some(name => norm(name).includes(norm(x.keyword))));
   }
+  // Что из блюд можно приготовить из того, что есть дома (как «Можно приготовить» в приложении).
+  function cookable(inventory, p){
+    const groupsOf = dish => [...(dish.need || []).map(x => ({keys:[x.k], label:x.n})),
+      ...(dish.uses || []).map(k => ({keys: Array.isArray(k) ? k : [k], label: Array.isArray(k) ? k[0] : k}))];
+    const seen = new Set();
+    return DISHES.filter(d => d.slot !== 'f' && d.title && !(p && blockReason(d, p))).map(dish => {
+      const groups = groupsOf(dish); const have = []; const lack = [];
+      groups.forEach(g => { const n = inventory.find(name => g.keys.some(k => norm(name).includes(norm(k))));
+        if(n){ if(!have.includes(n)) have.push(n); } else lack.push(g.label); });
+      return {dish, have, lack, score: groups.length ? (groups.length - lack.length) / groups.length : 0};
+    }).filter(x => x.have.length && x.score >= 0.5 && !seen.has(x.dish.title) && seen.add(x.dish.title))
+      .sort((a, b) => b.score - a.score || a.lack.length - b.lack.length);
+  }
   function portion(dish, ratio){
     return dish.portion ? Math.round(dish.portion*ratio) + ' г белка' : dish.portionMl ? Math.round(dish.portionMl*ratio) + ' мл салата' : '';
   }
-  return {isBF, babyAge, kcal, blockReason, week, missing, portion, SLOT_META};
+  return {isBF, babyAge, kcal, blockReason, week, missing, cookable, portion, SLOT_META, EXCLUSION_LABELS};
 })();
 if(typeof module === 'object' && module.exports) module.exports = SFDiet;

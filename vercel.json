@@ -6,5 +6,10 @@
       "maxDuration": 30
     }
   },
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/telegram-reminders",
+      "schedule": "7 4 * * *"
+    }
+  ]
 }
