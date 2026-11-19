@@ -392,7 +392,16 @@ img{ animation:imgFadeIn .25s ease; }
 
 .excl-row{ display:flex; flex-wrap:wrap; gap:0.5rem; }
 .excl-chip{ min-height:40px; padding:0 0.875rem; border-radius:999px; border:1.5px solid var(--line); background:var(--bg); font-family:'Inter',sans-serif; font-size:0.8125rem; font-weight:600; color:var(--ink-soft); cursor:pointer; }
-.excl-chip[aria-pressed="true"]{ border-color:var(--danger); color:var(--danger); background:#FBEAEA; text-decoration:line-through; }
+.excl-chip[aria-pressed="true"]{ border-color:var(--danger); color:var(--danger); background:#FBEAEA; }
+.excl-chip[aria-pressed="true"]::before{ content:'✕ '; font-weight:700; }
+.excl-chip.custom{ border-style:solid; }
+.excl-sub{ margin:0.875rem 0 0.5rem; font-size:0.75rem; font-weight:600; color:var(--muted); }
+.excl-add{ display:flex; gap:0.5rem; margin-top:0.75rem; }
+.excl-add input{ flex:1; min-width:0; min-height:44px; padding:0 0.875rem; border-radius:12px; border:1.5px solid var(--line); background:var(--surface); font:inherit; font-size:0.9375rem; color:var(--ink); }
+.excl-add .secondary-btn{ width:auto; margin:0; padding:0 1rem; min-height:44px; }
+#ff-excl-custom:not(:empty){ margin-top:0.625rem; }
+.excl-hint{ margin-top:0.625rem; }
+.excl-hint.warn{ color:var(--danger); font-weight:600; }
 .excl-hint{ font-size:0.7188rem; color:var(--muted); margin-top:0.5rem; }
 
 .dietitian-entry{ margin:0.375rem 1.25rem 1.125rem 1.25rem; width:calc(100% - 2.5rem); background:var(--fresh-soft); border-radius:var(--radius-lg); padding:1rem 1.125rem; display:flex; gap:0.75rem; align-items:center; border:none; font-family:'Inter',sans-serif; cursor:pointer; }
@@ -1141,8 +1150,8 @@ img{ animation:imgFadeIn .25s ease; }
             <div class="goal-note" style="margin:0">При грудном вскармливании норма калорий выше: +330 ккал до 6 месяцев и +400 ккал после. Снижение веса — не больше 300 ккал дефицита и не ниже 1800 ккал в день, чтобы не страдало молоко. Разгрузочный день в этом режиме заменяется обычным.</div>
           </div>
         </div>
-        <div class="form-field">
-          <label>Исключить из меню</label>
+        <div class="form-field excl-field">
+          <label>Что не ест</label>
           <div class="excl-row" id="ff-exclusions">
             <button type="button" class="excl-chip" data-excl="dairy" aria-pressed="false">🥛 Молочное</button>
             <button type="button" class="excl-chip" data-excl="egg" aria-pressed="false">🥚 Яйца</button>
@@ -1150,7 +1159,14 @@ img{ animation:imgFadeIn .25s ease; }
             <button type="button" class="excl-chip" data-excl="nuts" aria-pressed="false">🥜 Орехи</button>
             <button type="button" class="excl-chip" data-excl="gluten" aria-pressed="false">🌾 Глютен</button>
           </div>
-          <div class="excl-hint">Блюда с отмеченными продуктами не попадут в меню и в замены.</div>
+          <div class="excl-sub">Ещё часто исключают</div>
+          <div class="excl-row" id="ff-excl-presets"></div>
+          <div class="excl-add">
+            <input type="text" id="ff-excl-input" maxlength="30" placeholder="Своё: например, кинза" autocomplete="off" enterkeyhint="done">
+            <button type="button" class="secondary-btn" id="ff-excl-add-btn">Добавить</button>
+          </div>
+          <div class="excl-row" id="ff-excl-custom"></div>
+          <div class="excl-hint" id="ff-excl-hint">Отмеченное не попадёт в меню и в замены.</div>
         </div>
         <button class="primary-btn" id="ff-save-btn" style="width:100%; margin-top:0.5rem">Сохранить</button>
         <button class="ghost-btn" id="ff-delete-btn" style="width:100%; margin-top:0.75rem; display:none; color:var(--danger)">Удалить профиль</button>
@@ -3212,6 +3228,35 @@ function babyAgeMonths(profile){
   const v = dietField(profile, 'baby_age_months');
   return v == null || v === '' || isNaN(Number(v)) ? null : Number(v);
 }
+// Свои исключения (то, чего нет среди 5 категорий) — слова, которые ищутся в названии, описании и составе блюда.
+// Хранятся в meal_choices._exclude: эта колонка уже есть в базе, отдельная миграция не нужна.
+const EXCLUSION_PRESETS = [
+  {word:'свинина', label:'🐖 Свинина', stems:['свинин','бекон','ветчин','сало ']},
+  {word:'грибы', label:'🍄 Грибы', stems:['гриб','шампиньон']},
+  {word:'мёд', label:'🍯 Мёд', stems:['мёд','мед,','мед ','медом','мёдом']},
+  {word:'цитрусовые', label:'🍊 Цитрусовые', stems:['апельсин','лимон','мандарин','грейпфрут','цитрус']},
+  {word:'томаты', label:'🍅 Томаты', stems:['томат','помидор','кетчуп']},
+  {word:'бобовые', label:'🫘 Бобовые', stems:['фасол','горох','нут ','нута','чечевиц','боб']},
+  {word:'лук', label:'🧅 Лук', stems:['лук ','лука','луком','лук,','лук.']},
+  {word:'острое', label:'🌶️ Острое', stems:['остр','чили','халапеньо']},
+];
+function exclusionStems(word){
+  const w = String(word||'').toLowerCase().trim();
+  const preset = EXCLUSION_PRESETS.find(x => x.word === w);
+  if(preset) return preset.stems;
+  // грубая основа слова: «кинза» → «кинз», «баклажаны» → «баклажан»
+  let stem = w.replace(/[^a-zа-яё0-9 -]/gi,'').trim();
+  while(stem.length > 4 && /[аеёиоуыэюяйь]$/.test(stem)) stem = stem.slice(0,-1);
+  return stem.length >= 3 ? [stem] : [];
+}
+function profileWords(profile){
+  const v = profile && profile.meal_choices && profile.meal_choices._exclude;
+  return Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.trim()).slice(0, 12) : [];
+}
+function dishText(dish){
+  const parts = [dish.title, dish.desc, ...(dish.items || []), ...(dish.need || []).map(n => n.n)];
+  return (' ' + parts.filter(Boolean).join(' ') + ' ').toLowerCase();
+}
 function profileExclusions(profile){
   const v = dietField(profile, 'excluded_foods');
   return Array.isArray(v) ? v.filter(x => x in EXCLUSION_LABELS) : [];
@@ -3243,9 +3288,9 @@ async function saveMealChoices(){
   const profile = getCurrentProfile();
   if(!profile) return;
   try { localStorage.setItem(mealChoicesKey(profile.id), JSON.stringify(mealChoices)); } catch(e){}
-  profile.meal_choices = mealChoices;
+  profile.meal_choices = {...mealChoices, _exclude: profileWords(profile)};
   if(dietColumnsMissing || !sb) return;
-  await profileWrite('update_profile', profile.id, {meal_choices: mealChoices});
+  await profileWrite('update_profile', profile.id, {meal_choices: {...mealChoices, _exclude: profileWords(profile)}});
 }
 
 function daySlots(d, profile){
@@ -3262,6 +3307,12 @@ function defaultDishId(d, slot, profile){
 function dishBlockReason(dish, profile){
   const hit = (dish.tags || []).filter(t => profileExclusions(profile).includes(t));
   if(hit.length) return 'Исключено: ' + hit.map(t => EXCLUSION_LABELS[t]).join(', ');
+  const words = profileWords(profile);
+  if(words.length){
+    const text = dishText(dish);
+    const word = words.find(w => exclusionStems(w).some(st => text.includes(st)));
+    if(word) return 'Исключено: ' + word;
+  }
   if(isBreastfeeding(profile) && dish.bf === 'avoid') return dish.bfNote || 'Не рекомендуется при грудном вскармливании';
   return null;
 }
@@ -3705,6 +3756,10 @@ function openFamilyForm(profile){
   document.getElementById('ff-baby-age').value = babyAge != null ? babyAge : '';
   const ex = profile ? profileExclusions(profile) : [];
   document.querySelectorAll('#ff-exclusions [data-excl]').forEach(b => b.setAttribute('aria-pressed', ex.includes(b.dataset.excl) ? 'true' : 'false'));
+  formWords = profile ? profileWords(profile).slice() : [];
+  formChoices = profile && profile.meal_choices ? sanitizeMealChoices(profile.meal_choices) : {};
+  document.getElementById('ff-excl-input').value = '';
+  renderExclusionWords();
   document.getElementById('ff-delete-btn').style.display = profile ? 'block' : 'none';
   updateFamilyFormVisibility();
   history.push('family-form');
@@ -3724,9 +3779,58 @@ document.getElementById('ff-sex-male').addEventListener('click', ()=>{ setSegmen
 document.getElementById('ff-sex-female').addEventListener('click', ()=>{ setSegmented('ff-sex-female', ['ff-sex-male','ff-sex-female']); updateFamilyFormVisibility(); });
 document.getElementById('ff-mode-standard').addEventListener('click', ()=>{ setSegmented('ff-mode-standard', ['ff-mode-standard','ff-mode-breastfeeding']); updateFamilyFormVisibility(); });
 document.getElementById('ff-mode-breastfeeding').addEventListener('click', ()=>{ setSegmented('ff-mode-breastfeeding', ['ff-mode-standard','ff-mode-breastfeeding']); updateFamilyFormVisibility(); });
+let formWords = [], formChoices = {};
+function formDraftProfile(){
+  return {
+    excluded_foods: Array.from(document.querySelectorAll('#ff-exclusions [data-excl][aria-pressed="true"]')).map(b => b.dataset.excl),
+    meal_choices: {_exclude: formWords},
+    diet_mode: document.getElementById('ff-sex-female').classList.contains('active') && document.getElementById('ff-mode-breastfeeding').classList.contains('active') ? 'breastfeeding' : 'standard',
+  };
+}
+function renderExclusionWords(){
+  const presetBox = document.getElementById('ff-excl-presets');
+  presetBox.innerHTML = EXCLUSION_PRESETS.map(x => `<button type="button" class="excl-chip" data-word="${escapeHtml(x.word)}" aria-pressed="${formWords.includes(x.word)}">${escapeHtml(x.label)}</button>`).join('');
+  const custom = formWords.filter(w => !EXCLUSION_PRESETS.some(x => x.word === w));
+  document.getElementById('ff-excl-custom').innerHTML = custom.map(w => `<button type="button" class="excl-chip custom" data-word="${escapeHtml(w)}" aria-pressed="true" aria-label="Убрать «${escapeHtml(w)}»">${escapeHtml(w)}</button>`).join('');
+  updateExclusionHint();
+}
+function updateExclusionHint(){
+  const draft = formDraftProfile();
+  const hint = document.getElementById('ff-excl-hint');
+  const total = draft.excluded_foods.length + formWords.length;
+  if(!total){ hint.textContent = 'Отмеченное не попадёт в меню и в замены.'; hint.classList.remove('warn'); return; }
+  const blocked = DISHES.filter(x => x.slot !== 'f' && dishBlockReason(x, draft)).length;
+  const emptySlot = ['b','l','d'].find(slot => !DISHES.some(x => x.slot === slot && !dishBlockReason(x, draft)));
+  hint.textContent = emptySlot
+    ? `Для «${SLOT_META[emptySlot].name}» не осталось ни одного блюда — снимите часть исключений.`
+    : `Уберётся блюд из меню и замен: ${blocked}.`;
+  hint.classList.toggle('warn', !!emptySlot);
+}
+function addExclusionWord(raw){
+  const w = String(raw||'').trim().toLowerCase().replace(/\s+/g,' ').slice(0,30);
+  if(!w) return;
+  if(!exclusionStems(w).length){ showToast('Слишком короткое слово', true); return; }
+  if(formWords.includes(w)) return;
+  if(formWords.length >= 12){ showToast('Можно добавить до 12 своих исключений', true); return; }
+  formWords.push(w);
+  renderExclusionWords();
+}
 document.querySelectorAll('#ff-exclusions [data-excl]').forEach(b => b.addEventListener('click', ()=>{
   b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+  updateExclusionHint();
 }));
+['ff-excl-presets','ff-excl-custom'].forEach(id => document.getElementById(id).addEventListener('click', e => {
+  const b = e.target.closest('[data-word]'); if(!b) return;
+  const w = b.dataset.word;
+  formWords = formWords.includes(w) ? formWords.filter(x => x !== w) : [...formWords, w];
+  renderExclusionWords();
+}));
+document.getElementById('ff-excl-add-btn').addEventListener('click', ()=>{
+  const input = document.getElementById('ff-excl-input'); addExclusionWord(input.value); input.value = '';
+});
+document.getElementById('ff-excl-input').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); addExclusionWord(e.target.value); e.target.value = ''; }
+});
 document.getElementById('ff-goal-lose').addEventListener('click', ()=>{ setSegmented('ff-goal-lose', ['ff-goal-lose','ff-goal-maintain']); updateFamilyFormVisibility(); });
 document.getElementById('ff-goal-maintain').addEventListener('click', ()=>{ setSegmented('ff-goal-maintain', ['ff-goal-lose','ff-goal-maintain']); updateFamilyFormVisibility(); });
 document.getElementById('ff-act-low').addEventListener('click', ()=> setSegmented('ff-act-low', ['ff-act-low','ff-act-moderate','ff-act-high']));
@@ -3761,6 +3865,7 @@ document.getElementById('ff-save-btn').addEventListener('click', async ()=>{
     diet_mode: bfMode ? 'breastfeeding' : 'standard',
     baby_age_months: bfMode ? babyAge : null,
     excluded_foods: Array.from(document.querySelectorAll('#ff-exclusions [data-excl][aria-pressed="true"]')).map(b => b.dataset.excl),
+    meal_choices: {...formChoices, _exclude: formWords.slice()},
   };
   const payload = {
     name,
