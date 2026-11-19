@@ -21,6 +21,7 @@ fs.copyFileSync(path.join(srcDir, 'privacy.html'), path.join(distDir, 'privacy.h
 fs.copyFileSync(path.join(srcDir, 'support.html'), path.join(distDir, 'support.html'));
 fs.copyFileSync(path.join(srcDir, 'widgets.html'), path.join(distDir, 'widgets.html'));
 fs.cpSync(path.join(srcDir, 'quick-add'), path.join(distDir, 'quick-add'), { recursive: true });
+fs.cpSync(path.join(srcDir, 'nutrition'), path.join(distDir, 'nutrition'), { recursive: true });
 
 // Скрипт для Scriptable получает те же публичные ключи Supabase, что и веб-версия.
 fs.mkdirSync(path.join(distDir, 'scriptable'), { recursive: true });
