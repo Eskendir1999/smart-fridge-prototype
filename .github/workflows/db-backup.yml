@@ -1,0 +1,51 @@
+name: Weekly encrypted DB backup
+# Free replacement for Supabase paid backups. Does nothing until the owner adds two repository secrets:
+#   SUPABASE_DB_URL        — Supabase → Connect → Session pooler URI (with password)
+#   BACKUP_AGE_RECIPIENT   — public key from `age-keygen` (the private key stays offline with the owner)
+# The dump is encrypted before upload; GitHub only ever stores ciphertext.
+on:
+  schedule:
+    - cron: '17 21 * * 0'   # Monday 02:17 Almaty
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+    steps:
+      - name: Skip when not configured
+        id: cfg
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_AGE_RECIPIENT" ]; then
+            echo "Backup secrets are not set; skipping." >> "$GITHUB_STEP_SUMMARY"
+            echo "ready=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=1" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.ready == '1'
+      - name: Install PostgreSQL 17 client and age
+        if: steps.cfg.outputs.ready == '1'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 age
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+      - name: Dump and encrypt
+        if: steps.cfg.outputs.ready == '1'
+        run: scripts/backup-db.sh backups
+      - uses: actions/upload-artifact@v4
+        if: steps.cfg.outputs.ready == '1'
+        with:
+          name: smart-fridge-db-backup
+          path: backups/
+          retention-days: 90
+          if-no-files-found: error
