@@ -365,7 +365,20 @@ img{ animation:imgFadeIn .25s ease; }
 .bf-group li::before{ content:'•'; position:absolute; left:0; color:var(--muted); }
 .bf-foot{ font-size:0.6875rem; color:var(--muted); line-height:1.45; margin-top:0.75rem; }
 
-.variety-hint{ margin:0 1.25rem 0.75rem 1.25rem; padding:0.625rem 0.75rem; border-radius:var(--radius-sm); background:var(--frost-soft); color:var(--frost); font-size:0.7812rem; font-weight:600; line-height:1.45; }
+.variety-hint{ margin:0 1.25rem 0.75rem 1.25rem; padding:0.75rem 0.875rem; border-radius:var(--radius); background:var(--surface); border:1px solid var(--line); display:flex; align-items:center; gap:0.75rem; }
+.variety-ring{ --p:0%; flex-shrink:0; width:46px; height:46px; border-radius:50%; display:grid; place-items:center;
+  background:conic-gradient(var(--fresh) var(--p), var(--line) 0); transition:background .5s ease; }
+.variety-ring span{ width:36px; height:36px; border-radius:50%; background:var(--surface); display:grid; place-items:center; font-size:0.6875rem; font-weight:700; color:var(--ink); }
+.variety-text{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.variety-text b{ font-size:0.875rem; color:var(--ink); }
+.variety-text span{ font-size:0.75rem; color:var(--muted); }
+.variety-btn{ flex-shrink:0; border:0; background:var(--fresh-soft); color:var(--fresh); font:700 0.8125rem 'Inter',sans-serif; padding:0.5rem 0.75rem; border-radius:999px; cursor:pointer; }
+.variety-hint.done{ background:var(--fresh-soft); border-color:transparent; animation:varietyPop .5s ease; }
+.variety-hint.done .variety-ring span{ color:var(--fresh); font-size:1rem; }
+@keyframes varietyPop{ 0%{ transform:scale(.97); } 60%{ transform:scale(1.015); } 100%{ transform:none; } }
+@media (prefers-reduced-motion:reduce){ .variety-hint.done{ animation:none; } .variety-ring{ transition:none; } }
+.repeat-chip{ border:1px dashed var(--frost); background:var(--frost-soft); color:var(--frost); font:600 0.75rem 'Inter',sans-serif; padding:0.375rem 0.625rem; border-radius:999px; cursor:pointer; }
+.repeat-chip u{ text-underline-offset:2px; }
 .day-pill .dot{ display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--fresh); margin-left:0.3125rem; vertical-align:middle; }
 .day-pill.active .dot{ background:#fff; }
 
@@ -3444,18 +3457,67 @@ document.getElementById('day-pills').addEventListener('click', (e)=>{
   renderDay(daySelected);
 });
 
-// Подсказка о повторах: какие блюда этого дня встречаются в другие дни недели.
+// Разнообразие недели: сколько приёмов пищи без повторов + бейдж «🔁 ещё в Пт» прямо на повторяющемся блюде.
+function weekVariety(week){
+  let total = 0, unique = 0;
+  ['b','s','l','d'].forEach(slot => {
+    const ids = week.flatMap(w => w.slots.filter(x => x.slot === slot && x.dish).map(x => x.dish.id));
+    total += ids.length; unique += new Set(ids).size;
+  });
+  return {total, unique, repeats: total - unique};
+}
+function repeatDays(week, d, slot, dishId){
+  return week.filter(w => w.d !== d && w.slots.some(x => x.slot === slot && x.dish && x.dish.id === dishId)).map(w => dayPillLabel(w.d));
+}
 function renderVarietyHint(week, d){
   const el = document.getElementById('variety-hint');
-  const repeats = [];
-  week[d-1].slots.forEach(({slot, dish}) => {
-    const others = week.filter(w => w.d !== d && w.slots.some(x => x.slot === slot && x.dish.id === dish.id)).map(w => dayPillLabel(w.d));
-    if(others.length) repeats.push(`${SLOT_META[slot].name.toLowerCase()} — ещё в ${others.join(', ')}`);
-  });
-  if(!repeats.length){ el.style.display = 'none'; el.textContent = ''; return; }
+  const v = weekVariety(week);
+  if(!v.total){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const pct = Math.round(v.unique / v.total * 100);
   el.style.display = '';
-  el.textContent = `🔁 Повторяется: ${repeats.join('; ')}. Нажмите «Заменить» у блюда или «🎲 Разнообразить», чтобы на неделе не было одного и того же.`;
+  el.classList.toggle('done', v.repeats === 0);
+  el.innerHTML = v.repeats === 0
+    ? `<div class="variety-ring" style="--p:100%"><span>✓</span></div>
+       <div class="variety-text"><b>Неделя без повторов</b><span>${v.total} приёмов пищи — все разные</span></div>`
+    : `<div class="variety-ring" style="--p:${pct}%"><span>${pct}%</span></div>
+       <div class="variety-text"><b>Разнообразие недели</b><span>${v.unique} разных блюд из ${v.total} · ${v.repeats} ${v.repeats%10===1&&v.repeats%100!==11?'повтор':v.repeats%10>=2&&v.repeats%10<=4&&(v.repeats%100<10||v.repeats%100>=20)?'повтора':'повторов'}</span></div>
+       <button type="button" class="variety-btn" data-variety-shuffle>🎲 Перемешать</button>`;
+  // бейджи на карточках этого дня
+  week[d-1].slots.forEach(({slot, dish}) => {
+    if(!dish || slot === 'f') return;
+    const days = repeatDays(week, d, slot, dish.id);
+    const card = document.querySelector(`#meals-container [data-swap="${slot}"]`)?.closest('.meal-card');
+    if(!days.length || !card) return;
+    card.querySelector('.meal-actions')?.insertAdjacentHTML('beforeend',
+      `<button type="button" class="repeat-chip" data-quick-swap="${slot}" title="Поставить блюдо, которого ещё нет на неделе">🔁 ещё в ${days.join(', ')} · <u>другое</u></button>`);
+  });
 }
+// Одно нажатие: блюдо этого слота меняется на то, которого ещё нет на неделе (сначала — из продуктов дома).
+function quickSwap(d, slot){
+  const profile = getCurrentProfile();
+  if(!profile) return;
+  const week = weekMenu(profile);
+  const used = new Set(week.flatMap(w => w.slots.filter(x => x.slot === slot && x.dish).map(x => x.dish.id)));
+  const names = inventoryNames();
+  const pool = allowedDishes(slot, profile).filter(x => !used.has(x.id))
+    .map(dish => ({dish, hits: fridgeMatch(dish, names).hits, r: Math.random()}))
+    .sort((a,b) => b.hits - a.hits || a.r - b.r);
+  if(!pool.length){ showToast('Других подходящих блюд нет — можно снять часть исключений в профиле', true); return; }
+  const dish = pool[0].dish;
+  if(dish.id === defaultDishId(d, slot, profile)){ if(mealChoices[d]){ delete mealChoices[d][slot]; if(!Object.keys(mealChoices[d]).length) delete mealChoices[d]; } }
+  else (mealChoices[d] = mealChoices[d] || {})[slot] = dish.id;
+  saveMealChoices();
+  renderDay(d);
+  renderMissingAlert();
+  showToast(`${SLOT_META[slot].name}: «${dish.title}»`);
+}
+document.getElementById('variety-hint').addEventListener('click', e => {
+  if(e.target.closest('[data-variety-shuffle]')) shuffleWeek();
+});
+document.getElementById('meals-container').addEventListener('click', e => {
+  const b = e.target.closest('[data-quick-swap]');
+  if(b){ e.stopPropagation(); quickSwap(daySelected, b.dataset.quickSwap); }
+}, true);
 
 /* ---- лист замены блюда ---- */
 let swapContext = null;
