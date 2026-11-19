@@ -403,6 +403,10 @@ img{ animation:imgFadeIn .25s ease; }
 .swap-option .tags{ display:flex; gap:0.375rem; flex-wrap:wrap; margin-top:0.125rem; }
 .swap-group-label{ font-size:0.6875rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin:0.375rem 0 0 0.125rem; }
 
+.dt-notice ul{ text-align:left; margin:0.75rem 0 1rem; padding-left:1.1rem; font-size:0.8438rem; line-height:1.5; color:var(--ink-soft); }
+.dt-notice li{ margin-bottom:0.5rem; }
+#dietitian-summaries-hint{ font-size:0.75rem; color:var(--muted); text-align:center; margin:0.25rem 0 0.5rem; }
+.dt-clear{ border:0; background:none; color:var(--fresh); font:600 0.75rem 'Inter',sans-serif; text-decoration:underline; cursor:pointer; padding:0; }
 .dp-lists{ display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin:0.75rem 0; }
 .dp-col{ border-radius:var(--radius-sm); padding:0.75rem; font-size:0.8125rem; }
 .dp-col b{ display:block; margin-bottom:0.375rem; font-size:0.75rem; text-transform:uppercase; letter-spacing:.04em; }
@@ -4635,6 +4639,26 @@ function dtScroll(smooth){
 }
 
 let dietitianHistory = [];
+// Первый вход в чат: спокойное объяснение, кто отвечает и что происходит с перепиской. Показывается один раз на аккаунт.
+function dietitianNoticeKey(){ return 'sf_dt_notice_' + (currentUserId || ''); }
+function dietitianNoticeSeen(){ try{ return localStorage.getItem(dietitianNoticeKey()) === '1'; }catch(e){ return false; } }
+function renderDietitianNotice(listEl){
+  listEl.innerHTML = `<div class="dt-welcome dt-notice"><div class="dt-orb lg"></div>
+    <h3>Пара слов перед началом</h3>
+    <ul>
+      <li>Отвечает ИИ Google Gemini. Это помощник, а не врач: при болезни, беременности или приёме лекарств сверяйтесь со специалистом.</li>
+      <li>Мы используем бесплатный доступ Google — по его правилам сообщения могут просматриваться, чтобы улучшать сервис. Поэтому лучше не писать имена, адреса и диагнозы.</li>
+      <li>В запрос уходят только вес, цель, норма калорий, режим «кормящая мама» и исключённые продукты.</li>
+      <li>Переписка хранится 14 дней, её можно очистить в любой момент.</li>
+    </ul>
+    <button type="button" class="primary-btn" id="dt-notice-ok">Понятно, начать</button></div>`;
+  dietitianInput.disabled = true; dietitianSendBtn.disabled = true;
+  document.getElementById('dt-notice-ok').addEventListener('click', ()=>{
+    try{ localStorage.setItem(dietitianNoticeKey(), '1'); }catch(e){}
+    dietitianInput.disabled = false; dietitianSendBtn.disabled = false;
+    loadDietitianScreen();
+  });
+}
 
 async function loadDietitianScreen(){
   const listEl = document.getElementById('dietitian-messages');
@@ -4643,16 +4667,10 @@ async function loadDietitianScreen(){
   if(!currentUserId){ listEl.innerHTML = ''; return; }
   listEl.innerHTML = `<div style="font-size:0.7812rem; color:var(--muted); text-align:center; padding:1rem 0;">Загрузка…</div>`;
 
-  const [{ data: messages }, { data: summaries }] = await Promise.all([
-    sb.from('dietitian_messages').select('role, content, created_at').eq('user_id', currentUserId).order('created_at', {ascending:true}),
-    sb.from('dietitian_summaries').select('week_start, summary').eq('user_id', currentUserId).order('week_start', {ascending:false}).limit(1),
-  ]);
-
-  dietitianHistory = (messages || []).map(m => ({role: m.role, content: m.content}));
-
-  if(summaries && summaries.length){
-    hintEl.textContent = `За прошлую неделю: ${summaries[0].summary}`;
-  }
+  if(!dietitianNoticeSeen()){ renderDietitianNotice(listEl); return; }
+  const { data } = await sb.rpc('sf_dietitian_history', {action:'list'});
+  dietitianHistory = (data?.messages || []).map(m => ({role: m.role, content: m.content}));
+  hintEl.innerHTML = `Переписка хранится 14 дней · <button type="button" class="dt-clear" id="dt-clear-btn">Очистить</button>`;
 
   const suggestions = ['Съел бургер и картошку фри', 'Что приготовить на ужин из холодильника?', 'Сколько белка мне нужно сегодня?', 'Итоги этой недели'];
   if(dietitianHistory.length){
@@ -4669,6 +4687,14 @@ async function loadDietitianScreen(){
   dtScroll(false);
 }
 
+document.getElementById('dietitian-summaries-hint').addEventListener('click', async e => {
+  if(!e.target.closest('#dt-clear-btn')) return;
+  const { error } = await sb.rpc('sf_dietitian_history', {action:'clear'});
+  if(error){ showToast('Не удалось очистить', true); return; }
+  dietitianHistory = [];
+  showToast('Переписка очищена');
+  loadDietitianScreen();
+});
 document.getElementById('open-dietitian-btn').addEventListener('click', ()=>{
   history.push('dietitian');
   showScreen('dietitian', false);
@@ -4737,12 +4763,14 @@ async function sendDietitianMessage(){
 
   const historyForApi = dietitianHistory.slice(-20);
   dietitianHistory.push({role:'user', content:text});
-  await sb.from('dietitian_messages').insert({user_id: currentUserId, role:'user', content:text});
+  sb.rpc('sf_dietitian_history', {action:'append', msg_role:'user', msg_content:text.slice(0,4000)});
 
   try{
+    const { data: sessionData } = await sb.auth.getSession();
+    const token = sessionData?.session?.access_token || '';
     const resp = await fetch('/api/dietitian-chat', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {'Content-Type':'application/json', 'Authorization': 'Bearer ' + token},
       body: JSON.stringify({ message: text, history: historyForApi, profile: dietitianProfile() }),
     });
     const data = await resp.json();
@@ -4759,7 +4787,7 @@ async function sendDietitianMessage(){
       dtScroll(true);
     });
     dietitianHistory.push({role:'assistant', content:data.reply});
-    await sb.from('dietitian_messages').insert({user_id: currentUserId, role:'assistant', content:data.reply});
+    sb.rpc('sf_dietitian_history', {action:'append', msg_role:'assistant', msg_content:String(data.reply).slice(0,4000)});
     if(dietitianVoiceOn) speakText(data.reply);
   }catch(e){
     bubble.classList.remove('pending');
