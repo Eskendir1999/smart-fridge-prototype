@@ -599,6 +599,14 @@ img{ animation:imgFadeIn .25s ease; }
 
 .toast{ position:fixed; left:50%; transform:translateX(-50%) translateY(20px); bottom: calc(var(--nav-h) + 24px + var(--safe-b)); background:var(--ink); color:#fff; font-size:0.8438rem; font-weight:600; padding:0.75rem 1.125rem; border-radius:999px; opacity:0; pointer-events:none; transition:all .25s ease; z-index:120; display:flex; align-items:center; gap:0.5rem; white-space:nowrap; max-width:90%; }
 .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.undo-bar{ position:fixed; left:50%; bottom:calc(var(--nav-h) + 92px + var(--safe-b)); transform:translateX(-50%) translateY(20px); z-index:260;
+  display:flex; align-items:center; gap:0.875rem; max-width:calc(100% - 2rem); background:var(--ink); color:#fff; font-size:0.8438rem; font-weight:600;
+  padding:0.5rem 0.5rem 0.5rem 1.125rem; border-radius:999px; box-shadow:0 10px 30px rgba(0,0,0,0.25); opacity:0; pointer-events:none; transition:opacity .2s, transform .25s cubic-bezier(.2,.9,.3,1.2); }
+.undo-bar.show{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0); }
+.undo-bar span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.undo-bar button{ flex:none; background:rgba(255,255,255,0.14); color:#fff; border:none; border-radius:999px; padding:0.5rem 0.875rem; font:inherit; font-weight:700; cursor:pointer; }
+.undo-bar button:disabled{ opacity:0.6; }
+@media (prefers-reduced-motion: reduce){ .undo-bar{ transition:none; } }
 .toast .retry{ color:var(--fresh); font-weight:700; margin-left:0.25rem; }
 
 .sidebar{ display:none; }
@@ -617,6 +625,7 @@ img{ animation:imgFadeIn .25s ease; }
   .screen{ padding-bottom:2rem; }
   .fab{ bottom: calc(24px + var(--safe-b)); }
   .toast{ bottom: calc(24px + var(--safe-b)); }
+  .undo-bar{ bottom: calc(96px + var(--safe-b)); }
   .hscroll, .suggest-row, .day-pills{ padding-left:2rem; }
   .section, .slider-block{ padding-left:2rem; padding-right:2rem; }
   .fridge-list{ padding-left:2rem; padding-right:2rem; }
@@ -1514,6 +1523,7 @@ img{ animation:imgFadeIn .25s ease; }
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="undo-bar" id="undo-bar" role="status" aria-live="polite"><span id="undo-text"></span><button type="button" id="undo-btn">Отменить</button></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
@@ -2295,6 +2305,7 @@ const toastEl = document.getElementById('toast');
 let toastTimer;
 function showToast(msg, isError=false){
   clearTimeout(toastTimer);
+  document.getElementById('undo-bar')?.classList.remove('show');
   toastEl.innerHTML = (isError ? '⚠️ ' : '✅ ') + msg + (isError ? ' <span class="retry" id="retryLink">Повторить</span>' : '');
   toastEl.classList.add('show');
   toastTimer = setTimeout(()=> toastEl.classList.remove('show'), 2600);
@@ -2361,15 +2372,16 @@ document.getElementById('use-product-btn').addEventListener('click', ()=>{
   if(!currentProduct) return;
   const arr = getArr(currentProduct.list);
   const [item] = arr.splice(currentProduct.idx, 1);
+  currentProduct = null;
   const kg = estimateKg(item);
   usedCount++; usedWeightKg += kg;
   dbDeleteItem(item);
   dbSaveStats();
-  dbLogFoodEvent(item, 'used', kg);
+  const pending = dbLogFoodEvent(item, 'used', kg);
   updateSummary();
   renderFridgeList(currentCompartment);
   renderMissingAlert();
-  showToast(`«${item.name}» использовано`);
+  offerUndo(`«${item.name}» использовано`, pending);
   history.pop();
   const prev = history[history.length-1] || 'fridge';
   showScreen(prev, false);
@@ -2379,14 +2391,15 @@ document.getElementById('toss-product-btn').addEventListener('click', ()=>{
   if(!currentProduct) return;
   const arr = getArr(currentProduct.list);
   const [item] = arr.splice(currentProduct.idx, 1);
+  currentProduct = null;
   wastedCount++;
   dbDeleteItem(item);
   dbSaveStats();
-  dbLogFoodEvent(item, 'wasted', estimateKg(item));
+  const pending = dbLogFoodEvent(item, 'wasted', estimateKg(item));
   updateSummary();
   renderFridgeList(currentCompartment);
   renderMissingAlert();
-  showToast(`«${item.name}» выброшено`, true);
+  offerUndo(`«${item.name}» выброшено`, pending);
   history.pop();
   const prev = history[history.length-1] || 'fridge';
   showScreen(prev, false);
@@ -2924,13 +2937,13 @@ document.getElementById('manual-custom-add-btn').addEventListener('click', ()=>{
     expiresOn: isoDate(addDays(TODAY, entry ? (toFreezer?Math.max(entry.shelfDays,60):entry.shelfDays) : (toFreezer?60:5)))
   };
   target.push(newItem);
-  dbInsertItem(newItem, toFreezer?'freezer':'fridge');
+  const pending = dbInsertItem(newItem, toFreezer?'freezer':'fridge');
   nameInput.value = '';
   closeSheet();
   renderFridgeList(currentCompartment);
   updateSummary();
   renderMissingAlert();
-  showToast(`«${name}» добавлено в ${toFreezer?'морозилку':'холодильник'}`);
+  offerUndo(`«${name}» → ${toFreezer?'морозилка':'холодильник'}`, pending);
 });
 
 document.getElementById('dest-fridge').addEventListener('click', ()=> setDest('fridge'));
@@ -2947,12 +2960,12 @@ document.getElementById('confirm-add-btn').addEventListener('click', ()=>{
   const target = toFreezer ? freezerData : fridgeData;
   const newItem = {name, emoji, qtyNum, unit, location: toFreezer?'Морозилка':'Средняя полка', expiresOn};
   target.push(newItem);
-  dbInsertItem(newItem, toFreezer?'freezer':'fridge');
+  const pending = dbInsertItem(newItem, toFreezer?'freezer':'fridge');
   updateSummary();
   renderFridgeList(currentCompartment);
   renderSuggestRow();
   renderMissingAlert();
-  showToast(`«${name}» добавлено в ${toFreezer?'морозилку':'холодильник'}`);
+  offerUndo(`«${name}» → ${toFreezer?'морозилка':'холодильник'}`, pending);
   visionResult.classList.remove('show');
 });
 
@@ -4004,7 +4017,8 @@ function renderCart(){
 // «Куплено», и по отметке из виджета на iPhone (silent — без тоста на каждый товар).
 function buyCartItem(item, silent){
   const at = cartData.indexOf(item);
-  if(at >= 0) cartData.splice(at, 1);
+  if(at < 0) return; // уже куплено (повторное нажатие)
+  cartData.splice(at, 1);
   const entry = findCatalog(item.name);
   const toFreezer = entry ? entry.compartment === 'freezer' : false;
   const shelfDays = entry ? entry.shelfDays : 5;
@@ -4016,13 +4030,13 @@ function buyCartItem(item, silent){
     expiresOn: isoDate(addDays(TODAY, shelfDays))
   };
   target.push(newItem);
-  dbBuyCart(item, newItem, toFreezer?'freezer':'fridge');
+  const pending = dbBuyCart(item, newItem, toFreezer?'freezer':'fridge');
   renderCart();
   updateSummary();
   renderFridgeList(currentCompartment);
   renderSuggestRow();
   renderMissingAlert();
-  if(!silent) showToast(`«${item.name}» куплено и добавлено в ${toFreezer?'морозилку':'холодильник'}`);
+  if(!silent) offerUndo(`«${item.name}» куплено → ${toFreezer?'морозилка':'холодильник'}`, pending);
 }
 function updateCartBadge(){
   const badge = document.getElementById('cart-badge');
@@ -4667,6 +4681,7 @@ async function dbInsertItem(item, compartment){
   const res = await stockOp('add_item', {name:item.name, emoji:item.emoji||'📦', qty_num:item.qtyNum, unit:item.unit,
     compartment, location:item.location||null, expires_on:item.expiresOn||'', expiry_estimated:false});
   if(res){ item._id = res.op_id; item._row = rowFrom(res.data, 'fridge_items', res.op_id); }
+  return res;
 }
 async function dbUpdateItem(item, compartment){
   if(!item._id || !item._row) return;
@@ -4687,13 +4702,49 @@ async function dbBuyCart(cartItem, newItem, compartment){
   const res = await stockOp('buy', {id:cartItem._id, expected_qty:cartItem._row ? cartItem._row.qty_num : cartItem.qtyNum,
     expected_unit:cartItem._row ? cartItem._row.unit : cartItem.unit, compartment, location:newItem.location||null, expires_on:newItem.expiresOn||''});
   if(res){ newItem._id = res.op_id; newItem._row = rowFrom(res.data, 'fridge_items', res.op_id); }
+  return res;
 }
 async function dbSaveStats(){ /* server keeps food_stats */ }
 async function dbLogFoodEvent(item, action, qtyKg){
-  if(!item._id || !item._row) return;
-  await stockOp(action === 'wasted' ? 'wasted' : 'used', {id:item._id, amount:item._row.qty_num,
+  if(!item._id || !item._row) return null;
+  return stockOp(action === 'wasted' ? 'wasted' : 'used', {id:item._id, amount:item._row.qty_num,
     expected_qty:item._row.qty_num, expected_unit:item._row.unit});
 }
+
+/* ---- «Отменить» после действия со складом и защита от двойного нажатия ---- */
+// Плашка внизу на 6 секунд. Отмена идёт через stock_mutate('undo'): сервер возвращает
+// продукт, корзину, журнал и статистику ровно в состояние до действия.
+let undoTimer = null, undoSeq = 0;
+function offerUndo(text, pending){
+  const bar = document.getElementById('undo-bar'), btn = document.getElementById('undo-btn');
+  const seq = ++undoSeq;
+  clearTimeout(toastTimer); toastEl.classList.remove('show');
+  document.getElementById('undo-text').textContent = text;
+  btn.disabled = false; btn.textContent = 'Отменить';
+  bar.classList.add('show');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => { if(seq === undoSeq) bar.classList.remove('show'); }, 6000);
+  btn.onclick = async () => {
+    if(btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'Отменяю…';
+    clearTimeout(undoTimer);
+    const res = await pending;
+    const undone = res && res.op_id ? await stockOp('undo', {operation_id: res.op_id}) : null;
+    if(seq === undoSeq) bar.classList.remove('show');
+    if(!undone){ if(res) return; showToast('Не удалось отменить', true); return; }
+    try{ await loadUserData(); }catch(e){}
+    showToast('Отменено');
+  };
+}
+// Второй клик по той же кнопке быстрее чем за 0,7 с игнорируется: двойной тап не спишет
+// и не добавит продукт дважды. Кнопки «+ / −» количества не трогаем.
+document.addEventListener('click', e => {
+  const b = e.target.closest('button, [data-recipe], .product-row, .cart-buy');
+  if(!b || b.closest('.qty-stepper') || b.classList.contains('qty-btn')) return;
+  const now = performance.now();
+  if(b._sfTap && now - b._sfTap < 700){ e.stopImmediatePropagation(); e.preventDefault(); return; }
+  b._sfTap = now;
+}, true);
 async function dbSaveMeasurement(entry){
   if(!currentProfileId) return;
   const fields = {log_date: entry.date, weight: entry.weight};
