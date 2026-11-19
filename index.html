@@ -438,6 +438,14 @@ img{ animation:imgFadeIn .25s ease; }
 .md-row{ display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
 .md-note{ font-size:0.7188rem; color:var(--muted); margin-top:0.625rem; line-height:1.4; }
 .md-card .secondary-btn:disabled{ opacity:0.45; cursor:default; }
+.dp-lists.da-lists{ grid-template-columns:1fr; }
+.da-note{ font-size:0.75rem; color:var(--muted); margin:-0.25rem 0 0.875rem; }
+.da-check{ display:flex; gap:0.625rem; align-items:flex-start; font-size:0.8438rem; line-height:1.4; margin:0.25rem 0 0.875rem; cursor:pointer; }
+.da-check input{ width:1.125rem; height:1.125rem; margin-top:0.125rem; accent-color:var(--danger); flex:none; }
+.da-done{ position:fixed; inset:0; z-index:400; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2rem; text-align:center; gap:0.75rem; }
+.da-done .ic{ font-size:3rem; }
+.da-done h2{ font-family:'Fraunces',serif; font-size:1.5rem; }
+.da-done p{ color:var(--ink-soft); font-size:0.875rem; max-width:22rem; line-height:1.5; }
 .md-soft-danger{ color:var(--danger) !important; border-color:#F0D3D3 !important; }
 .md-soft-danger.armed{ background:#FBEAEA !important; }
 .dp-lists{ display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin:0.75rem 0; }
@@ -1373,6 +1381,43 @@ img{ animation:imgFadeIn .25s ease; }
           <div class="s">Хранится 14 дней и потом удаляется сама. Можно удалить сейчас.</div>
           <button class="secondary-btn md-soft-danger" id="md-clear-chat" disabled>Удалить переписку</button>
         </div>
+        <div class="md-card md-account" id="md-account-card" hidden>
+          <div class="t">🗑 Удалить аккаунт</div>
+          <div class="s">Аккаунт, вход и всё личное удалятся без восстановления. Перед этим можно скачать архив выше.</div>
+          <button class="secondary-btn md-soft-danger" id="md-account-open">Удалить аккаунт…</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-delete-account">
+      <div class="back-row"><button class="back-btn" data-back="my-data">← Мои данные</button></div>
+      <div class="detail-block" style="padding-top:0.375rem">
+        <h2>Удалить аккаунт</h2>
+        <div class="sub" id="da-email"></div>
+        <div class="dp-lists da-lists">
+          <div class="dp-col dp-gone"><b>Удалится</b><ul>
+            <li>Аккаунт: email, пароль, вход на всех устройствах</li>
+            <li>Ваши профили и все замеры</li>
+            <li>Переписка с диетологом</li>
+            <li>Telegram и напоминания</li>
+            <li id="da-solo-gone" hidden>Холодильник, корзина и журнал — вы в семье один</li>
+          </ul></div>
+          <div class="dp-col dp-keep"><b>Останется</b><ul id="da-keep">
+            <li id="da-family-keep">У семьи: общий холодильник, корзина и журнал — без вашего имени</li>
+            <li id="da-others-keep">Профили других членов семьи</li>
+            <li id="da-solo-keep" hidden>Ничего — вы в семье один</li>
+          </ul></div>
+        </div>
+        <p class="da-note" id="da-family-note">Код приглашения в семью сменится — старый перестанет работать.</p>
+        <form id="da-form" class="md-card" autocomplete="on">
+          <div class="form-field" style="margin-bottom:0.75rem">
+            <label for="da-password">Пароль от аккаунта — для подтверждения</label>
+            <input type="password" id="da-password" autocomplete="current-password" required>
+          </div>
+          <label class="da-check"><input type="checkbox" id="da-confirm" required> Понимаю, что восстановить аккаунт и данные нельзя</label>
+          <p class="login-error" id="da-error" role="alert"></p>
+          <button type="submit" class="primary-btn dp-confirm" id="da-submit">Удалить аккаунт навсегда</button>
+        </form>
       </div>
     </section>
 
@@ -5411,7 +5456,7 @@ function downloadFile(name, type, text){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 document.getElementById('my-data-btn').addEventListener('click', () => {
-  history.push('my-data'); showScreen('my-data', false); loadMyData();
+  history.push('my-data'); showScreen('my-data', false); loadMyData(); loadAccountErasure();
 });
 document.getElementById('md-json').addEventListener('click', () => {
   if(!myDataSnapshot) return;
@@ -5428,6 +5473,76 @@ document.getElementById('md-csv').addEventListener('click', () => {
   downloadFile(`smart-fridge-zamery-${isoDate(TODAY)}.csv`, 'text/csv;charset=utf-8', '\ufeff' + rows.map(r => r.map((v, i) => i < 2 ? (i === 1 ? cell(String(v)) : v) : cell(v)).join(';')).join('\r\n'));
   showToast('Таблица сохранена');
 });
+/* ---- Удаление аккаунта ----
+   Сервер (sf_account_erasure, с 10 ноября): prepare -> свежий вход паролем (новая сессия) -> delete.
+   Квитанция — случайный uuid; по ней можно узнать результат, если ответ потерялся по сети. */
+async function loadAccountErasure(){
+  const card = document.getElementById('md-account-card');
+  const { data } = await sb.rpc('sf_account_erasure', {action:'availability', receipt_secret:null});
+  card.hidden = !(data && data.enabled);
+}
+document.getElementById('md-account-open').addEventListener('click', async () => {
+  history.push('delete-account'); showScreen('delete-account', false);
+  document.getElementById('da-password').value = '';
+  document.getElementById('da-confirm').checked = false;
+  document.getElementById('da-error').classList.remove('show');
+  const { data: u } = await sb.auth.getUser();
+  document.getElementById('da-email').textContent = u?.user?.email ? 'Аккаунт ' + u.user.email : '';
+  // Сколько ещё людей в семье: от этого зависит, останутся ли холодильник и корзина.
+  let others = null;
+  if(currentHouseholdId){
+    const { count, error } = await sb.from('household_members').select('user_id', {count:'exact', head:true}).eq('household_id', currentHouseholdId);
+    if(!error && count != null) others = count - 1;
+  }
+  const solo = others === 0;
+  document.getElementById('da-solo-gone').hidden = !solo;
+  document.getElementById('da-family-keep').hidden = solo;
+  document.getElementById('da-family-note').hidden = solo;
+  document.getElementById('da-others-keep').hidden = solo;
+  document.getElementById('da-solo-keep').hidden = !solo;
+  document.getElementById('da-family-keep').textContent = others > 0
+    ? `У семьи (${others} ${plural3(others, ['человек','человека','человек'])}): общий холодильник, корзина и журнал — без вашего имени`
+    : 'Если в семье есть другие люди: общий холодильник, корзина и журнал — без вашего имени';
+});
+function accountDeletedScreen(){
+  try{ Object.keys(localStorage).filter(k => k.startsWith('sf_') || k.startsWith('sb-')).forEach(k => localStorage.removeItem(k)); }catch(e){}
+  const el = document.createElement('div');
+  el.className = 'da-done';
+  el.innerHTML = '<div class="ic">👋</div><h2>Аккаунт удалён</h2><p>Ваш аккаунт и личные данные удалены. Если захотите вернуться — просто зарегистрируйтесь заново.</p><button class="primary-btn" style="max-width:16rem" id="da-done-btn">Готово</button>';
+  document.body.appendChild(el);
+  document.getElementById('da-done-btn').addEventListener('click', () => location.replace('/'));
+}
+document.getElementById('da-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('da-submit'), err = document.getElementById('da-error');
+  if(btn.disabled) return;
+  const fail = text => { err.textContent = text; err.classList.add('show'); btn.disabled = false; btn.textContent = 'Удалить аккаунт навсегда'; };
+  const password = document.getElementById('da-password').value;
+  if(!document.getElementById('da-confirm').checked) return fail('Отметьте, что понимаете: восстановить нельзя.');
+  err.classList.remove('show');
+  btn.disabled = true; btn.textContent = 'Проверяем пароль…';
+  const { data: u } = await sb.auth.getUser();
+  const email = u?.user?.email;
+  if(!email) return fail('Не удалось определить аккаунт. Войдите заново.');
+  const receipt = crypto.randomUUID();
+  const prep = await sb.rpc('sf_account_erasure', {action:'prepare', receipt_secret:receipt});
+  if(prep.error || prep.data?.status !== 'confirmation_required') return fail('Удаление сейчас недоступно. Попробуйте позже.');
+  // Свежий вход паролем: сервер удаляет только из новой сессии, созданной после prepare.
+  const login = await sb.auth.signInWithPassword({ email, password });
+  if(login.error) return fail('Неверный пароль. Аккаунт не удалён.');
+  btn.textContent = 'Удаляем…';
+  let res = await sb.rpc('sf_account_erasure', {action:'delete', receipt_secret:receipt});
+  if(res.error && !/fresh_password|request_expired|unavailable/.test(res.error.message || '')){
+    // Ответ мог потеряться по сети — спрашиваем по квитанции, не удаляя повторно.
+    res = await sb.rpc('sf_account_erasure', {action:'status', receipt_secret:receipt});
+  }
+  if(res.data?.status !== 'active_account_deleted'){
+    return fail(/request_expired/.test(res.error?.message || '') ? 'Время подтверждения вышло. Попробуйте ещё раз.' : 'Не удалось удалить аккаунт. Ничего не удалено — попробуйте ещё раз.');
+  }
+  try{ await sb.auth.signOut({ scope: 'local' }); }catch(e){}
+  accountDeletedScreen();
+});
+
 document.getElementById('md-clear-chat').addEventListener('click', async () => {
   const btn = document.getElementById('md-clear-chat');
   if(!myDataArm){

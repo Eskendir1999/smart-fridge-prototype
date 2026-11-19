@@ -3,7 +3,7 @@
 #
 #   SUPABASE_DB_URL=postgresql://...  BACKUP_AGE_RECIPIENT=age1...  scripts/backup-db.sh [out-dir]
 #
-# Dumps schemas public, sf_private and auth (data + schema) in pg_dump custom format, then encrypts it
+# Dumps schemas public, sf_private, sf_telegram and auth (data + schema) in pg_dump custom format, then encrypts it
 # with age for BACKUP_AGE_RECIPIENT. Personal data never lands on disk unencrypted unless --plain is
 # given explicitly (only for a local rehearsal against a disposable database).
 # pg_dump must be the same major version as the server or newer.
@@ -32,7 +32,7 @@ stamp=$(date -u +%Y%m%dT%H%M%SZ)
 dump="$out_dir/smart-fridge-$stamp.dump"
 
 pg_dump "$SUPABASE_DB_URL" --format=custom --no-owner --no-privileges \
-  --schema=public --schema=sf_private --schema=auth \
+  --schema=public --schema=sf_private --schema=sf_telegram --schema=auth \
   --file="$dump"
 
 # Row counts travel with the dump so a restore can be checked without opening the data.
@@ -40,7 +40,7 @@ psql "$SUPABASE_DB_URL" -Atq -F $'\t' -c "
   select n.nspname||'.'||c.relname,
          (xpath('/row/c/text()', query_to_xml(format('select count(*) c from %I.%I', n.nspname, c.relname), false, true, '')))[1]::text::bigint
   from pg_class c join pg_namespace n on n.oid=c.relnamespace
-  where c.relkind in ('r','p') and n.nspname in ('public','sf_private')
+  where c.relkind in ('r','p') and n.nspname in ('public','sf_private','sf_telegram')
   union all select 'meta:policies', count(*) from pg_policies where schemaname in ('public','sf_private')
   union all select 'meta:functions', count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','sf_private')
   order by 1" > "$dump.counts.tsv"
