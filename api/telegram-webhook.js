@@ -11,6 +11,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { sendTelegramMessage, answerCallbackQuery } = require('./_lib/telegram');
 const { daysBetween, dueLabel, ruDays } = require('./_lib/fridge');
 const D = require('../nutrition/core.js');
+const { RECIPES } = require('../recipes/data.js');
 
 const APP_URL = 'https://smart-fridge-prototype.vercel.app/';
 const CONNECT = 'Откройте Smart Fridge → Профиль → «Подключить Telegram».';
@@ -172,15 +173,27 @@ function progressText(data){
   return { text: lines.join('\n'), markup: { inline_keyboard: [[btn('⚖️ Записать вес', 'wg', p.id), btn('← Профиль', 'dp', p.id)]] } };
 }
 
+// Блюда из каталога рецептов приложения (recipes/data.js): то, что можно приготовить из того, что дома.
+const norm = x => String(x || '').toLowerCase().replace(/ё/g, 'е');
+const words = x => norm(x).split(/[^a-zа-я0-9]+/).filter(Boolean);
+const hit = (stem, name) => { const st = norm(stem); return st.includes(' ') ? norm(name).includes(st) : words(name).some(w => w.startsWith(st)); };
 function cookText(inventory){
-  const list = D.cookable(inventory).slice(0, 6);
-  if(!list.length) return { text: 'Из того, что дома, блюд из программы пока не собрать. Добавьте продукты в Smart Fridge.', markup: MENU };
-  const lines = ['🍳 Можно приготовить из того, что дома:'];
-  list.forEach(x => {
-    lines.push('', `${D.SLOT_META[x.dish.slot].icon} ${clean(x.dish.title)}`, '   есть: ' + x.have.slice(0, 4).map(clean).join(', ')
-      + (x.lack.length ? '\n   докупить: ' + x.lack.slice(0, 3).map(clean).join(', ') : ''));
+  const all = RECIPES.map(r => {
+    const need = r.ingredients.filter(i => !i.p);
+    const have = [], lack = [];
+    need.forEach(i => { const n = inventory.find(name => (i.k || [words(i.name)[0]]).some(k => hit(k, name))); n ? have.push(n) : lack.push(i.name); });
+    return { r, have, lack };
+  }).filter(x => x.have.length).sort((a, b) => a.lack.length - b.lack.length || b.have.length - a.have.length || a.r.min - b.r.min);
+  const close = all.filter(x => x.lack.length <= 1);
+  const list = (close.length ? close : all.filter(x => x.lack.length <= 2)).slice(0, 6);
+  if(!list.length) return { text: 'Из того, что дома, пока ничего не собрать. Посмотрите идеи в приложении — там 47 рецептов.',
+    markup: { inline_keyboard: [[{ text: 'Открыть «Что приготовить»', url: APP_URL + '?open=recipes' }]] } };
+  const lines = [close.length ? '🍳 Можно приготовить из того, что дома:' : '🍳 Почти готово — докупить 1–2 продукта:'];
+  list.forEach(({ r, have, lack }) => {
+    lines.push('', `${r.icon} ${clean(r.title)} · ${r.min} мин`, (lack.length ? '   докупить: ' + lack.map(clean).join(', ') : '   ✓ всё есть дома')
+      + '\n   есть: ' + [...new Set(have)].slice(0, 4).map(clean).join(', '));
   });
-  return { text: lines.join('\n'), markup: { inline_keyboard: [[{ text: 'Рецепты в приложении', url: APP_URL }]] } };
+  return { text: lines.join('\n'), markup: { inline_keyboard: [[{ text: 'Рецепты и режим «Готовлю»', url: APP_URL + '?open=recipes' }]] } };
 }
 
 // Вес — одно число. Обхваты — до 5 чисел: вес, шея, грудь, живот, бёдра; «-» пропускает.
